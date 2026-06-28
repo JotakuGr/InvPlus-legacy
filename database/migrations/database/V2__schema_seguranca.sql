@@ -1,0 +1,6 @@
+usuario
+perfil
+permissao
+usuario_perfil
+perfil_permissao
+auditoria
