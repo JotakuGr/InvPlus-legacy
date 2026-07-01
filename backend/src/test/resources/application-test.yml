@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/invplus}
+    username: ${SPRING_DATASOURCE_USERNAME:invplus_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:alpha_invplus}
+
+invplus:
+  security:
+    jwt:
+      secret: ${INVPLUS_JWT_SECRET:invplus-test-secret-change-me-please-32bytes}

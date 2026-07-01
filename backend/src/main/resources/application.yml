@@ -3,20 +3,32 @@ spring:
     name: invplus-api
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/invplus
-    username: invplus_user
-    password: invplus_password
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+    hikari:
+      pool-name: InvPlusHikariPool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
   jpa:
+    open-in-view: false
+
     hibernate:
       ddl-auto: validate
 
-    show-sql: true
+    show-sql: false
 
     properties:
-      "[hibernate.format_sql]": true
-
+      "[hibernate.format_sql]": false
+      "[hibernate.jdbc.batch_size]": 50
+      "[hibernate.order_inserts]": true
+      "[hibernate.order_updates]": true
   flyway:
     enabled: true
     locations: filesystem:../database/migrations
@@ -24,3 +36,9 @@ spring:
 
 server:
   port: 8080
+
+invplus:
+  security:
+    jwt:
+      secret: ${INVPLUS_JWT_SECRET}
+      expiration-minutes: ${INVPLUS_JWT_EXPIRATION_MINUTES:60}

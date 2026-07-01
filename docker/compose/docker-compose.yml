@@ -4,12 +4,12 @@ services:
     container_name: invplus-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: invplus
-      POSTGRES_USER: invplus_user
-      POSTGRES_PASSWORD: alpha_invplus
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: America/Sao_Paulo
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - invplus_postgres_data:/var/lib/postgresql
     networks:
@@ -20,8 +20,8 @@ services:
     container_name: invplus-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@invplus.com
-      PGADMIN_DEFAULT_PASSWORD: 40028922Jo$
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "8081:80"
     depends_on:
@@ -45,8 +45,8 @@ services:
     container_name: invplus-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: invplus
-      RABBITMQ_DEFAULT_PASS: instant_invplus
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
       - "5672:5672"
       - "15672:15672"
