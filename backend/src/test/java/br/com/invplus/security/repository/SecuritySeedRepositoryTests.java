@@ -27,7 +27,7 @@ class SecuritySeedRepositoryTests {
 
     @Test
     void deveConsultarSeedInicialDeSegurancaViaRepository() {
-        Usuario administrador = usuarioRepository.findByEmail("admin@invplus.com").orElseThrow();
+        Usuario administrador = usuarioRepository.findByEmailAndAtivoTrueAndDeletedAtIsNull("admin@invplus.com").orElseThrow();
         Perfil admin = perfilRepository.findByNome("ADMIN").orElseThrow();
         Permissao acessoTotalSeguranca = permissaoRepository
                 .findByRecursoAndAcao("SEGURANCA", "*")

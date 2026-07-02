@@ -64,9 +64,16 @@ Constantes e enums compartilhados, sem dependencia de regra de negocio especific
 Elementos reutilizaveis por todos os modulos:
 
 - entidades base;
+- repository, service, controller e mapper base para CRUDs;
 - respostas padronizadas;
 - excecoes compartilhadas;
-- handler global de excecoes.
+- handler global de excecoes;
+- value objects reutilizaveis;
+- eventos de dominio.
+
+`BaseEntity` centraliza `id`, datas de auditoria, usuario de criacao/alteracao e `version` para concorrencia otimista. A auditoria e preenchida automaticamente com Spring Data JPA Auditing e `AuditorAware<UUID>`. Entidades que herdam `SoftDeleteEntity` tambem usam `ativo` e `deleted_at`; as consultas padrao devem ocultar registros com exclusao logica.
+
+`BaseRepository` herda `JpaRepository` e `JpaSpecificationExecutor`, garantindo suporte a Specifications em todos os cadastros que usam a base. Listagens REST devem retornar `Page<T>` e aceitar `page`, `size` e `sort`.
 
 ### `security`
 
@@ -84,7 +91,7 @@ Modulo responsavel por:
 
 Pacote reservado para os modulos de negocio:
 
-- cadastros;
+- cadastros, ja iniciado com Pais, Estado, Cidade, Endereco, Empresa, Filial, Categoria, Marca, UnidadeMedida e Arquivo;
 - pessoas;
 - produtos;
 - estoque;
@@ -123,6 +130,25 @@ PostgreSQL
 JWT assinado retornado ao cliente
 ```
 
+O login tambem retorna um refresh token opaco. O backend salva apenas o hash SHA-256 desse refresh token na tabela `refresh_token`.
+
+```text
+POST /api/v1/auth/refresh
+      |
+      v
+RefreshTokenService valida hash e expiracao
+      |
+      v
+Novo access token e novo refresh token
+```
+
+```text
+POST /api/v1/auth/logout
+      |
+      v
+RefreshTokenService revoga o refresh token
+```
+
 ## Fluxo de Requisicao Autenticada
 
 ```text
@@ -133,6 +159,9 @@ JwtAuthenticationFilter
       |
       v
 JwtService valida token
+      |
+      v
+UsuarioDetailsService recarrega usuario/permissoes
       |
       v
 SecurityContext
@@ -149,9 +178,45 @@ O banco e evoluido por Flyway:
 V1__init_extensions.sql
 V2__schema_seguranca.sql
 V3__seed_seguranca_inicial.sql
+V4__refresh_token.sql
+V5__auditoria_refresh_token.sql
+V6__refresh_token_ip_varchar.sql
+V7__schema_cadastros.sql
+V8__endereco_uf_varchar.sql
+V9__cadastros_fundamentais.sql
+V10__cadastros_fase_2.sql
+V11__permissoes_cadastros_fase_2.sql
+V12__categoria_hierarquia_nome_unico.sql
+V13__permissao_categoria_wildcard.sql
 ```
+
+O modulo Cadastros adiciona tabelas base reutilizaveis por outros dominios e permissao granular `CADASTROS` para proteger os endpoints REST. A fase fundamental criou a hierarquia geografica `pais -> estado -> cidade`, vinculou `endereco` a `cidade` e adicionou `filial` vinculada a `empresa`.
+
+A fase 2 ja concluiu `UnidadeMedida`, exposta em `/api/v1/unidades-medida`, e `Categoria`, exposta em `/api/v1/categorias`. Ambas usam permissao granular, paginacao, cache, soft delete, auditoria e testes unitarios/de integracao. `Categoria` tambem possui hierarquia opcional com bloqueio de auto-relacionamento e ciclo.
+
+Indices simples, compostos e parciais sao usados nas principais consultas por registros ativos e relacionamentos, como `estado(pais_id, ativo)`, `cidade(estado_id, ativo)`, `filial(empresa_id, ativo)` e `categoria(LOWER(nome)) WHERE ativo = TRUE AND deleted_at IS NULL`. Cache com Redis e filas com RabbitMQ permanecem provisionados no Docker, mas ainda entram como evolucao funcional futura.
+
+O cache funcional inicial usa Spring Cache em cadastros de baixa alteracao, como Categoria, Marca, UnidadeMedida, Pais, Estado e Cidade. O Redis permanece como proximo passo para cache distribuido quando houver mais de uma instancia da API.
+
+Logs seguem SLF4J + Logback por `logback-spring.xml`. Codigo de aplicacao nao deve usar `System.out.println()`.
+
+## Ordem de Implementacao por Entidade
+
+Cada nova entidade deve seguir a ordem abaixo:
+
+1. Migration Flyway
+2. Entity
+3. Repository
+4. DTO Request
+5. DTO Response
+6. Mapper
+7. Specification
+8. Validator
+9. Service
+10. Controller
+11. Testes
+12. Documentacao
 
 ## Objetivo Arquitetural
 
 Criar uma aplicacao organizada, escalavel e de facil manutencao, separando responsabilidades por modulos de negocio e mantendo uma base segura para crescimento do ERP.
-

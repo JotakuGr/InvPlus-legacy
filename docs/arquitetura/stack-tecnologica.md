@@ -12,7 +12,9 @@
 | Spring Security | Autenticacao e autorizacao |
 | JWT | Autenticacao stateless |
 | Bean Validation | Validacao de DTOs e entidades |
+| Spring Cache | Cache local inicial para cadastros de baixa alteracao |
 | Flyway | Versionamento do banco |
+| SLF4J + Logback | Logs padronizados da aplicacao |
 | Maven | Build e gerenciamento de dependencias |
 | Lombok | Reducao de boilerplate |
 | Jackson 3 | Serializacao JSON via Spring Boot 4 |
@@ -41,7 +43,7 @@
 | Docker | Containers locais |
 | Docker Compose | Orquestracao local |
 | pgAdmin | Administracao visual do PostgreSQL |
-| Redis | Container preparado para uso futuro |
+| Redis | Container preparado para cache distribuido futuro |
 | RabbitMQ | Container preparado para mensageria futura |
 
 ## Testes
@@ -63,6 +65,7 @@ SPRING_DATASOURCE_USERNAME
 SPRING_DATASOURCE_PASSWORD
 INVPLUS_JWT_SECRET
 INVPLUS_JWT_EXPIRATION_MINUTES
+INVPLUS_JWT_REFRESH_EXPIRATION_DAYS
 ```
 
 O profile `test` usa `backend/src/test/resources/application-test.yml` para manter a suite automatizada reproduzivel.
@@ -72,9 +75,8 @@ O profile `test` usa `backend/src/test/resources/application-test.yml` para mant
 | Tecnologia | Uso futuro |
 |---|---|
 | OpenAPI/Swagger | Documentacao de API |
-| Redis | Cache |
+| Redis | Cache distribuido |
 | RabbitMQ | Mensageria |
 | CI/CD | Automacao de build e deploy |
 | Observabilidade | Logs, metricas e tracing |
 | Microsservicos | Evolucao arquitetural futura |
-

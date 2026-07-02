@@ -1,4 +1,7 @@
 spring:
+  cache:
+    type: simple
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/invplus}
     username: ${SPRING_DATASOURCE_USERNAME:invplus_user}
@@ -8,3 +11,4 @@ invplus:
   security:
     jwt:
       secret: ${INVPLUS_JWT_SECRET:invplus-test-secret-change-me-please-32bytes}
+      refresh-expiration-days: ${INVPLUS_JWT_REFRESH_EXPIRATION_DAYS:7}

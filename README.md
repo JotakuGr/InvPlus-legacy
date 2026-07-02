@@ -169,9 +169,11 @@ Request → Controller → Service → Repository → Database
 | Segurança | Spring Security + JWT | Login stateless, autenticação e autorização |
 | Migrações | Flyway | Versionamento do schema e seeds iniciais |
 | Validação | Bean Validation | Validação de dados de entrada |
+| Cache | Spring Cache | Cache local inicial para cadastros de baixa alteração |
+| Logs | SLF4J + Logback | Logging padronizado da API |
 | Build | Maven | Gerenciamento de dependências |
 | Containerização | Docker + Docker Compose | Ambiente isolado e reproduzível |
-| Cache *(roadmap)* | Redis | Cache de sessão e dados frequentes |
+| Cache distribuído *(roadmap)* | Redis | Cache compartilhado entre instâncias |
 | Mensageria *(roadmap)* | RabbitMQ | Comunicação assíncrona entre módulos |
 
 ---
@@ -181,7 +183,7 @@ Request → Controller → Service → Repository → Database
 | Módulo | Responsabilidade | Principais entidades |
 |---|---|---|
 | 🔐 **Segurança** | Autenticação, perfis e auditoria | Usuário, Perfil, Permissão, Auditoria |
-| 🏢 **Cadastros** | Dados base utilizados por outros módulos | Empresa, Endereço, Categoria, Marca, UoM |
+| 🏢 **Cadastros** | Dados base utilizados por outros módulos | País, Estado, Cidade, Endereço, Empresa, Filial, Categoria, Marca, UoM |
 | 👥 **Pessoas** | Cadastro unificado de pessoas | Pessoa, Cliente, Fornecedor, Transportadora, Funcionário |
 | 📦 **Produtos** | Catálogo e precificação | Produto, Tabela de Preço, Produto Fornecedor |
 | 🏪 **Estoque** | Saldos, movimentações e inventário | Depósito, Estoque, Movimentação, Lote, Inventário |
@@ -251,16 +253,36 @@ invPlus/
 └── README.md
 ```
 
-### Estrutura interna recomendada de cada módulo
+### Estrutura interna padrão de cada módulo
 
 ```
 modules/
-└── produtos/
-    ├── controller/       # Endpoints REST
-    ├── service/          # Regras de negócio
-    ├── repository/       # Acesso ao banco
-    ├── domain/           # Entidades JPA
-    └── dto/              # Objetos de transferência
+├── cadastros/
+├── pessoas/
+├── produtos/
+├── estoque/
+├── compras/
+├── vendas/
+├── pagamentos/
+├── faturamento/
+├── financeiro/
+├── fiscal/
+└── crm/
+```
+
+Cada módulo segue o mesmo contrato:
+
+```text
+controller/       # Endpoints REST
+dto/request/      # Payloads de entrada
+dto/response/     # Payloads de saída
+entity/           # Entidades JPA
+mapper/           # Conversões entre entity/dto
+repository/       # Repositories Spring Data
+service/          # Regras de negócio
+specification/    # Filtros dinâmicos e consultas compostas
+validator/        # Validações específicas do módulo
+exception/        # Exceções específicas do módulo
 ```
 
 ### Estrutura atual do módulo de segurança
@@ -287,6 +309,16 @@ O PostgreSQL é o banco principal, evoluído com **Flyway** via migrations versi
 V1__init_extensions.sql
 V2__schema_seguranca.sql
 V3__seed_seguranca_inicial.sql
+V4__refresh_token.sql
+V5__auditoria_refresh_token.sql
+V6__refresh_token_ip_varchar.sql
+V7__schema_cadastros.sql
+V8__endereco_uf_varchar.sql
+V9__cadastros_fundamentais.sql
+V10__cadastros_fase_2.sql
+V11__permissoes_cadastros_fase_2.sql
+V12__categoria_hierarquia_nome_unico.sql
+V13__permissao_categoria_wildcard.sql
 ```
 
 ### Migration V1
@@ -320,12 +352,98 @@ Cria o seed inicial de segurança:
 
 > O seed usa a senha inicial `admin123`, gravada como hash BCrypt no banco. Antes de produção, a estratégia recomendada é exigir troca de senha no primeiro login ou substituir esse bootstrap por variável de ambiente segura.
 
+### Migrations V4, V5 e V6
+
+Evoluem o fluxo de autenticação com refresh token:
+
+- `refresh_token`, persistindo apenas hash SHA-256 do token opaco;
+- auditoria de eventos de refresh token;
+- ajuste de compatibilidade do campo `ip`.
+
+### Migration V7
+
+Cria o schema inicial do módulo Cadastros:
+
+- `empresa`
+- `endereco`
+- `categoria`
+- `marca`
+- `unidade_medida`
+- `arquivo`
+
+Também cria índices, constraints, triggers de `atualizado_em`, comentários SQL e permissões `CADASTROS` vinculadas ao perfil `ADMIN`.
+
+### Migration V8
+
+Ajusta `endereco.uf` para `VARCHAR(2)`, alinhando o tipo do banco ao mapeamento JPA validado pelo Hibernate.
+
+### Migration V9
+
+Consolida a primeira fase do Sprint 4 - Cadastros Fundamentais:
+
+- adiciona `version` nas tabelas auditadas para controle de concorrência otimista com `@Version`;
+- cria `pais`, `estado`, `cidade` e `filial`;
+- relaciona `endereco` com `cidade`;
+- cria índices simples e compostos para consultas por hierarquia e registros ativos;
+- adiciona triggers de `atualizado_em` nas novas tabelas.
+
+### Migration V10
+
+Consolida a base da fase 2 de Cadastros com tabelas idempotentes para:
+
+- `unidade_medida`
+- `categoria`
+- `marca`
+- `empresa`
+- `arquivo`
+
+No fluxo atual, `UnidadeMedida` foi a primeira entidade concluída com checklist completa.
+
+### Migration V11
+
+Adiciona permissões específicas por entidade da fase 2:
+
+- `UNIDADE_MEDIDA:CRIAR`, `VISUALIZAR`, `EDITAR`, `EXCLUIR`
+- `CATEGORIA:CRIAR`, `VISUALIZAR`, `EDITAR`, `EXCLUIR`
+- `MARCA:CRIAR`, `VISUALIZAR`, `EDITAR`, `EXCLUIR`
+- `EMPRESA:CRIAR`, `VISUALIZAR`, `EDITAR`, `EXCLUIR`
+- `ARQUIVO:CRIAR`, `VISUALIZAR`, `EDITAR`, `EXCLUIR`
+
+### Migration V12
+
+Ajusta `categoria` para as regras finais da fase 2:
+
+- adiciona `categoria_pai_id` para hierarquia opcional;
+- remove a unicidade antiga por `nome/tipo`;
+- cria índice único parcial por `LOWER(nome)` apenas para registros ativos e não excluídos;
+- cria índice para consultas por categoria pai;
+- adiciona FK para a própria tabela e check para impedir auto-relacionamento direto.
+
+### Migration V13
+
+Adiciona a permissão wildcard `CATEGORIA:*` e vincula ao perfil `ADMIN`, mantendo também as permissões granulares de criar, visualizar, editar e excluir.
+
 Convenções do banco:
 - PKs do tipo `UUID` com `gen_random_uuid()`
 - Campos de auditoria em todas as tabelas: `criado_em`, `atualizado_em`, `criado_por`, `atualizado_por`
+- Controle de concorrência otimista com `version` nas entidades que herdam `BaseEntity`
+- Auditoria automática via Spring Data JPA Auditing, usando o UUID do usuário autenticado
 - Soft delete em entidades que exigem exclusão lógica, com `ativo BOOLEAN` e/ou `deleted_at`
+- Consultas padrão de entidades com soft delete retornam apenas `ativo = true` e `deleted_at IS NULL`
+- Listagens REST retornam `Page<T>` e aceitam `page`, `size` e `sort`
 - `NUMERIC(15,4)` para preços e `NUMERIC(14,3)` para quantidades
 - `TIMESTAMPTZ` para todos os campos de data/hora
+
+### Infraestrutura compartilhada de domínio
+
+O backend possui bases reutilizáveis para evitar repetição nos próximos módulos:
+
+- `BaseRepository<T>`: herda `JpaRepository` e `JpaSpecificationExecutor`, além de métodos padrão para registros ativos.
+- `BaseCrudService<T, REQ, RES>`: concentra listar, buscar, criar, atualizar e excluir logicamente.
+- `BaseCrudController`: centraliza helpers de resposta REST.
+- `CrudMapper<T, REQ, RES>`: contrato para mapeamento entre request, entidade e response.
+- `shared/events`: ponto inicial para eventos de domínio.
+- `shared/domain/valueobject`: objetos de valor iniciais como `Money`, `Email`, `Cnpj` e `Cep`.
 
 ---
 
@@ -363,6 +481,7 @@ SPRING_DATASOURCE_USERNAME=invplus_user
 SPRING_DATASOURCE_PASSWORD=<senha_do_postgres>
 INVPLUS_JWT_SECRET=<segredo_forte_para_jwt>
 INVPLUS_JWT_EXPIRATION_MINUTES=60
+INVPLUS_JWT_REFRESH_EXPIRATION_DAYS=7
 ```
 
 No PowerShell:
@@ -373,6 +492,7 @@ $env:SPRING_DATASOURCE_USERNAME="invplus_user"
 $env:SPRING_DATASOURCE_PASSWORD="<senha_do_postgres>"
 $env:INVPLUS_JWT_SECRET="<segredo_forte_para_jwt>"
 $env:INVPLUS_JWT_EXPIRATION_MINUTES="60"
+$env:INVPLUS_JWT_REFRESH_EXPIRATION_DAYS="7"
 ```
 
 4. Execute o backend:
@@ -433,13 +553,14 @@ Resposta esperada:
 {
   "tokenType": "Bearer",
   "accessToken": "...",
+  "refreshToken": "...",
   "expiresAt": "2026-07-01T00:00:00Z",
   "usuario": {
     "id": "...",
     "nome": "Administrador",
     "email": "admin@invplus.com",
     "perfis": ["ADMIN"],
-    "permissoes": ["SEGURANCA_*"]
+    "permissoes": ["SEGURANCA:*"]
   }
 }
 ```
@@ -450,19 +571,60 @@ Para acessar rotas protegidas:
 Authorization: Bearer <accessToken>
 ```
 
+### Refresh token
+
+```http
+POST /api/v1/auth/refresh
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "..."
+}
+```
+
+O refresh token e salvo no banco apenas como hash SHA-256. O token puro aparece somente na resposta da API.
+
+### Logout
+
+```http
+POST /api/v1/auth/logout
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "..."
+}
+```
+
+O logout revoga o refresh token informado.
+
+### Usuario autenticado
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <accessToken>
+```
+
+Esse endpoint exige a permissao `SEGURANCA:*` e serve como primeira validacao real de `@PreAuthorize`.
+
 ### Componentes implementados
 
 - `SecurityConfig`: configuração stateless, rotas públicas e rotas autenticadas.
-- `AuthController`: endpoint `/api/v1/auth/login`.
-- `SecurityService`: autenticação, geração de token e atualização de `ultimoLogin`.
+- `AuthController`: endpoints `/login`, `/refresh`, `/logout` e `/me`.
+- `SecurityService`: autenticação, refresh token, logout e atualização de `ultimoLogin`.
+- `RefreshTokenService`: cria, valida e revoga refresh tokens persistidos como hash.
 - `UsuarioDetailsService`: carrega usuários reais do banco.
 - `JwtService`: geração e validação de JWT HMAC SHA-256.
 - `JwtAuthenticationFilter`: autenticação por header `Authorization`.
-- `GlobalExceptionHandler`: trata credenciais inválidas com `401`.
+- `GlobalExceptionHandler`: trata credenciais inválidas com `401` e acesso negado com `403`.
 
 ### Observações de segurança
 
 - `INVPLUS_JWT_SECRET` é obrigatório no profile principal.
+- `INVPLUS_JWT_REFRESH_EXPIRATION_DAYS` controla a validade do refresh token.
 - O seed inicial usa `admin123` apenas para bootstrap.
 - O `docker-compose.yml` não contém mais senhas fixas; use `docker/compose/.env`.
 
@@ -474,7 +636,13 @@ Testes existentes:
 
 - `BackendApplicationTests`: valida o carregamento do contexto Spring.
 - `SecuritySeedRepositoryTests`: consulta o seed inicial via repositories.
-- `AuthControllerTests`: valida login com sucesso e senha inválida.
+- `AuthControllerTests`: valida login, senha inválida, usuário inexistente, refresh token, logout, token inválido, token expirado, rota protegida e permissão negada.
+- `CadastrosRepositoryTests`: valida persistência das entidades base, permissão `CADASTROS:*` e ocultação de registros excluídos logicamente.
+- `CadastrosControllerTests`: valida criação/consulta de empresa via API, bloqueio sem token, ocultação de empresa excluída logicamente e criação da hierarquia País → Estado → Cidade → Endereço → Filial.
+- `UnidadeMedidaServiceTest`: valida regras unitárias de criação, duplicidade, paginação e exclusão lógica.
+- `UnidadeMedidaControllerTests`: valida CRUD completo, sigla duplicada, paginação, soft delete, `401` sem token e `403` sem permissão.
+- `CategoriaServiceTest`: valida criação com pai opcional, nome único ativo, paginação, soft delete, bloqueio de auto-relacionamento e ciclo hierárquico.
+- `CategoriaControllerTests`: valida CRUD completo, hierarquia, nome duplicado, paginação, soft delete, `401` sem token e `403` sem permissão.
 
 Para executar:
 
@@ -487,7 +655,7 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 4, Failures: 0, Errors: 0
+Tests run: 38, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
@@ -524,7 +692,22 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
   - serviço de autenticação
   - filtro JWT
   - configuração Spring Security
+- Implementado módulo inicial de Cadastros:
+  - entidades JPA `Pais`, `Estado`, `Cidade`, `Endereco`, `Empresa`, `Filial`, `Categoria`, `Marca`, `UnidadeMedida` e `Arquivo`;
+  - repositories Spring Data herdando `BaseRepository` e `JpaSpecificationExecutor`;
+  - DTOs de request/response para cada recurso;
+  - mappers, specifications e validators para a fase fundamental;
+  - services com criação, listagem paginada, busca, atualização e exclusão lógica;
+  - controllers REST protegidos por permissões `CADASTROS`, retornando `Page<T>` nos GETs;
+  - cache inicial com `@Cacheable` para Categoria, Marca, UnidadeMedida, Pais, Estado e Cidade;
+  - comentários em classes e métodos para facilitar leitura do código.
+- Adicionadas bases compartilhadas `BaseRepository`, `BaseCrudService`, `BaseCrudController` e `CrudMapper`.
+- Adicionada auditoria automática com `AuditorAware<UUID>` e principal autenticado com UUID.
+- Adicionadas bases para eventos de domínio em `shared/events`.
+- Adicionados objetos de valor iniciais `Money`, `Email`, `Cnpj` e `Cep`.
+- Adicionado `logback-spring.xml` para padronizar logs via SLF4J/Logback.
 - Adicionado `spring-boot-starter-json` ao `pom.xml`, necessário para JSON/Jackson no Spring Boot 4.
+- Adicionado `spring-boot-starter-cache` ao `pom.xml`.
 - Atualizado `application.yml` para:
   - remover credenciais fixas;
   - exigir variáveis de ambiente;
@@ -543,6 +726,13 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
   - permissões básicas;
   - usuário `admin@invplus.com`;
   - vínculos entre usuário, perfil e permissões.
+- `V7__schema_cadastros.sql` cria as tabelas base do módulo Cadastros e permissões `CADASTROS`.
+- `V8__endereco_uf_varchar.sql` ajusta `endereco.uf` para compatibilidade com validação JPA.
+- `V9__cadastros_fundamentais.sql` adiciona `version`, cria `pais`, `estado`, `cidade` e `filial`, e reforça índices para consultas por registros ativos.
+- `V10__cadastros_fase_2.sql` consolida as tabelas da fase 2 de Cadastros.
+- `V11__permissoes_cadastros_fase_2.sql` adiciona permissões granulares por entidade.
+- `V12__categoria_hierarquia_nome_unico.sql` adiciona hierarquia em Categoria e unicidade por nome ativo.
+- `V13__permissao_categoria_wildcard.sql` adiciona `CATEGORIA:*`.
 
 ### Docker
 
@@ -556,6 +746,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - Atualizado `BackendApplicationTests` para usar `@ActiveProfiles("test")`.
 - Adicionados testes de repository para o seed de segurança.
 - Adicionados testes de login real via `AuthControllerTests`.
+- Adicionados testes de repository e controller para o módulo Cadastros.
 
 ### Scripts locais
 
@@ -579,7 +770,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 
  Fase 2 — Backend (módulos)
  ├── [x] 7.  Segurança (JWT + Perfis)
- ├── [ ] 8.  Cadastros
+ ├── [x] 8.  Cadastros - fase fundamental
  ├── [ ] 9.  Pessoas
  ├── [ ] 10. Produtos
  ├── [ ] 11. Estoque
@@ -611,14 +802,20 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - [x] Seed inicial de segurança
 - [x] Login real com Spring Security + JWT
 - [x] Testes de contexto, seed e login
+- [x] Módulo de Cadastros base com API REST
+- [x] Sprint 4 - Fase 1: País, Estado, Cidade, Endereço, Empresa e Filial
+- [x] Sprint 4 - Fase 2: UnidadeMedida concluída com checklist completa
+- [x] Sprint 4 - Fase 2: Categoria concluída com checklist completa
+- [x] Testes de repository e controller para Cadastros
 
 ### 🔄 Em andamento
 - [ ] Consolidação do módulo de Segurança
-- [ ] Preparação do próximo módulo de domínio
+- [ ] Sprint 4 - Fase 2: Marca, Empresa e Arquivo
+- [ ] Preparação do módulo Pessoas
 
 ### ⬜ Backend
 - [x] Módulo de Segurança (JWT)
-- [ ] Módulo de Cadastros
+- [x] Módulo de Cadastros - fase fundamental
 - [ ] Módulo de Pessoas
 - [ ] Módulo de Produtos
 - [ ] Módulo de Estoque

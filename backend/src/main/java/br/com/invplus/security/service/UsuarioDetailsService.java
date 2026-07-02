@@ -7,7 +7,6 @@ import br.com.invplus.security.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,17 +27,11 @@ public class UsuarioDetailsService implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) {
         Usuario usuario = usuarioRepository.findByEmailWithPerfisAndPermissoes(normalizarEmail(username))
-                .filter(user -> Boolean.TRUE.equals(user.getAtivo()))
-                .filter(user -> user.getDeletedAt() == null)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario nao encontrado"));
 
-        return User.builder()
-                .username(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities(toAuthorities(usuario))
-                .accountLocked(false)
-                .disabled(!Boolean.TRUE.equals(usuario.getAtivo()) || usuario.getDeletedAt() != null)
-                .build();
+        boolean enabled = Boolean.TRUE.equals(usuario.getAtivo()) && usuario.getDeletedAt() == null;
+        return new AuthenticatedUserDetails(usuario.getId(), usuario.getEmail(), usuario.getSenhaHash(),
+                toAuthorities(usuario), enabled);
     }
 
     public Collection<GrantedAuthority> toAuthorities(Usuario usuario) {
@@ -53,7 +46,7 @@ public class UsuarioDetailsService implements UserDetailsService {
 
             for (Permissao permissao : perfil.getPermissoes()) {
                 if (Boolean.TRUE.equals(permissao.getAtivo())) {
-                    authorities.add(new SimpleGrantedAuthority(permissao.getRecurso() + "_" + permissao.getAcao()));
+                    authorities.add(new SimpleGrantedAuthority(permissao.getRecurso() + ":" + permissao.getAcao()));
                 }
             }
         }

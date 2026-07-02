@@ -67,18 +67,22 @@ public class JwtService {
     }
 
     public boolean tokenValido(String token) {
-        String[] parts = token.split("\\.");
-        if (parts.length != 3) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) {
+                return false;
+            }
+
+            String headerPayload = parts[0] + "." + parts[1];
+            if (!constantTimeEquals(assinar(headerPayload), parts[2])) {
+                return false;
+            }
+
+            Object exp = claims(token).get("exp");
+            return exp instanceof Number expiration && Instant.now().getEpochSecond() < expiration.longValue();
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             return false;
         }
-
-        String headerPayload = parts[0] + "." + parts[1];
-        if (!constantTimeEquals(assinar(headerPayload), parts[2])) {
-            return false;
-        }
-
-        Object exp = claims(token).get("exp");
-        return exp instanceof Number expiration && Instant.now().getEpochSecond() < expiration.longValue();
     }
 
     public OffsetDateTime calcularExpiracao() {

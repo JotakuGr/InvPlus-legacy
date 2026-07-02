@@ -1,0 +1,3 @@
+ALTER TABLE refresh_token
+    ALTER COLUMN ip TYPE VARCHAR(45)
+    USING ip::TEXT;

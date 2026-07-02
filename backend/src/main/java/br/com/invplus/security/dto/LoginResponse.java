@@ -6,6 +6,7 @@ import java.util.List;
 public record LoginResponse(
         String tokenType,
         String accessToken,
+        String refreshToken,
         OffsetDateTime expiresAt,
         UsuarioAutenticadoResponse usuario
 ) {

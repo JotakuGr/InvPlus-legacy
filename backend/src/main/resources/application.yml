@@ -42,3 +42,4 @@ invplus:
     jwt:
       secret: ${INVPLUS_JWT_SECRET}
       expiration-minutes: ${INVPLUS_JWT_EXPIRATION_MINUTES:60}
+      refresh-expiration-days: ${INVPLUS_JWT_REFRESH_EXPIRATION_DAYS:7}
