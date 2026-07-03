@@ -171,6 +171,34 @@ class PessoaControllerTests {
     }
 
     /**
+     * Bloqueia troca de CPF/CNPJ apos a criacao da pessoa.
+     */
+    @Test
+    void deveRetornar400AoAlterarCpfCnpj() throws Exception {
+        String token = login().get("accessToken").asString();
+        String cpfOriginal = cpfUnico();
+        String cpfNovo = cpfUnico();
+
+        String criado = mockMvc.perform(post("/api/v1/pessoas")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payloadFisica(cpfOriginal, "Pessoa Documento", "pessoa-documento@teste.com")))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String id = objectMapper.readTree(criado).get("id").asString();
+
+        mockMvc.perform(put("/api/v1/pessoas/" + id)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payloadFisica(cpfNovo, "Pessoa Documento", "pessoa-documento@teste.com")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("CPF/CNPJ nao pode ser alterado apos a criacao"));
+    }
+
+    /**
      * Ausencia de token deve retornar 401.
      */
     @Test

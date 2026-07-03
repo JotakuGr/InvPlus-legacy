@@ -108,12 +108,49 @@
   - [x] Criar entidade base `Pessoa`
   - [x] Criar repository, DTOs, mapper, validator, service e controller
   - [x] Criar testes unitarios e de integracao para Pessoa
-  - [ ] Criar Cliente
-  - [ ] Criar Fornecedor
-  - [ ] Criar Funcionario
-  - [ ] Criar Transportadora
-  - [ ] Criar ContatoPessoa
-  - [ ] Criar DocumentoPessoa
+  - [x] Bloquear alteracao de CPF/CNPJ apos criacao de Pessoa
+  - [x] Criar migration `V23__schema_cliente.sql`
+  - [x] Criar migration `V24__permissoes_cliente.sql`
+  - [x] Criar Cliente como papel comercial de Pessoa
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de Cliente
+  - [x] Criar testes unitarios e de integracao para Cliente
+  - [x] Criar migration `V25__schema_fornecedor.sql`
+  - [x] Criar migration `V26__permissoes_fornecedor.sql`
+  - [x] Criar Fornecedor como papel comercial de Pessoa
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de Fornecedor
+  - [x] Criar testes unitarios e de integracao para Fornecedor
+  - [x] Criar migration `V27__schema_funcionario.sql`
+  - [x] Criar migration `V28__permissoes_funcionario.sql`
+  - [x] Criar Funcionario como papel trabalhista de Pessoa
+  - [x] Criar vinculo opcional entre Funcionario e Usuario
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de Funcionario
+  - [x] Criar testes unitarios e de integracao para Funcionario
+  - [x] Criar migration `V29__schema_transportadora.sql`
+  - [x] Criar migration `V30__permissoes_transportadora.sql`
+  - [x] Criar Transportadora como papel logistico de Pessoa
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de Transportadora
+  - [x] Criar testes unitarios e de integracao para Transportadora
+  - [x] Criar migration `V31__pessoa_role.sql`
+  - [x] Registrar papeis ativos em `PessoaRole` sem substituir as tabelas especificas
+  - [x] Integrar Cliente, Fornecedor, Funcionario e Transportadora com `PessoaRole`
+  - [x] Criar migration `V32__schema_contato_pessoa.sql`
+  - [x] Criar migration `V33__permissoes_contato_pessoa.sql`
+  - [x] Criar ContatoPessoa
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de ContatoPessoa
+  - [x] Criar testes unitarios e de integracao para ContatoPessoa
+  - [x] Criar migration `V34__schema_documento_pessoa.sql`
+  - [x] Criar migration `V35__permissoes_documento_pessoa.sql`
+  - [x] Criar DocumentoPessoa
+  - [x] Criar enum `TipoDocumentoPessoa`
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de DocumentoPessoa
+  - [x] Criar testes unitarios e de integracao para DocumentoPessoa
+  - [ ] Filtros avancados: Pessoa por nome, CPF/CNPJ, email e tipo; papeis por nome da Pessoa; DocumentoPessoa por tipo, numero e pessoa
+  - [ ] Historico de alteracoes para Pessoa, Cliente, Fornecedor e Funcionario
+  - [ ] Enderecos vinculados a Pessoa por tipo: cobranca, entrega, fiscal, comercial e residencial
+  - [ ] Endpoint resumido `GET /api/v1/pessoas/{id}/resumo` com dados, papeis, contatos e documentos
+  - [ ] Validacao real de CPF/CNPJ com digitos verificadores
+  - [ ] Busca global `GET /api/v1/pessoas/search?termo=...`
+  - [ ] Regras flexiveis por tipo de pessoa para papeis futuros
 - [ ] Produtos
 - [ ] Estoque
 - [ ] Compras

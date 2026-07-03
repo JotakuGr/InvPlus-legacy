@@ -15,6 +15,7 @@ import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.modules.pessoas.validator.PessoaValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,6 +151,24 @@ class PessoaServiceTest {
         pessoaService.listar(PageRequest.of(0, 20));
 
         verify(pessoaRepository).findByAtivoTrueAndDeletedAtIsNull(PageRequest.of(0, 20));
+    }
+
+    /**
+     * Bloqueia alteracao do CPF/CNPJ para preservar rastreabilidade fiscal e financeira.
+     */
+    @Test
+    void deveBloquearAlteracaoDeCpfCnpjAposCriacao() {
+        UUID id = UUID.randomUUID();
+        Pessoa pessoa = new Pessoa();
+        pessoa.setId(id);
+        pessoa.atualizar(TipoPessoa.FISICA, "Maria Silva", null, "12345678901",
+                null, null, null, null, null);
+
+        when(pessoaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)).thenReturn(Optional.of(pessoa));
+
+        assertThatThrownBy(() -> pessoaService.atualizar(id, requestFisica("98765432109")))
+                .isInstanceOf(InvalidOperationException.class)
+                .hasMessageContaining("CPF/CNPJ nao pode ser alterado");
     }
 
     private PessoaRequest requestFisica(String cpf) {

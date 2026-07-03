@@ -6,6 +6,7 @@ import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +32,11 @@ public class PessoaValidator {
     }
 
     /**
-     * Valida atualizacao ignorando o proprio registro na checagem de duplicidade.
+     * Valida atualizacao mantendo o CPF/CNPJ imutavel apos a criacao.
      */
     public void validarAtualizacao(UUID id, PessoaRequest request) {
         validarCampos(request);
-        validarCpfCnpjUnico(id, request.cpfCnpj());
+        validarCpfCnpjImutavel(id, request.cpfCnpj());
     }
 
     private void validarCampos(PessoaRequest request) {
@@ -61,6 +62,15 @@ public class PessoaValidator {
                 .filter(idEncontrado -> !idEncontrado.equals(idAtual))
                 .ifPresent(id -> {
                     throw new ConflictException("Ja existe pessoa ativa com este CPF/CNPJ");
+                });
+    }
+
+    private void validarCpfCnpjImutavel(UUID id, String cpfCnpj) {
+        pessoaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                .map(Pessoa::getCpfCnpj)
+                .filter(documentoAtual -> !documentoAtual.equals(normalizarDocumento(cpfCnpj)))
+                .ifPresent(documentoAtual -> {
+                    throw new InvalidOperationException("CPF/CNPJ nao pode ser alterado apos a criacao");
                 });
     }
 

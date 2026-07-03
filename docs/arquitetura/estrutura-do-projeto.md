@@ -254,6 +254,19 @@ Migrations atuais ja implementadas:
 - `V20__arquivo_colunas_legadas_opcionais.sql`
 - `V21__schema_pessoa.sql`
 - `V22__permissoes_pessoa.sql`
+- `V23__schema_cliente.sql`
+- `V24__permissoes_cliente.sql`
+- `V25__schema_fornecedor.sql`
+- `V26__permissoes_fornecedor.sql`
+- `V27__schema_funcionario.sql`
+- `V28__permissoes_funcionario.sql`
+- `V29__schema_transportadora.sql`
+- `V30__permissoes_transportadora.sql`
+- `V31__pessoa_role.sql`
+- `V32__schema_contato_pessoa.sql`
+- `V33__permissoes_contato_pessoa.sql`
+- `V34__schema_documento_pessoa.sql`
+- `V35__permissoes_documento_pessoa.sql`
 
 ## Docker
 
@@ -311,7 +324,57 @@ Essa entidade usa o endpoint `/api/v1/arquivos`, paginacao, cache, permissao gra
 - `modules/pessoas/service/PessoaServiceTest.java`
 - `modules/pessoas/controller/PessoaControllerTests.java`
 
-Essa entidade usa o endpoint `/api/v1/pessoas`, paginacao, permissoes `PESSOA:*`, `PESSOAS:*` e CRUD granular, CPF/CNPJ unico entre registros ativos, validacao por tipo `FISICA`/`JURIDICA` e soft delete por padrao.
+Essa entidade usa o endpoint `/api/v1/pessoas`, paginacao, permissoes `PESSOA:*`, `PESSOAS:*` e CRUD granular, CPF/CNPJ unico entre registros ativos, CPF/CNPJ imutavel apos a criacao, validacao por tipo `FISICA`/`JURIDICA` e soft delete por padrao.
+
+`Cliente` continua o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/ClienteServiceTest.java`
+- `modules/pessoas/controller/ClienteControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/clientes`, paginacao, permissoes `CLIENTE:*`, `PESSOAS:*` e CRUD granular. Cliente representa apenas o papel comercial de uma Pessoa, guarda limite de credito, observacao, referencias futuras para condicao de pagamento e tabela de preco, impede duplicidade de cliente ativo para a mesma pessoa e usa soft delete por padrao.
+
+`Fornecedor` continua o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/FornecedorServiceTest.java`
+- `modules/pessoas/controller/FornecedorControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/fornecedores`, paginacao, permissoes `FORNECEDOR:*`, `PESSOAS:*` e CRUD granular. Fornecedor representa apenas o papel de fornecimento de uma Pessoa, guarda condicao de pagamento futura, prazo medio de entrega e observacao, impede duplicidade de fornecedor ativo para a mesma pessoa e usa soft delete por padrao.
+
+`Funcionario` continua o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/FuncionarioServiceTest.java`
+- `modules/pessoas/controller/FuncionarioControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/funcionarios`, paginacao, permissoes `FUNCIONARIO:*`, `PESSOAS:*` e CRUD granular. Funcionario representa o papel trabalhista de uma Pessoa, guarda cargo, salario, admissao, demissao e observacao, permite vinculo opcional com Usuario, impede duplicidade de funcionario ativo para a mesma pessoa, impede usuario ativo vinculado a dois funcionarios e usa soft delete por padrao.
+
+`Transportadora` continua o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/TransportadoraServiceTest.java`
+- `modules/pessoas/controller/TransportadoraControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/transportadoras`, paginacao, permissoes `TRANSPORTADORA:*`, `PESSOAS:*` e CRUD granular. Transportadora representa o papel logistico de uma Pessoa, guarda ANTT, tipo de veiculo principal, capacidade de carga em kg e observacao, impede duplicidade de transportadora ativa para a mesma pessoa e usa soft delete por padrao.
+
+`PessoaRole` deixa explicito o aggregate root `Pessoa` e registra papeis ativos:
+
+- `modules/pessoas/entity/PessoaRole.java`
+- `modules/pessoas/service/PessoaRoleService.java`
+- `modules/pessoas/repository/PessoaRoleRepository.java`
+
+Esse registro auxiliar convive com as entidades especificas `Cliente`, `Fornecedor`, `Funcionario` e `Transportadora`, facilitando consultas futuras sobre quais papeis uma Pessoa exerce.
+
+`ContatoPessoa` continua o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/ContatoPessoaServiceTest.java`
+- `modules/pessoas/controller/ContatoPessoaControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/contatos-pessoa`, paginacao, permissoes `CONTATO_PESSOA:*`, `PESSOAS:*` e CRUD granular. ContatoPessoa guarda contatos operacionais da Pessoa, como Financeiro, Compras, Comercial ou RH, sem alterar dados cadastrais do aggregate root. Usa soft delete, auditoria e validacao de nome obrigatorio, pessoa ativa e email valido.
+
+`DocumentoPessoa` continua o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/DocumentoPessoaServiceTest.java`
+- `modules/pessoas/controller/DocumentoPessoaControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/documentos-pessoa`, paginacao, permissoes `DOCUMENTO_PESSOA:*`, `PESSOAS:*` e CRUD granular. DocumentoPessoa guarda documentos cadastrais da Pessoa, como RG, CPF, CNH, contrato social, alvara, licenca sanitaria, certificado digital e comprovante de endereco. Pode se vincular opcionalmente a `Arquivo`, impede duplicidade ativa por pessoa/tipo/numero, valida validade posterior ou igual a emissao e usa soft delete por padrao.
 
 ## Testes
 

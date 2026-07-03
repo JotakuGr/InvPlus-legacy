@@ -184,7 +184,7 @@ Request → Controller → Service → Repository → Database
 |---|---|---|
 | 🔐 **Segurança** | Autenticação, perfis e auditoria | Usuário, Perfil, Permissão, Auditoria |
 | 🏢 **Cadastros** | Dados base utilizados por outros módulos | País, Estado, Cidade, Endereço, Empresa, Filial, Categoria, Marca, UoM, Arquivo |
-| 👥 **Pessoas** | Cadastro unificado de pessoas | Pessoa, Cliente, Fornecedor, Transportadora, Funcionário |
+| 👥 **Pessoas** | Cadastro unificado de pessoas | Pessoa, PessoaRole, Cliente, Fornecedor, Transportadora, Funcionário, ContatoPessoa, DocumentoPessoa |
 | 📦 **Produtos** | Catálogo e precificação | Produto, Tabela de Preço, Produto Fornecedor |
 | 🏪 **Estoque** | Saldos, movimentações e inventário | Depósito, Estoque, Movimentação, Lote, Inventário |
 | 🛒 **Compras** | Aquisição de produtos | Pedido de Compra, Itens, Recebimento, Histórico |
@@ -328,6 +328,19 @@ V19__permissao_arquivo_wildcard.sql
 V20__arquivo_colunas_legadas_opcionais.sql
 V21__schema_pessoa.sql
 V22__permissoes_pessoa.sql
+V23__schema_cliente.sql
+V24__permissoes_cliente.sql
+V25__schema_fornecedor.sql
+V26__permissoes_fornecedor.sql
+V27__schema_funcionario.sql
+V28__permissoes_funcionario.sql
+V29__schema_transportadora.sql
+V30__permissoes_transportadora.sql
+V31__pessoa_role.sql
+V32__schema_contato_pessoa.sql
+V33__permissoes_contato_pessoa.sql
+V34__schema_documento_pessoa.sql
+V35__permissoes_documento_pessoa.sql
 ```
 
 ### Migration V1
@@ -508,6 +521,145 @@ Adiciona e vincula ao perfil `ADMIN` as permissões:
 - `PESSOA:VISUALIZAR`
 - `PESSOA:EDITAR`
 - `PESSOA:EXCLUIR`
+
+### Migration V23
+
+Cria a tabela `cliente`, representando o papel comercial de uma `pessoa`:
+
+- `pessoa_id` obrigatório com vínculo para `pessoa`;
+- `limite_credito` monetário com valor mínimo zero;
+- `condicao_pagamento_id` e `tabela_preco_id` como UUIDs preparados para relacionamentos futuros;
+- unicidade parcial de `pessoa_id` apenas entre clientes ativos e não excluídos;
+- índices para busca por pessoa e listagem de registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V24
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `CLIENTE:*`
+- `CLIENTE:CRIAR`
+- `CLIENTE:VISUALIZAR`
+- `CLIENTE:EDITAR`
+- `CLIENTE:EXCLUIR`
+
+### Migration V25
+
+Cria a tabela `fornecedor`, representando o papel comercial de fornecimento de uma `pessoa`:
+
+- `pessoa_id` obrigatório com vínculo para `pessoa`;
+- `prazo_medio_entrega` com valor mínimo zero;
+- `condicao_pagamento_id` como UUID preparado para relacionamento futuro;
+- unicidade parcial de `pessoa_id` apenas entre fornecedores ativos e não excluídos;
+- índices para busca por pessoa e listagem de registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V26
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `FORNECEDOR:*`
+- `FORNECEDOR:CRIAR`
+- `FORNECEDOR:VISUALIZAR`
+- `FORNECEDOR:EDITAR`
+- `FORNECEDOR:EXCLUIR`
+
+### Migration V27
+
+Cria a tabela `funcionario`, representando o papel trabalhista de uma `pessoa`:
+
+- `pessoa_id` obrigatório com vínculo para `pessoa`;
+- `usuario_id` opcional com vínculo para `usuario`;
+- unicidade parcial de `pessoa_id` apenas entre funcionários ativos e não excluídos;
+- unicidade parcial de `usuario_id` apenas quando informado e ativo;
+- `cargo` obrigatório, `salario` não negativo e `data_admissao` obrigatória;
+- `data_demissao` opcional, mas nunca anterior à admissão;
+- índices para pessoa, usuário e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V28
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `FUNCIONARIO:*`
+- `FUNCIONARIO:CRIAR`
+- `FUNCIONARIO:VISUALIZAR`
+- `FUNCIONARIO:EDITAR`
+- `FUNCIONARIO:EXCLUIR`
+
+### Migration V29
+
+Cria a tabela `transportadora`, representando o papel logístico de uma `pessoa`:
+
+- `pessoa_id` obrigatório com vínculo para `pessoa`;
+- `antt` e `tipo_veiculo_principal` opcionais;
+- `capacidade_carga_kg` com valor mínimo zero;
+- unicidade parcial de `pessoa_id` apenas entre transportadoras ativas e não excluídas;
+- índices para busca por pessoa e listagem de registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V30
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `TRANSPORTADORA:*`
+- `TRANSPORTADORA:CRIAR`
+- `TRANSPORTADORA:VISUALIZAR`
+- `TRANSPORTADORA:EDITAR`
+- `TRANSPORTADORA:EXCLUIR`
+
+### Migration V31
+
+Cria a tabela auxiliar `pessoa_role`, deixando explicito que `Pessoa` e o aggregate root do modulo Pessoas:
+
+- registra papeis ativos como `CLIENTE`, `FORNECEDOR`, `FUNCIONARIO` e `TRANSPORTADORA`;
+- mantem coexistencia com as tabelas especificas de cada papel;
+- aplica unicidade parcial por `pessoa_id` e `role` apenas para registros ativos;
+- usa auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V32
+
+Cria a tabela `contato_pessoa`, permitindo multiplos contatos operacionais por Pessoa:
+
+- vinculo obrigatorio com `pessoa`;
+- campos para nome, telefone, celular, email, cargo, tipo, principal e observacao;
+- email com `citext`;
+- indices para pessoa, email e contato principal;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V33
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `CONTATO_PESSOA:*`
+- `CONTATO_PESSOA:CRIAR`
+- `CONTATO_PESSOA:VISUALIZAR`
+- `CONTATO_PESSOA:EDITAR`
+- `CONTATO_PESSOA:EXCLUIR`
+
+### Migration V34
+
+Cria a tabela `documento_pessoa`, permitindo registrar documentos cadastrais de uma Pessoa:
+
+- vinculo obrigatorio com `pessoa`;
+- vinculo opcional com `arquivo`;
+- tipo do documento com valores controlados por enum;
+- numero obrigatorio;
+- orgao emissor, data de emissao, data de validade e observacao opcionais;
+- bloqueio de validade anterior a emissao;
+- unicidade parcial por pessoa, tipo e numero apenas entre registros ativos;
+- indices para pessoa, arquivo e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V35
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `DOCUMENTO_PESSOA:*`
+- `DOCUMENTO_PESSOA:CRIAR`
+- `DOCUMENTO_PESSOA:VISUALIZAR`
+- `DOCUMENTO_PESSOA:EDITAR`
+- `DOCUMENTO_PESSOA:EXCLUIR`
 
 Convenções do banco:
 - PKs do tipo `UUID` com `gen_random_uuid()`
@@ -746,8 +898,20 @@ Testes existentes:
 - `EmpresaControllerTests`: valida CRUD completo, CNPJ duplicado, paginação, soft delete, `401` sem token, `403` sem permissão, email inválido e CNPJ inválido.
 - `ArquivoServiceTest`: valida criação, hash SHA-256 único ativo, hash inválido, paginação e exclusão lógica.
 - `ArquivoControllerTests`: valida CRUD completo, hash duplicado, paginação, filtro por entidade, soft delete, `401` sem token, `403` sem permissão e hash inválido.
-- `PessoaServiceTest`: valida pessoa física, pessoa jurídica, CPF/CNPJ único ativo, documento incompatível com tipo, paginação e exclusão lógica.
-- `PessoaControllerTests`: valida CRUD completo, pessoa jurídica, CPF/CNPJ duplicado, paginação, soft delete, `401` sem token, `403` sem permissão e documentos incompatíveis com o tipo.
+- `PessoaServiceTest`: valida pessoa física, pessoa jurídica, CPF/CNPJ único ativo, CPF/CNPJ imutável após criação, documento incompatível com tipo, paginação e exclusão lógica.
+- `PessoaControllerTests`: valida CRUD completo, pessoa jurídica, CPF/CNPJ duplicado, bloqueio de alteração de CPF/CNPJ, paginação, soft delete, `401` sem token, `403` sem permissão e documentos incompatíveis com o tipo.
+- `ClienteServiceTest`: valida criação de cliente, pessoa inexistente/inativa, duplicidade por pessoa, limite de crédito negativo, busca, paginação, atualização e exclusão lógica.
+- `ClienteControllerTests`: valida CRUD completo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente e limite de crédito inválido.
+- `FornecedorServiceTest`: valida criação de fornecedor, pessoa inexistente/inativa, duplicidade por pessoa, prazo médio negativo, busca, paginação, atualização e exclusão lógica.
+- `FornecedorControllerTests`: valida CRUD completo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente e prazo médio inválido.
+- `FuncionarioServiceTest`: valida criação com e sem usuário, duplicidade por pessoa/usuário, salário negativo, datas inválidas, busca, paginação, atualização e exclusão lógica.
+- `FuncionarioControllerTests`: valida CRUD completo, paginação, soft delete, `401` sem token, `403` sem permissão, duplicidade por pessoa/usuário, pessoa inexistente, salário inválido e datas inválidas.
+- `TransportadoraServiceTest`: valida criação de transportadora, pessoa inexistente/inativa, duplicidade por pessoa, capacidade de carga negativa, busca, paginação, atualização e exclusão lógica.
+- `TransportadoraControllerTests`: valida CRUD completo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente e capacidade de carga inválida.
+- `ContatoPessoaServiceTest`: valida criação de contato, pessoa inexistente/inativa, nome obrigatório, email inválido, busca, paginação, atualização e exclusão lógica.
+- `ContatoPessoaControllerTests`: valida CRUD completo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente, nome obrigatório e email inválido.
+- `DocumentoPessoaServiceTest`: valida criação sem arquivo, criação com arquivo, pessoa inexistente/inativa, arquivo inexistente/inativo, documento duplicado, datas inválidas, busca, paginação, atualização e exclusão lógica.
+- `DocumentoPessoaControllerTests`: valida CRUD completo, criação com arquivo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente, arquivo inexistente, duplicidade e validade anterior à emissão.
 
 Para executar:
 
@@ -760,7 +924,7 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 82, Failures: 0, Errors: 0
+Tests run: 177, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
@@ -849,6 +1013,19 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - `V20__arquivo_colunas_legadas_opcionais.sql` libera colunas legadas após a migração para o contrato novo.
 - `V21__schema_pessoa.sql` cria a tabela base `pessoa`.
 - `V22__permissoes_pessoa.sql` adiciona permissões `PESSOAS:*`, `PESSOA:*` e CRUD de Pessoa.
+- `V23__schema_cliente.sql` cria a tabela `cliente` como papel comercial vinculado a `pessoa`.
+- `V24__permissoes_cliente.sql` adiciona permissões `CLIENTE:*` e CRUD de Cliente.
+- `V25__schema_fornecedor.sql` cria a tabela `fornecedor` como papel comercial vinculado a `pessoa`.
+- `V26__permissoes_fornecedor.sql` adiciona permissões `FORNECEDOR:*` e CRUD de Fornecedor.
+- `V27__schema_funcionario.sql` cria a tabela `funcionario` como papel trabalhista vinculado a `pessoa` e opcionalmente a `usuario`.
+- `V28__permissoes_funcionario.sql` adiciona permissões `FUNCIONARIO:*` e CRUD de Funcionário.
+- `V29__schema_transportadora.sql` cria a tabela `transportadora` como papel logístico vinculado a `pessoa`.
+- `V30__permissoes_transportadora.sql` adiciona permissões `TRANSPORTADORA:*` e CRUD de Transportadora.
+- `V31__pessoa_role.sql` cria o índice auxiliar de papéis de Pessoa.
+- `V32__schema_contato_pessoa.sql` cria contatos operacionais vinculados a Pessoa.
+- `V33__permissoes_contato_pessoa.sql` adiciona permissões `CONTATO_PESSOA:*` e CRUD de ContatoPessoa.
+- `V34__schema_documento_pessoa.sql` cria documentos cadastrais vinculados a Pessoa e opcionalmente a Arquivo.
+- `V35__permissoes_documento_pessoa.sql` adiciona permissões `DOCUMENTO_PESSOA:*` e CRUD de DocumentoPessoa.
 
 ### Docker
 
@@ -887,7 +1064,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
  Fase 2 — Backend (módulos)
  ├── [x] 7.  Segurança (JWT + Perfis)
  ├── [x] 8.  Cadastros - fases 1 e 2
- ├── [ ] 9.  Pessoas - iniciado com Pessoa
+ ├── [ ] 9.  Pessoas - iniciado com Pessoa, PessoaRole, Cliente, Fornecedor, Funcionário, Transportadora, ContatoPessoa e DocumentoPessoa
  ├── [ ] 10. Produtos
  ├── [ ] 11. Estoque
  ├── [ ] 12. Compras
@@ -931,11 +1108,18 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 ### 🔄 Em andamento
 - [ ] Consolidação do módulo de Segurança
 - [x] Módulo Pessoas iniciado com entidade Pessoa
+- [x] Entidade Cliente concluída como papel comercial de Pessoa
+- [x] Entidade Fornecedor concluída como papel comercial de Pessoa
+- [x] Entidade Funcionário concluída como papel trabalhista de Pessoa
+- [x] Entidade Transportadora concluída como papel logístico de Pessoa
+- [x] PessoaRole criado para registrar papeis ativos do aggregate Pessoa
+- [x] Entidade ContatoPessoa concluída para contatos operacionais da Pessoa
+- [x] Entidade DocumentoPessoa concluída para documentos cadastrais da Pessoa
 
 ### ⬜ Backend
 - [x] Módulo de Segurança (JWT)
 - [x] Módulo de Cadastros - fases 1 e 2
-- [ ] Módulo de Pessoas iniciado com Pessoa
+- [ ] Módulo de Pessoas iniciado com Pessoa, PessoaRole, Cliente, Fornecedor, Funcionário, Transportadora, ContatoPessoa e DocumentoPessoa
 - [ ] Módulo de Produtos
 - [ ] Módulo de Estoque
 - [ ] Módulo de Compras
@@ -959,6 +1143,12 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 ### ⬜ Futuro
 - [ ] Redis (cache)
 - [ ] RabbitMQ (mensageria)
+- [ ] Filtros avançados no módulo Pessoas
+- [ ] Histórico de alterações para cadastros sensíveis
+- [ ] Endereços vinculados à Pessoa por tipo
+- [ ] Endpoint resumido de Pessoa com papéis, contatos e documentos
+- [ ] Validação real de CPF/CNPJ com dígitos verificadores
+- [ ] Busca global de Pessoas por nome, documento ou email
 - [ ] Integração bancária
 - [ ] Integração com marketplace
 - [ ] API Pública
