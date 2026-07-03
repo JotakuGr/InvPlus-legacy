@@ -197,11 +197,15 @@ V17__permissao_empresa_wildcard.sql
 V18__arquivo_melhorias.sql
 V19__permissao_arquivo_wildcard.sql
 V20__arquivo_colunas_legadas_opcionais.sql
+V21__schema_pessoa.sql
+V22__permissoes_pessoa.sql
 ```
 
 O modulo Cadastros adiciona tabelas base reutilizaveis por outros dominios e permissao granular `CADASTROS` para proteger os endpoints REST. A fase fundamental criou a hierarquia geografica `pais -> estado -> cidade`, vinculou `endereco` a `cidade` e adicionou `filial` vinculada a `empresa`.
 
 A fase 2 ja concluiu `UnidadeMedida`, exposta em `/api/v1/unidades-medida`, `Categoria`, exposta em `/api/v1/categorias`, `Marca`, exposta em `/api/v1/marcas`, `Empresa`, exposta em `/api/v1/empresas`, e `Arquivo`, exposta em `/api/v1/arquivos`. Todas usam permissao granular, paginacao, cache, soft delete, auditoria e testes unitarios/de integracao. `Categoria` tambem possui hierarquia opcional, ordenacao por `ordem`, caminho completo, bloqueio de auto-relacionamento e ciclo. `Arquivo` usa storage multi-provedor, hash SHA-256 para integridade/deteccao de duplicidade e vinculo generico `entidade/entidadeId`.
+
+O modulo Pessoas foi iniciado com `Pessoa`, exposta em `/api/v1/pessoas`. Ela e a base para Cliente, Fornecedor, Funcionario, Transportadora, ContatoPessoa e DocumentoPessoa. O cadastro usa `tipoPessoa` (`FISICA` ou `JURIDICA`), CPF/CNPJ unico entre registros ativos, soft delete, auditoria, paginacao e permissoes `PESSOA:*`/`PESSOAS:*`.
 
 Indices simples, compostos e parciais sao usados nas principais consultas por registros ativos e relacionamentos, como `estado(pais_id, ativo)`, `cidade(estado_id, ativo)`, `filial(empresa_id, ativo)`, `categoria(LOWER(nome)) WHERE ativo = TRUE AND deleted_at IS NULL`, `categoria(categoria_pai_id, ordem, nome)`, `marca(LOWER(nome)) WHERE ativo = TRUE AND deleted_at IS NULL`, `empresa(cnpj) WHERE ativo = TRUE AND deleted_at IS NULL`, `arquivo(hash_sha256) WHERE ativo = TRUE AND deleted_at IS NULL` e `arquivo(entidade, entidade_id) WHERE ativo = TRUE AND deleted_at IS NULL`. Cache com Redis e filas com RabbitMQ permanecem provisionados no Docker, mas ainda entram como evolucao funcional futura.
 

@@ -103,6 +103,17 @@
   - [x] Fase 2 - Revisao geral concluida antes de Pessoas
   - [ ] Fase 2 - Cadastros gerais fiscais: CategoriaProduto, SubCategoriaProduto, Fabricante, NCM, CEST, CFOP, OrigemMercadoria, CST, CSOSN e AliquotaICMS
 - [ ] Pessoas
+  - [x] Criar migration `V21__schema_pessoa.sql`
+  - [x] Criar migration `V22__permissoes_pessoa.sql`
+  - [x] Criar entidade base `Pessoa`
+  - [x] Criar repository, DTOs, mapper, validator, service e controller
+  - [x] Criar testes unitarios e de integracao para Pessoa
+  - [ ] Criar Cliente
+  - [ ] Criar Fornecedor
+  - [ ] Criar Funcionario
+  - [ ] Criar Transportadora
+  - [ ] Criar ContatoPessoa
+  - [ ] Criar DocumentoPessoa
 - [ ] Produtos
 - [ ] Estoque
 - [ ] Compras

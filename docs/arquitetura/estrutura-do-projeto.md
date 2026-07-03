@@ -252,6 +252,8 @@ Migrations atuais ja implementadas:
 - `V18__arquivo_melhorias.sql`
 - `V19__permissao_arquivo_wildcard.sql`
 - `V20__arquivo_colunas_legadas_opcionais.sql`
+- `V21__schema_pessoa.sql`
+- `V22__permissoes_pessoa.sql`
 
 ## Docker
 
@@ -303,6 +305,13 @@ Essa entidade usa o endpoint `/api/v1/empresas`, paginacao, cache, permissao gra
 - `modules/cadastros/controller/ArquivoControllerTests.java`
 
 Essa entidade usa o endpoint `/api/v1/arquivos`, paginacao, cache, permissao granular `ARQUIVO`, permissao wildcard `ARQUIVO:*`, storage multi-provedor (`LOCAL`, `S3`, `MINIO`, `AZURE`, `GOOGLE_CLOUD`), hash SHA-256 unico entre registros ativos, vinculo generico `entidade/entidadeId` e soft delete por padrao.
+
+`Pessoa` inicia o modulo Pessoas com testes dedicados:
+
+- `modules/pessoas/service/PessoaServiceTest.java`
+- `modules/pessoas/controller/PessoaControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/pessoas`, paginacao, permissoes `PESSOA:*`, `PESSOAS:*` e CRUD granular, CPF/CNPJ unico entre registros ativos, validacao por tipo `FISICA`/`JURIDICA` e soft delete por padrao.
 
 ## Testes
 

@@ -326,6 +326,8 @@ V17__permissao_empresa_wildcard.sql
 V18__arquivo_melhorias.sql
 V19__permissao_arquivo_wildcard.sql
 V20__arquivo_colunas_legadas_opcionais.sql
+V21__schema_pessoa.sql
+V22__permissoes_pessoa.sql
 ```
 
 ### Migration V1
@@ -485,6 +487,27 @@ Adiciona e vincula ao perfil `ADMIN` as permissões:
 ### Migration V20
 
 Torna opcionais as colunas legadas `content_type` e `caminho`, preservando compatibilidade com bases antigas e permitindo o contrato novo com `tipo_mime` e `url`.
+
+### Migration V21
+
+Cria a tabela `pessoa`, base do módulo Pessoas:
+
+- `tipo_pessoa` obrigatório com valores `FISICA` ou `JURIDICA`;
+- `cpf_cnpj` obrigatório, normalizado apenas com números;
+- unicidade parcial de `cpf_cnpj` apenas entre registros ativos;
+- índices para registros ativos e busca por documento;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V22
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `PESSOAS:*`
+- `PESSOA:*`
+- `PESSOA:CRIAR`
+- `PESSOA:VISUALIZAR`
+- `PESSOA:EDITAR`
+- `PESSOA:EXCLUIR`
 
 Convenções do banco:
 - PKs do tipo `UUID` com `gen_random_uuid()`
@@ -723,6 +746,8 @@ Testes existentes:
 - `EmpresaControllerTests`: valida CRUD completo, CNPJ duplicado, paginação, soft delete, `401` sem token, `403` sem permissão, email inválido e CNPJ inválido.
 - `ArquivoServiceTest`: valida criação, hash SHA-256 único ativo, hash inválido, paginação e exclusão lógica.
 - `ArquivoControllerTests`: valida CRUD completo, hash duplicado, paginação, filtro por entidade, soft delete, `401` sem token, `403` sem permissão e hash inválido.
+- `PessoaServiceTest`: valida pessoa física, pessoa jurídica, CPF/CNPJ único ativo, documento incompatível com tipo, paginação e exclusão lógica.
+- `PessoaControllerTests`: valida CRUD completo, pessoa jurídica, CPF/CNPJ duplicado, paginação, soft delete, `401` sem token, `403` sem permissão e documentos incompatíveis com o tipo.
 
 Para executar:
 
@@ -735,7 +760,7 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 68, Failures: 0, Errors: 0
+Tests run: 82, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
@@ -822,6 +847,8 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - `V18__arquivo_melhorias.sql` adiciona storage, hash SHA-256, URL, extensão e índices finais de Arquivo.
 - `V19__permissao_arquivo_wildcard.sql` adiciona `ARQUIVO:*` e reforça permissões de Arquivo.
 - `V20__arquivo_colunas_legadas_opcionais.sql` libera colunas legadas após a migração para o contrato novo.
+- `V21__schema_pessoa.sql` cria a tabela base `pessoa`.
+- `V22__permissoes_pessoa.sql` adiciona permissões `PESSOAS:*`, `PESSOA:*` e CRUD de Pessoa.
 
 ### Docker
 
@@ -860,7 +887,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
  Fase 2 — Backend (módulos)
  ├── [x] 7.  Segurança (JWT + Perfis)
  ├── [x] 8.  Cadastros - fases 1 e 2
- ├── [ ] 9.  Pessoas
+ ├── [ ] 9.  Pessoas - iniciado com Pessoa
  ├── [ ] 10. Produtos
  ├── [ ] 11. Estoque
  ├── [ ] 12. Compras
@@ -903,12 +930,12 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 
 ### 🔄 Em andamento
 - [ ] Consolidação do módulo de Segurança
-- [ ] Preparação do módulo Pessoas
+- [x] Módulo Pessoas iniciado com entidade Pessoa
 
 ### ⬜ Backend
 - [x] Módulo de Segurança (JWT)
 - [x] Módulo de Cadastros - fases 1 e 2
-- [ ] Módulo de Pessoas
+- [ ] Módulo de Pessoas iniciado com Pessoa
 - [ ] Módulo de Produtos
 - [ ] Módulo de Estoque
 - [ ] Módulo de Compras
