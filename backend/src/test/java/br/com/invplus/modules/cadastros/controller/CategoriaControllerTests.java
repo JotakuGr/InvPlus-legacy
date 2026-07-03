@@ -138,7 +138,7 @@ class CategoriaControllerTests {
                                   "descricao": "Duplicada"
                                 }
                                 """.formatted(nome)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Ja existe categoria ativa com este nome"));
     }
 

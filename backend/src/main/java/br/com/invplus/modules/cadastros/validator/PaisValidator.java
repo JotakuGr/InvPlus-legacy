@@ -2,7 +2,7 @@ package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.PaisRequest;
 import br.com.invplus.modules.cadastros.repository.PaisRepository;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,7 @@ public class PaisValidator {
     public void validarCriacao(PaisRequest request) {
         String iso2 = request.codigoIso2().trim().toUpperCase();
         if (paisRepository.existsByCodigoIso2AndAtivoTrueAndDeletedAtIsNull(iso2)) {
-            throw new BusinessException("Ja existe pais ativo com este codigo ISO2");
+            throw new ConflictException("Ja existe pais ativo com este codigo ISO2");
         }
     }
 }

@@ -3,10 +3,13 @@ package br.com.invplus.modules.cadastros.service;
 import br.com.invplus.modules.cadastros.dto.request.ArquivoRequest;
 import br.com.invplus.modules.cadastros.dto.response.ArquivoResponse;
 import br.com.invplus.modules.cadastros.entity.Arquivo;
+import br.com.invplus.modules.cadastros.mapper.ArquivoMapper;
 import br.com.invplus.modules.cadastros.repository.ArquivoRepository;
-import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.modules.cadastros.validator.ArquivoValidator;
+import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,70 +19,87 @@ import org.springframework.transaction.annotation.Transactional;
  * Regras de negocio para metadados de arquivos anexados.
  */
 @Service
-@RequiredArgsConstructor
-public class ArquivoService {
+public class ArquivoService extends BaseCrudService<Arquivo, ArquivoRequest, ArquivoResponse> {
 
     private final ArquivoRepository arquivoRepository;
+    private final ArquivoValidator arquivoValidator;
+    private final ArquivoMapper arquivoMapper;
+
+    public ArquivoService(
+            ArquivoRepository arquivoRepository,
+            ArquivoMapper arquivoMapper,
+            ArquivoValidator arquivoValidator
+    ) {
+        super(arquivoRepository, arquivoMapper, "Arquivo");
+        this.arquivoRepository = arquivoRepository;
+        this.arquivoMapper = arquivoMapper;
+        this.arquivoValidator = arquivoValidator;
+    }
+
+    /**
+     * Lista arquivos ativos em paginas e usa cache por pagina solicitada.
+     */
+    @Override
+    @Cacheable(cacheNames = "cadastros:arquivos", key = "#pageable")
+    @Transactional(readOnly = true)
+    public Page<ArquivoResponse> listar(Pageable pageable) {
+        return super.listar(pageable);
+    }
 
     /**
      * Lista arquivos, com filtro opcional por entidade vinculada e paginacao.
      */
+    @Cacheable(cacheNames = "cadastros:arquivos", key = "{#entidade, #entidadeId, #pageable}")
     @Transactional(readOnly = true)
     public Page<ArquivoResponse> listar(String entidade, UUID entidadeId, Pageable pageable) {
-        Page<Arquivo> arquivos = entidade == null || entidadeId == null
-                ? arquivoRepository.findByAtivoTrueAndDeletedAtIsNull(pageable)
-                : arquivoRepository.findByEntidadeAndEntidadeIdAndAtivoTrueAndDeletedAtIsNull(
-                        entidade.trim().toUpperCase(),
-                        entidadeId,
-                        pageable
-                );
-        return arquivos.map(ArquivoResponse::from);
+        if (entidade == null || entidadeId == null) {
+            return listar(pageable);
+        }
+        return arquivoRepository.findByEntidadeAndEntidadeIdAndAtivoTrueAndDeletedAtIsNull(
+                entidade.trim().toUpperCase(),
+                entidadeId,
+                pageable
+        ).map(arquivoMapper::toResponse);
     }
 
     /**
      * Busca metadados de arquivo pelo identificador.
      */
+    @Override
     @Transactional(readOnly = true)
     public ArquivoResponse buscar(UUID id) {
-        return ArquivoResponse.from(buscarEntidade(id));
+        return super.buscar(id);
     }
 
     /**
      * Registra um novo arquivo sem armazenar o binario no banco.
      */
+    @Override
+    @CacheEvict(cacheNames = "cadastros:arquivos", allEntries = true)
     @Transactional
     public ArquivoResponse criar(ArquivoRequest request) {
-        Arquivo arquivo = new Arquivo();
-        aplicar(arquivo, request);
-        return ArquivoResponse.from(arquivoRepository.save(arquivo));
+        arquivoValidator.validarCriacao(request);
+        return super.criar(request);
     }
 
     /**
      * Atualiza metadados de arquivo existentes.
      */
+    @Override
+    @CacheEvict(cacheNames = "cadastros:arquivos", allEntries = true)
     @Transactional
     public ArquivoResponse atualizar(UUID id, ArquivoRequest request) {
-        Arquivo arquivo = buscarEntidade(id);
-        aplicar(arquivo, request);
-        return ArquivoResponse.from(arquivo);
+        arquivoValidator.validarAtualizacao(id, request);
+        return super.atualizar(id, request);
     }
 
     /**
      * Realiza exclusao logica dos metadados do arquivo.
      */
+    @Override
+    @CacheEvict(cacheNames = "cadastros:arquivos", allEntries = true)
     @Transactional
     public void excluir(UUID id) {
-        buscarEntidade(id).excluirLogicamente();
-    }
-
-    private void aplicar(Arquivo arquivo, ArquivoRequest request) {
-        arquivo.atualizar(request.nomeOriginal(), request.nomeArmazenado(), request.contentType(),
-                request.tamanhoBytes(), request.caminho(), request.checksumSha256(),
-                request.entidade(), request.entidadeId());
-    }
-
-    private Arquivo buscarEntidade(UUID id) {
-        return arquivoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Arquivo nao encontrado"));
+        super.excluir(id);
     }
 }

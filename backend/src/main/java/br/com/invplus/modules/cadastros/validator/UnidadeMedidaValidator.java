@@ -3,7 +3,7 @@ package br.com.invplus.modules.cadastros.validator;
 import br.com.invplus.modules.cadastros.dto.request.UnidadeMedidaRequest;
 import br.com.invplus.modules.cadastros.entity.UnidadeMedida;
 import br.com.invplus.modules.cadastros.repository.UnidadeMedidaRepository;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -37,7 +37,7 @@ public class UnidadeMedidaValidator {
                 .map(UnidadeMedida::getId)
                 .filter(idEncontrado -> !idEncontrado.equals(idAtual))
                 .ifPresent(id -> {
-                    throw new BusinessException("Ja existe unidade de medida ativa com esta sigla");
+                    throw new ConflictException("Ja existe unidade de medida ativa com esta sigla");
                 });
     }
 }

@@ -12,7 +12,8 @@ import br.com.invplus.modules.cadastros.entity.Categoria;
 import br.com.invplus.modules.cadastros.mapper.CategoriaMapper;
 import br.com.invplus.modules.cadastros.repository.CategoriaRepository;
 import br.com.invplus.modules.cadastros.validator.CategoriaValidator;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
+import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 /**
  * Testes unitarios das regras de negocio de Categoria.
@@ -59,12 +61,14 @@ class CategoriaServiceTest {
         });
 
         CategoriaResponse response = categoriaService.criar(
-                new CategoriaRequest(" Perifericos ", "Itens de informatica", paiId)
+                new CategoriaRequest(" Perifericos ", "Itens de informatica", paiId, 10)
         );
 
         assertThat(response.nome()).isEqualTo("Perifericos");
         assertThat(response.categoriaPaiId()).isEqualTo(paiId);
         assertThat(response.categoriaPaiNome()).isEqualTo("Informatica");
+        assertThat(response.caminhoCompleto()).isEqualTo("Informatica > Perifericos");
+        assertThat(response.ordem()).isEqualTo(10);
     }
 
     /**
@@ -78,8 +82,8 @@ class CategoriaServiceTest {
         when(categoriaRepository.findByNomeIgnoreCaseAndAtivoTrueAndDeletedAtIsNull("Limpeza"))
                 .thenReturn(Optional.of(existente));
 
-        assertThatThrownBy(() -> categoriaService.criar(new CategoriaRequest("Limpeza", "Duplicada", null)))
-                .isInstanceOf(BusinessException.class)
+        assertThatThrownBy(() -> categoriaService.criar(new CategoriaRequest("Limpeza", "Duplicada", null, 0)))
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Ja existe categoria ativa");
     }
 
@@ -96,8 +100,8 @@ class CategoriaServiceTest {
         when(categoriaRepository.findByNomeIgnoreCaseAndAtivoTrueAndDeletedAtIsNull("Alimentos"))
                 .thenReturn(Optional.of(categoria));
 
-        assertThatThrownBy(() -> categoriaService.atualizar(id, new CategoriaRequest("Alimentos", null, id)))
-                .isInstanceOf(BusinessException.class)
+        assertThatThrownBy(() -> categoriaService.atualizar(id, new CategoriaRequest("Alimentos", null, id, 0)))
+                .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("pai dela mesma");
     }
 
@@ -121,9 +125,9 @@ class CategoriaServiceTest {
 
         assertThatThrownBy(() -> categoriaService.atualizar(
                 categoriaId,
-                new CategoriaRequest("Eletronicos", null, paiId)
+                new CategoriaRequest("Eletronicos", null, paiId, 0)
         ))
-                .isInstanceOf(BusinessException.class)
+                .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("ciclo hierarquico");
     }
 
@@ -149,17 +153,18 @@ class CategoriaServiceTest {
      */
     @Test
     void deveListarComPaginacao() {
-        when(categoriaRepository.findByAtivoTrueAndDeletedAtIsNull(PageRequest.of(0, 20)))
+        PageRequest pageRequest = PageRequest.of(0, 20, Sort.by("ordem").ascending().and(Sort.by("nome").ascending()));
+        when(categoriaRepository.findByAtivoTrueAndDeletedAtIsNull(pageRequest))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
         categoriaService.listar(PageRequest.of(0, 20));
 
-        verify(categoriaRepository).findByAtivoTrueAndDeletedAtIsNull(PageRequest.of(0, 20));
+        verify(categoriaRepository).findByAtivoTrueAndDeletedAtIsNull(pageRequest);
     }
 
     private Categoria categoria(String nome, Categoria pai) {
         Categoria categoria = new Categoria();
-        categoria.atualizar(pai, nome, null);
+        categoria.atualizar(pai, nome, null, 0);
         return categoria;
     }
 }

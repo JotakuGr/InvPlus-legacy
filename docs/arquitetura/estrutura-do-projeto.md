@@ -205,6 +205,8 @@ shared/
 
 `BaseEntity` concentra auditoria, UUID e `version` para concorrencia otimista. `SoftDeleteEntity` adiciona `ativo` e `deleted_at`; por padrao, repositories/services devem consultar apenas registros ativos e nao excluidos.
 
+O tratamento global de erros usa `GlobalExceptionHandler` e `ErrorResponse`. Validacoes e operacoes invalidas retornam `400`, duplicidades usam `ConflictException` com `409`, concorrencia otimista tambem retorna `409`, recursos nao encontrados retornam `404`, falhas de autenticacao retornam `401` e falta de permissao retorna `403`.
+
 Bases compartilhadas adicionadas:
 
 - `shared/domain/repository/BaseRepository.java`
@@ -243,6 +245,13 @@ Migrations atuais ja implementadas:
 - `V11__permissoes_cadastros_fase_2.sql`
 - `V12__categoria_hierarquia_nome_unico.sql`
 - `V13__permissao_categoria_wildcard.sql`
+- `V14__categoria_ordem_marca_campos.sql`
+- `V15__permissao_marca_wildcard.sql`
+- `V16__empresa_melhorias.sql`
+- `V17__permissao_empresa_wildcard.sql`
+- `V18__arquivo_melhorias.sql`
+- `V19__permissao_arquivo_wildcard.sql`
+- `V20__arquivo_colunas_legadas_opcionais.sql`
 
 ## Docker
 
@@ -272,7 +281,28 @@ Essa entidade usa o endpoint `/api/v1/unidades-medida`, paginacao, cache, permis
 - `modules/cadastros/service/CategoriaServiceTest.java`
 - `modules/cadastros/controller/CategoriaControllerTests.java`
 
-Essa entidade usa o endpoint `/api/v1/categorias`, paginacao, cache, permissao granular `CATEGORIA`, permissao wildcard `CATEGORIA:*`, categoria pai opcional, bloqueio de auto-relacionamento, bloqueio de ciclo hierarquico e soft delete por padrao.
+Essa entidade usa o endpoint `/api/v1/categorias`, paginacao, cache, permissao granular `CATEGORIA`, permissao wildcard `CATEGORIA:*`, categoria pai opcional, ordenacao por `ordem`, caminho completo, bloqueio de auto-relacionamento, bloqueio de ciclo hierarquico e soft delete por padrao.
+
+`Marca` tambem possui testes dedicados:
+
+- `modules/cadastros/service/MarcaServiceTest.java`
+- `modules/cadastros/controller/MarcaControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/marcas`, paginacao, cache, permissao granular `MARCA`, permissao wildcard `MARCA:*`, campos opcionais `site` e `fabricante`, nome unico entre registros ativos e soft delete por padrao.
+
+`Empresa` tambem possui testes dedicados:
+
+- `modules/cadastros/service/EmpresaServiceTest.java`
+- `modules/cadastros/controller/EmpresaControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/empresas`, paginacao, cache, permissao granular `EMPRESA`, permissao wildcard `EMPRESA:*`, CNPJ unico entre registros ativos, validacao simples de CNPJ com 14 digitos, validacao de CRT e soft delete por padrao.
+
+`Arquivo` tambem possui testes dedicados:
+
+- `modules/cadastros/service/ArquivoServiceTest.java`
+- `modules/cadastros/controller/ArquivoControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/arquivos`, paginacao, cache, permissao granular `ARQUIVO`, permissao wildcard `ARQUIVO:*`, storage multi-provedor (`LOCAL`, `S3`, `MINIO`, `AZURE`, `GOOGLE_CLOUD`), hash SHA-256 unico entre registros ativos, vinculo generico `entidade/entidadeId` e soft delete por padrao.
 
 ## Testes
 

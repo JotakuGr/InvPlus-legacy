@@ -75,6 +75,8 @@ Elementos reutilizaveis por todos os modulos:
 
 `BaseRepository` herda `JpaRepository` e `JpaSpecificationExecutor`, garantindo suporte a Specifications em todos os cadastros que usam a base. Listagens REST devem retornar `Page<T>` e aceitar `page`, `size` e `sort`.
 
+O tratamento de erros fica centralizado em `GlobalExceptionHandler`, retornando sempre `ErrorResponse`. Validacoes e operacoes invalidas retornam HTTP 400, recursos inexistentes retornam HTTP 404, duplicidades e conflitos de estado retornam HTTP 409, conflitos de concorrencia otimista retornam HTTP 409, falhas de autenticacao retornam HTTP 401 e ausencia de permissao retorna HTTP 403.
+
 ### `security`
 
 Modulo responsavel por:
@@ -188,15 +190,22 @@ V10__cadastros_fase_2.sql
 V11__permissoes_cadastros_fase_2.sql
 V12__categoria_hierarquia_nome_unico.sql
 V13__permissao_categoria_wildcard.sql
+V14__categoria_ordem_marca_campos.sql
+V15__permissao_marca_wildcard.sql
+V16__empresa_melhorias.sql
+V17__permissao_empresa_wildcard.sql
+V18__arquivo_melhorias.sql
+V19__permissao_arquivo_wildcard.sql
+V20__arquivo_colunas_legadas_opcionais.sql
 ```
 
 O modulo Cadastros adiciona tabelas base reutilizaveis por outros dominios e permissao granular `CADASTROS` para proteger os endpoints REST. A fase fundamental criou a hierarquia geografica `pais -> estado -> cidade`, vinculou `endereco` a `cidade` e adicionou `filial` vinculada a `empresa`.
 
-A fase 2 ja concluiu `UnidadeMedida`, exposta em `/api/v1/unidades-medida`, e `Categoria`, exposta em `/api/v1/categorias`. Ambas usam permissao granular, paginacao, cache, soft delete, auditoria e testes unitarios/de integracao. `Categoria` tambem possui hierarquia opcional com bloqueio de auto-relacionamento e ciclo.
+A fase 2 ja concluiu `UnidadeMedida`, exposta em `/api/v1/unidades-medida`, `Categoria`, exposta em `/api/v1/categorias`, `Marca`, exposta em `/api/v1/marcas`, `Empresa`, exposta em `/api/v1/empresas`, e `Arquivo`, exposta em `/api/v1/arquivos`. Todas usam permissao granular, paginacao, cache, soft delete, auditoria e testes unitarios/de integracao. `Categoria` tambem possui hierarquia opcional, ordenacao por `ordem`, caminho completo, bloqueio de auto-relacionamento e ciclo. `Arquivo` usa storage multi-provedor, hash SHA-256 para integridade/deteccao de duplicidade e vinculo generico `entidade/entidadeId`.
 
-Indices simples, compostos e parciais sao usados nas principais consultas por registros ativos e relacionamentos, como `estado(pais_id, ativo)`, `cidade(estado_id, ativo)`, `filial(empresa_id, ativo)` e `categoria(LOWER(nome)) WHERE ativo = TRUE AND deleted_at IS NULL`. Cache com Redis e filas com RabbitMQ permanecem provisionados no Docker, mas ainda entram como evolucao funcional futura.
+Indices simples, compostos e parciais sao usados nas principais consultas por registros ativos e relacionamentos, como `estado(pais_id, ativo)`, `cidade(estado_id, ativo)`, `filial(empresa_id, ativo)`, `categoria(LOWER(nome)) WHERE ativo = TRUE AND deleted_at IS NULL`, `categoria(categoria_pai_id, ordem, nome)`, `marca(LOWER(nome)) WHERE ativo = TRUE AND deleted_at IS NULL`, `empresa(cnpj) WHERE ativo = TRUE AND deleted_at IS NULL`, `arquivo(hash_sha256) WHERE ativo = TRUE AND deleted_at IS NULL` e `arquivo(entidade, entidade_id) WHERE ativo = TRUE AND deleted_at IS NULL`. Cache com Redis e filas com RabbitMQ permanecem provisionados no Docker, mas ainda entram como evolucao funcional futura.
 
-O cache funcional inicial usa Spring Cache em cadastros de baixa alteracao, como Categoria, Marca, UnidadeMedida, Pais, Estado e Cidade. O Redis permanece como proximo passo para cache distribuido quando houver mais de uma instancia da API.
+O cache funcional inicial usa Spring Cache em cadastros de baixa alteracao, como Categoria, Marca, Arquivo, UnidadeMedida, Pais, Estado e Cidade. O Redis permanece como proximo passo para cache distribuido quando houver mais de uma instancia da API.
 
 Logs seguem SLF4J + Logback por `logback-spring.xml`. Codigo de aplicacao nao deve usar `System.out.println()`.
 

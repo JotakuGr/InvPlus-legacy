@@ -1,6 +1,5 @@
 package br.com.invplus.modules.cadastros.dto.response;
 
-import br.com.invplus.modules.cadastros.entity.Marca;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -11,21 +10,11 @@ public record MarcaResponse(
         UUID id,
         String nome,
         String descricao,
+        String site,
+        String fabricante,
         Boolean ativo,
+        Long version,
         OffsetDateTime criadoEm,
         OffsetDateTime atualizadoEm
 ) {
-    /**
-     * Converte a entidade JPA para o contrato publico da API.
-     */
-    public static MarcaResponse from(Marca marca) {
-        return new MarcaResponse(
-                marca.getId(),
-                marca.getNome(),
-                marca.getDescricao(),
-                marca.getAtivo(),
-                marca.getCriadoEm(),
-                marca.getAtualizadoEm()
-        );
-    }
 }

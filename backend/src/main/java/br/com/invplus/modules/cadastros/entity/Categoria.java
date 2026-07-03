@@ -42,6 +42,9 @@ public class Categoria extends SoftDeleteEntity {
     @Column(name = "descricao", columnDefinition = "text")
     private String descricao;
 
+    @Column(name = "ordem", nullable = false)
+    private Integer ordem = 0;
+
     @NotBlank
     @Size(max = 40)
     @Column(name = "tipo", nullable = false, length = 40)
@@ -50,18 +53,29 @@ public class Categoria extends SoftDeleteEntity {
     /**
      * Atualiza a categoria no contrato novo, preservando tipo como campo legado.
      */
-    public void atualizar(Categoria categoriaPai, String nome, String descricao) {
+    public void atualizar(Categoria categoriaPai, String nome, String descricao, Integer ordem) {
         this.categoriaPai = categoriaPai;
         this.nome = nome == null ? null : nome.trim();
         this.descricao = descricao == null || descricao.isBlank() ? null : descricao.trim();
+        this.ordem = ordem == null ? 0 : ordem;
         this.tipo = "GERAL";
+    }
+
+    /**
+     * Monta a trilha completa da categoria para telas, filtros e relatorios.
+     */
+    public String caminhoCompleto() {
+        if (categoriaPai == null) {
+            return nome;
+        }
+        return categoriaPai.caminhoCompleto() + " > " + nome;
     }
 
     /**
      * Atualiza os dados principais e normaliza o tipo para facilitar filtros.
      */
     public void atualizar(String nome, String descricao, String tipo) {
-        atualizar((Categoria) null, nome, descricao);
+        atualizar((Categoria) null, nome, descricao, 0);
         this.tipo = tipo == null || tipo.isBlank() ? "GERAL" : tipo.trim().toUpperCase();
     }
 }

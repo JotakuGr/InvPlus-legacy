@@ -10,6 +10,7 @@ import java.util.UUID;
 public record CategoriaRequest(
         @NotBlank @Size(max = 100) String nome,
         String descricao,
-        UUID categoriaPaiId
+        UUID categoriaPaiId,
+        Integer ordem
 ) {
 }

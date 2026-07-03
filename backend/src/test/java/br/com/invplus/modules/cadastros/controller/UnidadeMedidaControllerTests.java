@@ -136,7 +136,7 @@ class UnidadeMedidaControllerTests {
                                   "casasDecimais": 0
                                 }
                                 """.formatted(sigla)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Ja existe unidade de medida ativa com esta sigla"));
     }
 

@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +35,8 @@ public class CategoriaService {
     @Cacheable(cacheNames = "cadastros:categorias", key = "#pageable")
     @Transactional(readOnly = true)
     public Page<CategoriaResponse> listar(Pageable pageable) {
-        return categoriaRepository.findByAtivoTrueAndDeletedAtIsNull(pageable).map(categoriaMapper::toResponse);
+        return categoriaRepository.findByAtivoTrueAndDeletedAtIsNull(ordenacaoPadrao(pageable))
+                .map(categoriaMapper::toResponse);
     }
 
     /**
@@ -90,5 +93,12 @@ public class CategoriaService {
             return null;
         }
         return buscarEntidade(categoriaPaiId);
+    }
+
+    private Pageable ordenacaoPadrao(Pageable pageable) {
+        if (pageable.getSort().isSorted()) {
+            return pageable;
+        }
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("ordem").ascending().and(Sort.by("nome").ascending()));
     }
 }

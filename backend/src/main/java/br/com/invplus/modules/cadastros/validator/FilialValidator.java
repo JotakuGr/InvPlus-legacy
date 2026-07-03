@@ -2,7 +2,7 @@ package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.FilialRequest;
 import br.com.invplus.modules.cadastros.repository.FilialRepository;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,7 @@ public class FilialValidator {
     public void validarCriacao(FilialRequest request) {
         String codigo = request.codigo().trim().toUpperCase();
         if (filialRepository.existsByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.empresaId(), codigo)) {
-            throw new BusinessException("Ja existe filial ativa com este codigo para a empresa informada");
+            throw new ConflictException("Ja existe filial ativa com este codigo para a empresa informada");
         }
     }
 }

@@ -2,7 +2,6 @@ package br.com.invplus.modules.cadastros.repository;
 
 import br.com.invplus.modules.cadastros.entity.Marca;
 import br.com.invplus.shared.domain.repository.BaseRepository;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -11,12 +10,12 @@ import java.util.Optional;
 public interface MarcaRepository extends BaseRepository<Marca> {
 
     /**
-     * Lista apenas marcas ativas, ocultando registros excluidos logicamente.
+     * Localiza marca ativa pelo nome, ignorando diferencas de caixa.
      */
-    List<Marca> findByAtivoTrueAndDeletedAtIsNull();
+    Optional<Marca> findByNomeIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(String nome);
 
     /**
-     * Localiza marca pelo nome unico.
+     * Localiza marca pelo nome unico, mantida para compatibilidade com testes antigos.
      */
     Optional<Marca> findByNomeAndAtivoTrueAndDeletedAtIsNull(String nome);
 }

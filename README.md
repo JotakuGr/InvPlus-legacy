@@ -183,7 +183,7 @@ Request → Controller → Service → Repository → Database
 | Módulo | Responsabilidade | Principais entidades |
 |---|---|---|
 | 🔐 **Segurança** | Autenticação, perfis e auditoria | Usuário, Perfil, Permissão, Auditoria |
-| 🏢 **Cadastros** | Dados base utilizados por outros módulos | País, Estado, Cidade, Endereço, Empresa, Filial, Categoria, Marca, UoM |
+| 🏢 **Cadastros** | Dados base utilizados por outros módulos | País, Estado, Cidade, Endereço, Empresa, Filial, Categoria, Marca, UoM, Arquivo |
 | 👥 **Pessoas** | Cadastro unificado de pessoas | Pessoa, Cliente, Fornecedor, Transportadora, Funcionário |
 | 📦 **Produtos** | Catálogo e precificação | Produto, Tabela de Preço, Produto Fornecedor |
 | 🏪 **Estoque** | Saldos, movimentações e inventário | Depósito, Estoque, Movimentação, Lote, Inventário |
@@ -319,6 +319,13 @@ V10__cadastros_fase_2.sql
 V11__permissoes_cadastros_fase_2.sql
 V12__categoria_hierarquia_nome_unico.sql
 V13__permissao_categoria_wildcard.sql
+V14__categoria_ordem_marca_campos.sql
+V15__permissao_marca_wildcard.sql
+V16__empresa_melhorias.sql
+V17__permissao_empresa_wildcard.sql
+V18__arquivo_melhorias.sql
+V19__permissao_arquivo_wildcard.sql
+V20__arquivo_colunas_legadas_opcionais.sql
 ```
 
 ### Migration V1
@@ -422,6 +429,62 @@ Ajusta `categoria` para as regras finais da fase 2:
 ### Migration V13
 
 Adiciona a permissão wildcard `CATEGORIA:*` e vincula ao perfil `ADMIN`, mantendo também as permissões granulares de criar, visualizar, editar e excluir.
+
+### Migration V14
+
+Refina `categoria` e `marca`:
+
+- adiciona `categoria.ordem` para ordenação previsível da árvore;
+- cria índice parcial para listar categorias por pai, ordem e nome;
+- adiciona `marca.site` e `marca.fabricante`;
+- troca a unicidade antiga de `marca.nome` por índice único parcial em `LOWER(nome)` apenas para marcas ativas e não excluídas.
+
+### Migration V15
+
+Adiciona a permissão wildcard `MARCA:*` e vincula ao perfil `ADMIN`.
+
+### Migration V16
+
+Refina `empresa` para a fase 2:
+
+- adiciona `inscricao_municipal`, `regime_tributario` e `crt`;
+- garante `version` para concorrência otimista;
+- troca a unicidade antiga de `cnpj` por índice único parcial apenas para empresas ativas e não excluídas;
+- adiciona índices para `cnpj` e registros ativos;
+- adiciona constraint para CRT válido.
+
+### Migration V17
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `EMPRESA:*`
+- `EMPRESA:CRIAR`
+- `EMPRESA:VISUALIZAR`
+- `EMPRESA:EDITAR`
+- `EMPRESA:EXCLUIR`
+
+### Migration V18
+
+Refina `arquivo` para a fase 2:
+
+- adiciona `tipo_mime`, `extensao`, `hash_sha256`, `url` e `storage`;
+- prepara armazenamento em `LOCAL`, `S3`, `MINIO`, `AZURE` e `GOOGLE_CLOUD`;
+- adiciona índices para registros ativos, hash SHA-256 e vínculo `entidade/entidade_id`;
+- adiciona checks para tamanho positivo, storage válido e formato do hash SHA-256.
+
+### Migration V19
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `ARQUIVO:*`
+- `ARQUIVO:CRIAR`
+- `ARQUIVO:VISUALIZAR`
+- `ARQUIVO:EDITAR`
+- `ARQUIVO:EXCLUIR`
+
+### Migration V20
+
+Torna opcionais as colunas legadas `content_type` e `caminho`, preservando compatibilidade com bases antigas e permitindo o contrato novo com `tipo_mime` e `url`.
 
 Convenções do banco:
 - PKs do tipo `UUID` com `gen_random_uuid()`
@@ -619,7 +682,18 @@ Esse endpoint exige a permissao `SEGURANCA:*` e serve como primeira validacao re
 - `UsuarioDetailsService`: carrega usuários reais do banco.
 - `JwtService`: geração e validação de JWT HMAC SHA-256.
 - `JwtAuthenticationFilter`: autenticação por header `Authorization`.
-- `GlobalExceptionHandler`: trata credenciais inválidas com `401` e acesso negado com `403`.
+- `GlobalExceptionHandler`: trata credenciais inválidas com `401`, acesso negado com `403`, duplicidades com `409` e validações com `400`.
+
+### Tratamento de erros
+
+O backend centraliza erros em `GlobalExceptionHandler` e responde sempre no formato `ErrorResponse`.
+
+- `400 Bad Request`: validações de entrada, `BusinessException` e `InvalidOperationException`.
+- `409 Conflict`: duplicidades e conflitos de estado via `ConflictException`.
+- `409 Conflict`: conflito de concorrência otimista via `OptimisticLockException` ou `ObjectOptimisticLockingFailureException`.
+- `404 Not Found`: registros não encontrados ou excluídos logicamente.
+- `401 Unauthorized`: token ausente/inválido ou credenciais inválidas.
+- `403 Forbidden`: usuário autenticado sem permissão.
 
 ### Observações de segurança
 
@@ -641,8 +715,14 @@ Testes existentes:
 - `CadastrosControllerTests`: valida criação/consulta de empresa via API, bloqueio sem token, ocultação de empresa excluída logicamente e criação da hierarquia País → Estado → Cidade → Endereço → Filial.
 - `UnidadeMedidaServiceTest`: valida regras unitárias de criação, duplicidade, paginação e exclusão lógica.
 - `UnidadeMedidaControllerTests`: valida CRUD completo, sigla duplicada, paginação, soft delete, `401` sem token e `403` sem permissão.
-- `CategoriaServiceTest`: valida criação com pai opcional, nome único ativo, paginação, soft delete, bloqueio de auto-relacionamento e ciclo hierárquico.
+- `CategoriaServiceTest`: valida criação com pai opcional, ordem, caminho completo, nome único ativo, paginação, soft delete, bloqueio de auto-relacionamento e ciclo hierárquico.
 - `CategoriaControllerTests`: valida CRUD completo, hierarquia, nome duplicado, paginação, soft delete, `401` sem token e `403` sem permissão.
+- `MarcaServiceTest`: valida criação, campos opcionais, nome único ativo, paginação e exclusão lógica.
+- `MarcaControllerTests`: valida CRUD completo, nome duplicado, paginação, soft delete, `401` sem token e `403` sem permissão.
+- `EmpresaServiceTest`: valida criação, CNPJ único ativo, CNPJ inválido, email inválido, paginação e exclusão lógica.
+- `EmpresaControllerTests`: valida CRUD completo, CNPJ duplicado, paginação, soft delete, `401` sem token, `403` sem permissão, email inválido e CNPJ inválido.
+- `ArquivoServiceTest`: valida criação, hash SHA-256 único ativo, hash inválido, paginação e exclusão lógica.
+- `ArquivoControllerTests`: valida CRUD completo, hash duplicado, paginação, filtro por entidade, soft delete, `401` sem token, `403` sem permissão e hash inválido.
 
 Para executar:
 
@@ -655,7 +735,7 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 38, Failures: 0, Errors: 0
+Tests run: 68, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
@@ -680,6 +760,8 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
   - `ApiResponse`
   - `ErrorResponse`
   - `BusinessException`
+  - `ConflictException`
+  - `InvalidOperationException`
   - `ResourceNotFoundException`
   - `GlobalExceptionHandler`
 - Implementado módulo inicial de segurança:
@@ -699,7 +781,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
   - mappers, specifications e validators para a fase fundamental;
   - services com criação, listagem paginada, busca, atualização e exclusão lógica;
   - controllers REST protegidos por permissões `CADASTROS`, retornando `Page<T>` nos GETs;
-  - cache inicial com `@Cacheable` para Categoria, Marca, UnidadeMedida, Pais, Estado e Cidade;
+  - cache inicial com `@Cacheable` para Categoria, Marca, Arquivo, UnidadeMedida, Pais, Estado e Cidade;
   - comentários em classes e métodos para facilitar leitura do código.
 - Adicionadas bases compartilhadas `BaseRepository`, `BaseCrudService`, `BaseCrudController` e `CrudMapper`.
 - Adicionada auditoria automática com `AuditorAware<UUID>` e principal autenticado com UUID.
@@ -733,6 +815,13 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - `V11__permissoes_cadastros_fase_2.sql` adiciona permissões granulares por entidade.
 - `V12__categoria_hierarquia_nome_unico.sql` adiciona hierarquia em Categoria e unicidade por nome ativo.
 - `V13__permissao_categoria_wildcard.sql` adiciona `CATEGORIA:*`.
+- `V14__categoria_ordem_marca_campos.sql` adiciona ordenação de Categoria e campos/índices finais de Marca.
+- `V15__permissao_marca_wildcard.sql` adiciona `MARCA:*`.
+- `V16__empresa_melhorias.sql` adiciona melhorias finais de Empresa, índices e constraint de CRT.
+- `V17__permissao_empresa_wildcard.sql` adiciona `EMPRESA:*` e reforça permissões de Empresa.
+- `V18__arquivo_melhorias.sql` adiciona storage, hash SHA-256, URL, extensão e índices finais de Arquivo.
+- `V19__permissao_arquivo_wildcard.sql` adiciona `ARQUIVO:*` e reforça permissões de Arquivo.
+- `V20__arquivo_colunas_legadas_opcionais.sql` libera colunas legadas após a migração para o contrato novo.
 
 ### Docker
 
@@ -770,7 +859,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 
  Fase 2 — Backend (módulos)
  ├── [x] 7.  Segurança (JWT + Perfis)
- ├── [x] 8.  Cadastros - fase fundamental
+ ├── [x] 8.  Cadastros - fases 1 e 2
  ├── [ ] 9.  Pessoas
  ├── [ ] 10. Produtos
  ├── [ ] 11. Estoque
@@ -806,16 +895,19 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - [x] Sprint 4 - Fase 1: País, Estado, Cidade, Endereço, Empresa e Filial
 - [x] Sprint 4 - Fase 2: UnidadeMedida concluída com checklist completa
 - [x] Sprint 4 - Fase 2: Categoria concluída com checklist completa
+- [x] Sprint 4 - Fase 2: Marca concluída com checklist completa
+- [x] Sprint 4 - Fase 2: Empresa concluída com checklist completa
+- [x] Sprint 4 - Fase 2: Arquivo concluída com checklist completa
+- [x] Sprint 4 - Fase 2 concluída e revisada
 - [x] Testes de repository e controller para Cadastros
 
 ### 🔄 Em andamento
 - [ ] Consolidação do módulo de Segurança
-- [ ] Sprint 4 - Fase 2: Marca, Empresa e Arquivo
 - [ ] Preparação do módulo Pessoas
 
 ### ⬜ Backend
 - [x] Módulo de Segurança (JWT)
-- [x] Módulo de Cadastros - fase fundamental
+- [x] Módulo de Cadastros - fases 1 e 2
 - [ ] Módulo de Pessoas
 - [ ] Módulo de Produtos
 - [ ] Módulo de Estoque

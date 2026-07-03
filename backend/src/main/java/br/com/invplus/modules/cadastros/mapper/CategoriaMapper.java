@@ -15,7 +15,7 @@ public class CategoriaMapper {
      * Aplica os dados de entrada e o pai ja validado na entidade.
      */
     public void aplicar(Categoria categoria, CategoriaRequest request, Categoria categoriaPai) {
-        categoria.atualizar(categoriaPai, request.nome(), request.descricao());
+        categoria.atualizar(categoriaPai, request.nome(), request.descricao(), request.ordem());
     }
 
     /**
@@ -28,7 +28,9 @@ public class CategoriaMapper {
                 pai == null ? null : pai.getId(),
                 pai == null ? null : pai.getNome(),
                 categoria.getNome(),
+                categoria.caminhoCompleto(),
                 categoria.getDescricao(),
+                categoria.getOrdem(),
                 categoria.getAtivo(),
                 categoria.getVersion(),
                 categoria.getCriadoEm(),

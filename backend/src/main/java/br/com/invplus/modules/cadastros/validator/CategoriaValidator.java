@@ -3,7 +3,8 @@ package br.com.invplus.modules.cadastros.validator;
 import br.com.invplus.modules.cadastros.dto.request.CategoriaRequest;
 import br.com.invplus.modules.cadastros.entity.Categoria;
 import br.com.invplus.modules.cadastros.repository.CategoriaRepository;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
+import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -33,7 +34,7 @@ public class CategoriaValidator {
     public void validarAtualizacao(UUID id, CategoriaRequest request, Categoria categoriaPai) {
         validarNomeUnico(id, request.nome());
         if (request.categoriaPaiId() != null && request.categoriaPaiId().equals(id)) {
-            throw new BusinessException("Categoria nao pode ser pai dela mesma");
+            throw new InvalidOperationException("Categoria nao pode ser pai dela mesma");
         }
         validarCicloHierarquico(id, categoriaPai);
     }
@@ -44,7 +45,7 @@ public class CategoriaValidator {
                 .map(Categoria::getId)
                 .filter(idEncontrado -> !idEncontrado.equals(idAtual))
                 .ifPresent(id -> {
-                    throw new BusinessException("Ja existe categoria ativa com este nome");
+                    throw new ConflictException("Ja existe categoria ativa com este nome");
                 });
     }
 
@@ -57,10 +58,10 @@ public class CategoriaValidator {
         Categoria atual = categoriaPai;
         while (atual != null) {
             if (!visitados.add(atual.getId())) {
-                throw new BusinessException("Ciclo hierarquico detectado em categoria");
+                throw new InvalidOperationException("Ciclo hierarquico detectado em categoria");
             }
             if (idAtual.equals(atual.getId())) {
-                throw new BusinessException("Categoria nao pode gerar ciclo hierarquico");
+                throw new InvalidOperationException("Categoria nao pode gerar ciclo hierarquico");
             }
             atual = atual.getCategoriaPai();
         }

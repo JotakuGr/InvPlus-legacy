@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface EmpresaRepository extends BaseRepository<Empresa> {
 
     /**
-     * Lista apenas empresas ativas, ocultando registros excluidos logicamente.
+     * Lista apenas empresas ativas, preservando compatibilidade com testes de repository.
      */
     List<Empresa> findByAtivoTrueAndDeletedAtIsNull();
 
@@ -19,4 +19,9 @@ public interface EmpresaRepository extends BaseRepository<Empresa> {
      * Localiza empresa pelo CNPJ normalizado.
      */
     Optional<Empresa> findByCnpjAndAtivoTrueAndDeletedAtIsNull(String cnpj);
+
+    /**
+     * Verifica duplicidade de CNPJ entre empresas ativas.
+     */
+    boolean existsByCnpjAndAtivoTrueAndDeletedAtIsNull(String cnpj);
 }

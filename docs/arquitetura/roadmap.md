@@ -80,6 +80,13 @@
   - [x] Criar migration `V11__permissoes_cadastros_fase_2.sql`
   - [x] Criar migration `V12__categoria_hierarquia_nome_unico.sql`
   - [x] Criar migration `V13__permissao_categoria_wildcard.sql`
+  - [x] Criar migration `V14__categoria_ordem_marca_campos.sql`
+  - [x] Criar migration `V15__permissao_marca_wildcard.sql`
+  - [x] Criar migration `V16__empresa_melhorias.sql`
+  - [x] Criar migration `V17__permissao_empresa_wildcard.sql`
+  - [x] Criar migration `V18__arquivo_melhorias.sql`
+  - [x] Criar migration `V19__permissao_arquivo_wildcard.sql`
+  - [x] Criar migration `V20__arquivo_colunas_legadas_opcionais.sql`
   - [x] Criar entidades `Pais`, `Estado`, `Cidade`, `Endereco`, `Empresa`, `Filial`, `Categoria`, `Marca`, `UnidadeMedida` e `Arquivo`
   - [x] Criar repositories JPA herdando `BaseRepository`
   - [x] Criar DTOs de request e response
@@ -89,8 +96,11 @@
   - [x] Aplicar cache inicial em cadastros de baixa alteracao
   - [x] Criar testes de repository e controller
   - [x] Fase 2 - UnidadeMedida completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao e documentacao
-  - [x] Fase 2 - Categoria completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao e documentacao
-  - [ ] Fase 2 - Proximas entidades: Marca, Empresa e Arquivo
+  - [x] Fase 2 - Categoria completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao, documentacao, ordem e caminho completo
+  - [x] Fase 2 - Marca completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao e documentacao
+  - [x] Fase 2 - Empresa completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao e documentacao
+  - [x] Fase 2 - Arquivo completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao, documentacao, storage multi-provedor, hash SHA-256 e vinculo generico entidade/entidadeId
+  - [x] Fase 2 - Revisao geral concluida antes de Pessoas
   - [ ] Fase 2 - Cadastros gerais fiscais: CategoriaProduto, SubCategoriaProduto, Fabricante, NCM, CEST, CFOP, OrigemMercadoria, CST, CSOSN e AliquotaICMS
 - [ ] Pessoas
 - [ ] Produtos

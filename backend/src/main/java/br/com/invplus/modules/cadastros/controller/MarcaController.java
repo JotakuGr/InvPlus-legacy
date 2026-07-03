@@ -4,8 +4,8 @@ import br.com.invplus.common.constants.AppConstants;
 import br.com.invplus.modules.cadastros.dto.request.MarcaRequest;
 import br.com.invplus.modules.cadastros.dto.response.MarcaResponse;
 import br.com.invplus.modules.cadastros.service.MarcaService;
+import br.com.invplus.shared.api.controller.BaseCrudController;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,9 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
  * Endpoints REST para marcas do modulo Cadastros.
  */
 @RestController
-@RequestMapping(AppConstants.API_BASE_PATH + "/cadastros/marcas")
+@RequestMapping(AppConstants.API_BASE_PATH + "/marcas")
 @RequiredArgsConstructor
-public class MarcaController {
+public class MarcaController extends BaseCrudController {
 
     private final MarcaService marcaService;
 
@@ -35,7 +35,7 @@ public class MarcaController {
      * Retorna todas as marcas cadastradas.
      */
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
+    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'MARCA:*', 'MARCA:VISUALIZAR')")
     public ResponseEntity<Page<MarcaResponse>> listar(Pageable pageable) {
         return ResponseEntity.ok(marcaService.listar(pageable));
     }
@@ -44,7 +44,7 @@ public class MarcaController {
      * Retorna uma marca pelo identificador.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
+    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'MARCA:*', 'MARCA:VISUALIZAR')")
     public ResponseEntity<MarcaResponse> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(marcaService.buscar(id));
     }
@@ -53,18 +53,17 @@ public class MarcaController {
      * Cria uma marca e devolve a URL do novo recurso.
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:CRIAR')")
+    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'MARCA:*', 'MARCA:CRIAR')")
     public ResponseEntity<MarcaResponse> criar(@Valid @RequestBody MarcaRequest request) {
         MarcaResponse response = marcaService.criar(request);
-        return ResponseEntity.created(URI.create(AppConstants.API_BASE_PATH + "/cadastros/marcas/" + response.id()))
-                .body(response);
+        return created(AppConstants.API_BASE_PATH + "/marcas", response.id(), response);
     }
 
     /**
      * Atualiza uma marca existente.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:EDITAR')")
+    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'MARCA:*', 'MARCA:EDITAR')")
     public ResponseEntity<MarcaResponse> atualizar(@PathVariable UUID id, @Valid @RequestBody MarcaRequest request) {
         return ResponseEntity.ok(marcaService.atualizar(id, request));
     }
@@ -73,7 +72,7 @@ public class MarcaController {
      * Exclui logicamente uma marca.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:EXCLUIR')")
+    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'MARCA:*', 'MARCA:EXCLUIR')")
     public ResponseEntity<Void> excluir(@PathVariable UUID id) {
         marcaService.excluir(id);
         return ResponseEntity.noContent().build();

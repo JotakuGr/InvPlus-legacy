@@ -1,6 +1,7 @@
 package br.com.invplus.modules.cadastros.dto.response;
 
 import br.com.invplus.modules.cadastros.entity.Arquivo;
+import br.com.invplus.modules.cadastros.enums.StorageArquivo;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -11,13 +12,16 @@ public record ArquivoResponse(
         UUID id,
         String nomeOriginal,
         String nomeArmazenado,
-        String contentType,
+        String tipoMime,
+        String extensao,
         Long tamanhoBytes,
-        String caminho,
-        String checksumSha256,
+        String hashSha256,
+        String url,
+        StorageArquivo storage,
         String entidade,
         UUID entidadeId,
         Boolean ativo,
+        Long version,
         OffsetDateTime criadoEm,
         OffsetDateTime atualizadoEm
 ) {
@@ -29,13 +33,16 @@ public record ArquivoResponse(
                 arquivo.getId(),
                 arquivo.getNomeOriginal(),
                 arquivo.getNomeArmazenado(),
-                arquivo.getContentType(),
+                arquivo.getTipoMime(),
+                arquivo.getExtensao(),
                 arquivo.getTamanhoBytes(),
-                arquivo.getCaminho(),
-                arquivo.getChecksumSha256(),
+                arquivo.getHashSha256(),
+                arquivo.getUrl(),
+                arquivo.getStorage(),
                 arquivo.getEntidade(),
                 arquivo.getEntidadeId(),
                 arquivo.getAtivo(),
+                arquivo.getVersion(),
                 arquivo.getCriadoEm(),
                 arquivo.getAtualizadoEm()
         );

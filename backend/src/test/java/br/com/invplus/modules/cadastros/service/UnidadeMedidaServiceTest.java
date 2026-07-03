@@ -12,7 +12,7 @@ import br.com.invplus.modules.cadastros.entity.UnidadeMedida;
 import br.com.invplus.modules.cadastros.mapper.UnidadeMedidaMapper;
 import br.com.invplus.modules.cadastros.repository.UnidadeMedidaRepository;
 import br.com.invplus.modules.cadastros.validator.UnidadeMedidaValidator;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,7 +77,7 @@ class UnidadeMedidaServiceTest {
         assertThatThrownBy(() -> unidadeMedidaService.criar(
                 new UnidadeMedidaRequest("un", "Unidade duplicada", (short) 0)
         ))
-                .isInstanceOf(BusinessException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Ja existe unidade de medida");
     }
 

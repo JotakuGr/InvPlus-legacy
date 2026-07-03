@@ -3,6 +3,7 @@ package br.com.invplus.modules.cadastros.repository;
 import br.com.invplus.modules.cadastros.entity.Arquivo;
 import br.com.invplus.shared.domain.repository.BaseRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,4 +31,9 @@ public interface ArquivoRepository extends BaseRepository<Arquivo> {
             UUID entidadeId,
             Pageable pageable
     );
+
+    /**
+     * Localiza arquivo ativo pelo hash para detectar uploads duplicados.
+     */
+    Optional<Arquivo> findByHashSha256AndAtivoTrueAndDeletedAtIsNull(String hashSha256);
 }

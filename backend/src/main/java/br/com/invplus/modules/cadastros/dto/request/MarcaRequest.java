@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
  */
 public record MarcaRequest(
         @NotBlank @Size(max = 100) String nome,
-        String descricao
+        String descricao,
+        @Size(max = 255) String site,
+        @Size(max = 120) String fabricante
 ) {
 }

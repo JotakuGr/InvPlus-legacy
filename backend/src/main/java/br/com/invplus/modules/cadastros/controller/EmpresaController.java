@@ -4,8 +4,8 @@ import br.com.invplus.common.constants.AppConstants;
 import br.com.invplus.modules.cadastros.dto.request.EmpresaRequest;
 import br.com.invplus.modules.cadastros.dto.response.EmpresaResponse;
 import br.com.invplus.modules.cadastros.service.EmpresaService;
+import br.com.invplus.shared.api.controller.BaseCrudController;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,9 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
  * Endpoints REST para empresas do modulo Cadastros.
  */
 @RestController
-@RequestMapping(AppConstants.API_BASE_PATH + "/cadastros/empresas")
+@RequestMapping(AppConstants.API_BASE_PATH + "/empresas")
 @RequiredArgsConstructor
-public class EmpresaController {
+public class EmpresaController extends BaseCrudController {
 
     private final EmpresaService empresaService;
 
@@ -35,7 +35,7 @@ public class EmpresaController {
      * Retorna todas as empresas cadastradas.
      */
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
+    @PreAuthorize("hasAuthority('EMPRESA:VISUALIZAR') or hasAuthority('EMPRESA:*') or hasAuthority('CADASTROS:*')")
     public ResponseEntity<Page<EmpresaResponse>> listar(Pageable pageable) {
         return ResponseEntity.ok(empresaService.listar(pageable));
     }
@@ -44,7 +44,7 @@ public class EmpresaController {
      * Retorna uma empresa pelo identificador.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
+    @PreAuthorize("hasAuthority('EMPRESA:VISUALIZAR') or hasAuthority('EMPRESA:*') or hasAuthority('CADASTROS:*')")
     public ResponseEntity<EmpresaResponse> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(empresaService.buscar(id));
     }
@@ -53,18 +53,17 @@ public class EmpresaController {
      * Cria uma empresa e devolve a URL do novo recurso.
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:CRIAR')")
+    @PreAuthorize("hasAuthority('EMPRESA:CRIAR') or hasAuthority('EMPRESA:*') or hasAuthority('CADASTROS:*')")
     public ResponseEntity<EmpresaResponse> criar(@Valid @RequestBody EmpresaRequest request) {
         EmpresaResponse response = empresaService.criar(request);
-        return ResponseEntity.created(URI.create(AppConstants.API_BASE_PATH + "/cadastros/empresas/" + response.id()))
-                .body(response);
+        return created(AppConstants.API_BASE_PATH + "/empresas", response.id(), response);
     }
 
     /**
      * Atualiza uma empresa existente.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:EDITAR')")
+    @PreAuthorize("hasAuthority('EMPRESA:EDITAR') or hasAuthority('EMPRESA:*') or hasAuthority('CADASTROS:*')")
     public ResponseEntity<EmpresaResponse> atualizar(@PathVariable UUID id, @Valid @RequestBody EmpresaRequest request) {
         return ResponseEntity.ok(empresaService.atualizar(id, request));
     }
@@ -73,7 +72,7 @@ public class EmpresaController {
      * Exclui logicamente uma empresa.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:EXCLUIR')")
+    @PreAuthorize("hasAuthority('EMPRESA:EXCLUIR') or hasAuthority('EMPRESA:*') or hasAuthority('CADASTROS:*')")
     public ResponseEntity<Void> excluir(@PathVariable UUID id) {
         empresaService.excluir(id);
         return ResponseEntity.noContent().build();

@@ -40,7 +40,7 @@ class CadastrosControllerTests {
         String accessToken = login().get("accessToken").asString();
         String cnpj = cnpjUnico();
 
-        String response = mockMvc.perform(post("/api/v1/cadastros/empresas")
+        String response = mockMvc.perform(post("/api/v1/empresas")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -49,6 +49,8 @@ class CadastrosControllerTests {
                                   "nomeFantasia": "Empresa Controller",
                                   "cnpj": "%s",
                                   "inscricaoEstadual": "ISENTO",
+                                  "regimeTributario": "SIMPLES_NACIONAL",
+                                  "crt": 1,
                                   "telefone": "71999990000",
                                   "email": "controller@empresa.com"
                                 }
@@ -62,7 +64,7 @@ class CadastrosControllerTests {
 
         JsonNode empresa = objectMapper.readTree(response);
 
-        mockMvc.perform(get("/api/v1/cadastros/empresas/" + empresa.get("id").asString())
+        mockMvc.perform(get("/api/v1/empresas/" + empresa.get("id").asString())
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("controller@empresa.com"));
@@ -73,7 +75,7 @@ class CadastrosControllerTests {
      */
     @Test
     void deveNegarListagemDeEmpresasSemToken() throws Exception {
-        mockMvc.perform(get("/api/v1/cadastros/empresas"))
+        mockMvc.perform(get("/api/v1/empresas"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -85,7 +87,7 @@ class CadastrosControllerTests {
         String accessToken = login().get("accessToken").asString();
         String cnpj = cnpjUnico();
 
-        String response = mockMvc.perform(post("/api/v1/cadastros/empresas")
+        String response = mockMvc.perform(post("/api/v1/empresas")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -94,6 +96,8 @@ class CadastrosControllerTests {
                                   "nomeFantasia": "Empresa Soft Delete",
                                   "cnpj": "%s",
                                   "inscricaoEstadual": "ISENTO",
+                                  "regimeTributario": "SIMPLES_NACIONAL",
+                                  "crt": 1,
                                   "telefone": "71999991111",
                                   "email": "softdelete@empresa.com"
                                 }
@@ -105,15 +109,15 @@ class CadastrosControllerTests {
 
         String empresaId = objectMapper.readTree(response).get("id").asString();
 
-        mockMvc.perform(delete("/api/v1/cadastros/empresas/" + empresaId)
+        mockMvc.perform(delete("/api/v1/empresas/" + empresaId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/cadastros/empresas/" + empresaId)
+        mockMvc.perform(get("/api/v1/empresas/" + empresaId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
 
-        String listagem = mockMvc.perform(get("/api/v1/cadastros/empresas")
+        String listagem = mockMvc.perform(get("/api/v1/empresas")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -259,7 +263,7 @@ class CadastrosControllerTests {
     }
 
     private String criarEmpresa(String accessToken, String cnpj) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/cadastros/empresas")
+        String response = mockMvc.perform(post("/api/v1/empresas")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -268,6 +272,8 @@ class CadastrosControllerTests {
                                   "nomeFantasia": "Empresa Base",
                                   "cnpj": "%s",
                                   "inscricaoEstadual": "ISENTO",
+                                  "regimeTributario": "SIMPLES_NACIONAL",
+                                  "crt": 1,
                                   "telefone": "71999990000",
                                   "email": "base%s@empresa.com"
                                 }

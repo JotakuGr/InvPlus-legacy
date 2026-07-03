@@ -2,7 +2,7 @@ package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.EstadoRequest;
 import br.com.invplus.modules.cadastros.repository.EstadoRepository;
-import br.com.invplus.shared.domain.exception.BusinessException;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,7 @@ public class EstadoValidator {
     public void validarCriacao(EstadoRequest request) {
         String uf = request.uf().trim().toUpperCase();
         if (estadoRepository.existsByPaisIdAndUfAndAtivoTrueAndDeletedAtIsNull(request.paisId(), uf)) {
-            throw new BusinessException("Ja existe estado ativo com esta UF para o pais informado");
+            throw new ConflictException("Ja existe estado ativo com esta UF para o pais informado");
         }
     }
 }

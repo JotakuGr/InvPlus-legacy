@@ -5,11 +5,17 @@ import java.util.List;
 
 public record ErrorResponse(
         boolean success,
+        OffsetDateTime timestamp,
+        int status,
+        String error,
         String message,
-        List<String> errors,
-        OffsetDateTime timestamp
+        String path,
+        List<String> errors
 ) {
-    public static ErrorResponse of(String message, List<String> errors) {
-        return new ErrorResponse(false, message, errors, OffsetDateTime.now());
+    /**
+     * Monta uma resposta padronizada para todos os erros da API.
+     */
+    public static ErrorResponse of(int status, String error, String message, String path, List<String> errors) {
+        return new ErrorResponse(false, OffsetDateTime.now(), status, error, message, path, errors);
     }
 }

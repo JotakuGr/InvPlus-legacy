@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Endpoints REST para metadados de arquivos do modulo Cadastros.
  */
 @RestController
-@RequestMapping(AppConstants.API_BASE_PATH + "/cadastros/arquivos")
+@RequestMapping(AppConstants.API_BASE_PATH + "/arquivos")
 @RequiredArgsConstructor
 public class ArquivoController {
 
@@ -36,7 +36,7 @@ public class ArquivoController {
      * Lista arquivos, opcionalmente filtrando por entidade vinculada.
      */
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
+    @PreAuthorize("hasAnyAuthority('ARQUIVO:VISUALIZAR', 'ARQUIVO:*', 'CADASTROS:*')")
     public ResponseEntity<Page<ArquivoResponse>> listar(
             @RequestParam(required = false) String entidade,
             @RequestParam(required = false) UUID entidadeId,
@@ -49,7 +49,7 @@ public class ArquivoController {
      * Retorna um arquivo pelo identificador.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
+    @PreAuthorize("hasAnyAuthority('ARQUIVO:VISUALIZAR', 'ARQUIVO:*', 'CADASTROS:*')")
     public ResponseEntity<ArquivoResponse> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(arquivoService.buscar(id));
     }
@@ -58,10 +58,10 @@ public class ArquivoController {
      * Cria metadados de arquivo e devolve a URL do novo recurso.
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:CRIAR')")
+    @PreAuthorize("hasAnyAuthority('ARQUIVO:CRIAR', 'ARQUIVO:*', 'CADASTROS:*')")
     public ResponseEntity<ArquivoResponse> criar(@Valid @RequestBody ArquivoRequest request) {
         ArquivoResponse response = arquivoService.criar(request);
-        return ResponseEntity.created(URI.create(AppConstants.API_BASE_PATH + "/cadastros/arquivos/" + response.id()))
+        return ResponseEntity.created(URI.create(AppConstants.API_BASE_PATH + "/arquivos/" + response.id()))
                 .body(response);
     }
 
@@ -69,7 +69,7 @@ public class ArquivoController {
      * Atualiza metadados de arquivo existentes.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:EDITAR')")
+    @PreAuthorize("hasAnyAuthority('ARQUIVO:EDITAR', 'ARQUIVO:*', 'CADASTROS:*')")
     public ResponseEntity<ArquivoResponse> atualizar(@PathVariable UUID id, @Valid @RequestBody ArquivoRequest request) {
         return ResponseEntity.ok(arquivoService.atualizar(id, request));
     }
@@ -78,7 +78,7 @@ public class ArquivoController {
      * Exclui logicamente os metadados de arquivo.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:EXCLUIR')")
+    @PreAuthorize("hasAnyAuthority('ARQUIVO:EXCLUIR', 'ARQUIVO:*', 'CADASTROS:*')")
     public ResponseEntity<Void> excluir(@PathVariable UUID id) {
         arquivoService.excluir(id);
         return ResponseEntity.noContent().build();
