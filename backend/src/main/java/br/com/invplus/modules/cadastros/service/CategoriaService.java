@@ -1,14 +1,7 @@
 package br.com.invplus.modules.cadastros.service;
 
-import br.com.invplus.modules.cadastros.dto.request.CategoriaRequest;
-import br.com.invplus.modules.cadastros.dto.response.CategoriaResponse;
-import br.com.invplus.modules.cadastros.entity.Categoria;
-import br.com.invplus.modules.cadastros.mapper.CategoriaMapper;
-import br.com.invplus.modules.cadastros.repository.CategoriaRepository;
-import br.com.invplus.modules.cadastros.validator.CategoriaValidator;
-import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -17,6 +10,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import br.com.invplus.modules.cadastros.dto.request.CategoriaRequest;
+import br.com.invplus.modules.cadastros.dto.response.CategoriaResponse;
+import br.com.invplus.modules.cadastros.entity.Categoria;
+import br.com.invplus.modules.cadastros.mapper.CategoriaMapper;
+import br.com.invplus.modules.cadastros.repository.CategoriaRepository;
+import br.com.invplus.modules.cadastros.validator.CategoriaValidator;
+import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Regras de negocio para categorias.

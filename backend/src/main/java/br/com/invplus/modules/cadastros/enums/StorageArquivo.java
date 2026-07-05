@@ -9,5 +9,6 @@ public enum StorageArquivo {
     S3,
     MINIO,
     AZURE,
-    GOOGLE_CLOUD
+    GOOGLE_CLOUD,
+    CLOUDFLARE_R2
 }

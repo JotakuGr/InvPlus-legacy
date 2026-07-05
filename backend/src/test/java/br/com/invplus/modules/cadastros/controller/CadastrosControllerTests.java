@@ -287,9 +287,7 @@ class CadastrosControllerTests {
     }
 
     private String codigoIso2Unico() {
-        long valor = Math.abs(System.nanoTime());
-        char primeiro = (char) ('A' + (valor % 26));
-        char segundo = (char) ('A' + ((valor / 26) % 26));
-        return "" + primeiro + segundo;
+        long valor = Math.abs(System.nanoTime() % 1296);
+        return "%2s".formatted(Long.toString(valor, 36).toUpperCase()).replace(' ', '0');
     }
 }

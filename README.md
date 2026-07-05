@@ -341,6 +341,26 @@ V32__schema_contato_pessoa.sql
 V33__permissoes_contato_pessoa.sql
 V34__schema_documento_pessoa.sql
 V35__permissoes_documento_pessoa.sql
+V36__schema_produto.sql
+V37__permissoes_produto.sql
+V38__schema_produto_fornecedor.sql
+V39__permissoes_produto_fornecedor.sql
+V40__produto_fornecedor_melhorias.sql
+V41__permissoes_produto_fornecedor_preco.sql
+V42__schema_produto_fiscal.sql
+V43__permissoes_produto_fiscal.sql
+V44__produto_tipo_natureza.sql
+V45__produto_status_controles.sql
+V46__arquivo_cloudflare_r2.sql
+V47__schema_produto_imagem.sql
+V48__permissoes_produto_imagem.sql
+V49__schema_produto_codigo_barras.sql
+V50__permissoes_produto_codigo_barras.sql
+V51__schema_produto_preco.sql
+V52__permissoes_produto_preco.sql
+V53__schema_produto_unidade.sql
+V54__permissoes_produto_unidade.sql
+V55__produto_unidade_fracionamento.sql
 ```
 
 ### Migration V1
@@ -486,6 +506,8 @@ Refina `arquivo` para a fase 2:
 - prepara armazenamento em `LOCAL`, `S3`, `MINIO`, `AZURE` e `GOOGLE_CLOUD`;
 - adiciona índices para registros ativos, hash SHA-256 e vínculo `entidade/entidade_id`;
 - adiciona checks para tamanho positivo, storage válido e formato do hash SHA-256.
+
+O upload fisico de arquivos foi preparado com a camada `shared/storage`, provider local inicial e suporte futuro para Cloudflare R2. Em desenvolvimento, arquivos locais podem ser publicados em `/uploads/**`.
 
 ### Migration V19
 
@@ -660,6 +682,239 @@ Adiciona e vincula ao perfil `ADMIN` as permissoes:
 - `DOCUMENTO_PESSOA:VISUALIZAR`
 - `DOCUMENTO_PESSOA:EDITAR`
 - `DOCUMENTO_PESSOA:EXCLUIR`
+
+### Migration V36
+
+Cria a tabela `produto`, centro do modulo Produtos:
+
+- codigo e nome obrigatorios;
+- vinculo obrigatorio com `categoria` e `unidade_medida`;
+- vinculo opcional com `marca`;
+- campos de SKU, codigo interno, codigo de barras, descricao, precos, pesos, dimensoes e estoque minimo;
+- controles `controla_lote`, `controla_validade` e `permite_fracionamento`;
+- unicidade parcial de codigo, SKU e codigo de barras apenas entre produtos ativos;
+- checks para precos, pesos, dimensoes e estoque minimo nao negativos;
+- indices para categoria, marca, unidade e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V37
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `PRODUTO:*`
+- `PRODUTO:CRIAR`
+- `PRODUTO:VISUALIZAR`
+- `PRODUTO:EDITAR`
+- `PRODUTO:EXCLUIR`
+
+### Migration V38
+
+Cria a tabela `produto_fornecedor`, usada por compras, cotacoes, entrada de mercadoria e historico de custo:
+
+- vinculo obrigatorio com `produto`;
+- vinculo obrigatorio com `fornecedor`;
+- codigo do produto no fornecedor;
+- preco do fornecedor;
+- prazo de entrega em dias;
+- marcador de fornecedor principal;
+- unicidade ativa para `produto_id + fornecedor_id`;
+- unicidade parcial permitindo apenas um fornecedor principal ativo por produto;
+- checks para preco e prazo nao negativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V39
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `PRODUTO_FORNECEDOR:*`
+- `PRODUTO_FORNECEDOR:CRIAR`
+- `PRODUTO_FORNECEDOR:VISUALIZAR`
+- `PRODUTO_FORNECEDOR:EDITAR`
+- `PRODUTO_FORNECEDOR:EXCLUIR`
+
+### Migration V40
+
+Melhora `produto_fornecedor` para processos de compras e cria historico de custos:
+
+- renomeia `prazo_entrega_dias` para `lead_time_dias`;
+- adiciona `prioridade`;
+- adiciona `status` com `HOMOLOGADO`, `PREFERENCIAL`, `EVENTUAL` e `BLOQUEADO`;
+- cria indice por prioridade para selecao do proximo fornecedor;
+- cria tabela `produto_fornecedor_preco`;
+- registra `preco`, `vigencia_inicio` e `vigencia_fim`;
+- impede duplicidade ativa de preco na mesma vigencia inicial;
+- valida preco nao negativo e vigencia final posterior ou igual a inicial.
+
+### Migration V41
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `PRODUTO_FORNECEDOR_PRECO:*`
+- `PRODUTO_FORNECEDOR_PRECO:CRIAR`
+- `PRODUTO_FORNECEDOR_PRECO:VISUALIZAR`
+- `PRODUTO_FORNECEDOR_PRECO:EDITAR`
+- `PRODUTO_FORNECEDOR_PRECO:EXCLUIR`
+
+### Migration V42
+
+Cria a tabela `produto_fiscal`, separando dados tributarios do cadastro comercial do produto:
+
+- vinculo obrigatorio e unico ativo com `produto`;
+- `ncm` obrigatorio com 8 digitos;
+- `cest` opcional com 7 digitos quando informado;
+- `origem_mercadoria` controlada por enum;
+- campos fiscais para CFOP, CST ICMS, CSOSN, CST PIS e CST COFINS;
+- aliquotas de ICMS, IPI, PIS e COFINS nao negativas;
+- indices para produto, NCM e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V43
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `PRODUTO_FISCAL:*`
+- `PRODUTO_FISCAL:CRIAR`
+- `PRODUTO_FISCAL:VISUALIZAR`
+- `PRODUTO_FISCAL:EDITAR`
+- `PRODUTO_FISCAL:EXCLUIR`
+
+### Migration V44
+
+Adiciona classificacao operacional ao cadastro de Produto:
+
+- `tipo_produto`, com valores `PRODUTO`, `SERVICO`, `MATERIA_PRIMA`, `INSUMO`, `EMBALAGEM`, `COMBUSTIVEL`, `ATIVO_IMOBILIZADO` e `USO_CONSUMO`;
+- `natureza_produto`, com valores `VENDA`, `COMPRA` e `AMBOS`;
+- defaults conservadores `PRODUTO` e `AMBOS` para manter compatibilidade com registros e payloads existentes;
+- constraint de domínio para os dois enums;
+- índice parcial `tipo_produto/natureza_produto` para listagens de catálogo.
+
+### Migration V45
+
+Adiciona estado operacional e controles explicitos ao Produto:
+
+- `status_produto`, com valores `EM_DESENVOLVIMENTO`, `ATIVO`, `DESCONTINUADO`, `BLOQUEADO` e `SUSPENSO`;
+- `controla_estoque`, separando produto/servico que movimenta estoque de item cadastral que nao movimenta;
+- `permite_compra`, para habilitar fluxos de compras independentemente da natureza macro;
+- `permite_venda`, para habilitar fluxos de venda independentemente da natureza macro;
+- defaults `ATIVO`, `true`, `true` e `true` para manter compatibilidade com produtos existentes;
+- indices para status e controles operacionais.
+
+### Migration V46
+
+Prepara `arquivo.storage` para Cloudflare R2:
+
+- adiciona `CLOUDFLARE_R2` aos provedores aceitos pela constraint `chk_arquivo_storage`;
+- mantém compatibilidade com `LOCAL`, `S3`, `MINIO`, `AZURE` e `GOOGLE_CLOUD`;
+- atualiza o comentário da coluna `storage`.
+
+### Migration V47
+
+Cria a tabela `produto_imagem` para vincular Produto e Arquivo:
+
+- `produto_id` obrigatório;
+- `arquivo_id` obrigatório;
+- `principal` para imagem principal do produto;
+- `ordem` para ordenação visual;
+- `descricao` opcional;
+- unicidade ativa para `produto_id + arquivo_id`;
+- unicidade parcial permitindo apenas uma imagem principal ativa por produto;
+- check para `ordem >= 0`;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V48
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `PRODUTO_IMAGEM:*`
+- `PRODUTO_IMAGEM:CRIAR`
+- `PRODUTO_IMAGEM:VISUALIZAR`
+- `PRODUTO_IMAGEM:EDITAR`
+- `PRODUTO_IMAGEM:EXCLUIR`
+
+### Migration V49
+
+Cria a tabela `produto_codigo_barras` para permitir múltiplos códigos por produto:
+
+- `produto_id` obrigatório;
+- `tipo_codigo` com valores `EAN_UNIDADE`, `EAN_CAIXA`, `EAN_PACOTE`, `GTIN_LOGISTICO` e `CODIGO_INTERNO_ALTERNATIVO`;
+- `codigo` obrigatório;
+- `principal` para indicar o código preferencial do produto;
+- `observacao` opcional;
+- unicidade ativa global para `codigo`;
+- unicidade ativa para `produto_id + codigo`;
+- unicidade parcial permitindo apenas um código principal ativo por produto;
+- índices para produto, tipo e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V50
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `PRODUTO_CODIGO_BARRAS:*`
+- `PRODUTO_CODIGO_BARRAS:CRIAR`
+- `PRODUTO_CODIGO_BARRAS:VISUALIZAR`
+- `PRODUTO_CODIGO_BARRAS:EDITAR`
+- `PRODUTO_CODIGO_BARRAS:EXCLUIR`
+
+### Migration V51
+
+Cria a tabela `produto_preco` para histórico de preços comerciais:
+
+- `produto_id` obrigatório;
+- `empresa_id` opcional, preparando precificação multiempresa;
+- `tipo_preco` com valores `CUSTO`, `VENDA`, `ATACADO`, `VAREJO`, `PROMOCIONAL` e `ESPECIAL`;
+- `preco` com `NUMERIC(15,4)`;
+- `vigencia_inicio` obrigatória;
+- `vigencia_fim` opcional;
+- `principal` para preço preferencial por produto/tipo/empresa;
+- unicidade ativa para produto + tipo + empresa + vigência inicial;
+- unicidade parcial permitindo apenas um preço principal ativo por produto/tipo/empresa;
+- índices para produto, empresa, tipo, vigência e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V52
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `PRODUTO_PRECO:*`
+- `PRODUTO_PRECO:CRIAR`
+- `PRODUTO_PRECO:VISUALIZAR`
+- `PRODUTO_PRECO:EDITAR`
+- `PRODUTO_PRECO:EXCLUIR`
+
+### Migration V53
+
+Cria a tabela `produto_unidade` para conversão de unidades do produto:
+
+- `produto_id` obrigatório;
+- `unidade_medida_id` obrigatório;
+- `fator_conversao` maior que zero;
+- `unidade_padrao` para unidade base de conversão;
+- flags `permite_compra`, `permite_venda` e `permite_estoque`;
+- `observacao` opcional;
+- unicidade ativa para produto + unidade;
+- unicidade parcial permitindo apenas uma unidade padrão ativa por produto;
+- check exigindo fator `1` quando `unidade_padrao = true`;
+- índices para produto, unidade e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V54
+
+Adiciona e vincula ao perfil `ADMIN` as permissões:
+
+- `PRODUTO_UNIDADE:*`
+- `PRODUTO_UNIDADE:CRIAR`
+- `PRODUTO_UNIDADE:VISUALIZAR`
+- `PRODUTO_UNIDADE:EDITAR`
+- `PRODUTO_UNIDADE:EXCLUIR`
+
+### Migration V55
+
+Refina `produto_unidade` com a flag `permite_fracionamento`, separando a regra de venda fracionada das flags de compra, venda e estoque:
+
+- adiciona `permite_fracionamento` com default `false`;
+- cria índice parcial para consultas de unidades fracionáveis ativas;
+- mantém compatibilidade com registros já existentes.
 
 Convenções do banco:
 - PKs do tipo `UUID` com `gen_random_uuid()`
@@ -896,8 +1151,8 @@ Testes existentes:
 - `MarcaControllerTests`: valida CRUD completo, nome duplicado, paginação, soft delete, `401` sem token e `403` sem permissão.
 - `EmpresaServiceTest`: valida criação, CNPJ único ativo, CNPJ inválido, email inválido, paginação e exclusão lógica.
 - `EmpresaControllerTests`: valida CRUD completo, CNPJ duplicado, paginação, soft delete, `401` sem token, `403` sem permissão, email inválido e CNPJ inválido.
-- `ArquivoServiceTest`: valida criação, hash SHA-256 único ativo, hash inválido, paginação e exclusão lógica.
-- `ArquivoControllerTests`: valida CRUD completo, hash duplicado, paginação, filtro por entidade, soft delete, `401` sem token, `403` sem permissão e hash inválido.
+- `ArquivoServiceTest`: valida criação, hash SHA-256 único ativo, hash inválido, paginação, exclusão lógica, upload válido, arquivo vazio, tipo MIME não permitido, limite de 10 MB e metadados salvos.
+- `ArquivoControllerTests`: valida CRUD completo, upload multipart, hash duplicado, paginação, filtro por entidade, soft delete, `401` sem token, `403` sem permissão, hash inválido, arquivo vazio, tipo não permitido e limite de tamanho.
 - `PessoaServiceTest`: valida pessoa física, pessoa jurídica, CPF/CNPJ único ativo, CPF/CNPJ imutável após criação, documento incompatível com tipo, paginação e exclusão lógica.
 - `PessoaControllerTests`: valida CRUD completo, pessoa jurídica, CPF/CNPJ duplicado, bloqueio de alteração de CPF/CNPJ, paginação, soft delete, `401` sem token, `403` sem permissão e documentos incompatíveis com o tipo.
 - `ClienteServiceTest`: valida criação de cliente, pessoa inexistente/inativa, duplicidade por pessoa, limite de crédito negativo, busca, paginação, atualização e exclusão lógica.
@@ -912,6 +1167,27 @@ Testes existentes:
 - `ContatoPessoaControllerTests`: valida CRUD completo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente, nome obrigatório e email inválido.
 - `DocumentoPessoaServiceTest`: valida criação sem arquivo, criação com arquivo, pessoa inexistente/inativa, arquivo inexistente/inativo, documento duplicado, datas inválidas, busca, paginação, atualização e exclusão lógica.
 - `DocumentoPessoaControllerTests`: valida CRUD completo, criação com arquivo, paginação, soft delete, `401` sem token, `403` sem permissão, pessoa inexistente, arquivo inexistente, duplicidade e validade anterior à emissão.
+- `ProdutoServiceTest`: valida criação de produto, referências inexistentes/inativas, duplicidades de código/SKU/código de barras, código de barras inválido, filtros avançados, busca rápida, preço negativo, busca, paginação, atualização e exclusão lógica.
+- `ProdutoControllerTests`: valida CRUD completo, filtros por nome/código/SKU/código de barras/categoria/marca/ativo, busca rápida, paginação, soft delete, `401` sem token, `403` sem permissão, referências inexistentes, duplicidades, código de barras inválido e preço inválido.
+- `ProdutoFornecedorServiceTest`: valida criação de vínculo produto-fornecedor, produto/fornecedor inexistente ou inativo, duplicidade, lead time negativo, prioridade negativa, segundo fornecedor principal, atualização mantendo principal, filtros, busca e exclusão lógica.
+- `ProdutoFornecedorControllerTests`: valida CRUD completo, filtros por produto, fornecedor, principal, status e código do fornecedor, paginação, soft delete, `401` sem token e `403` sem permissão.
+- `ProdutoFornecedorPrecoServiceTest`: valida criação de preço histórico, duplicidade por vigência inicial, vigência inválida, filtros e exclusão lógica.
+- `ProdutoFiscalServiceTest`: valida criação fiscal, produto inexistente/inativo, duplicidade por produto, NCM inválido, CEST inválido, alíquota negativa, busca, filtros, atualização e exclusão lógica.
+- `ProdutoFiscalControllerTests`: valida CRUD completo, filtros por produto/NCM/CEST/origem/ativo, paginação, soft delete, `401` sem token, `403` sem permissão, produto inexistente, duplicidade, NCM inválido, CEST inválido e alíquota inválida.
+- `ProdutoBusinessFlowIntegrationTest`: valida o fluxo completo Pessoa Jurídica -> Fornecedor -> Categoria/Marca/UnidadeMedida -> Produto -> ProdutoFornecedor -> ProdutoFornecedorPreco -> ProdutoFiscal, confirmando vínculos e buscas principais entre Cadastros, Pessoas, Produtos e Fiscal básico.
+- `ProdutoImagemServiceTest`: valida criação de imagem, produto/arquivo inexistente, duplicidade produto+arquivo, ordem negativa, segunda imagem principal, filtros, atualização mantendo principal e exclusão lógica.
+- `ProdutoImagemControllerTests`: valida CRUD completo, filtros por produto/arquivo/principal/ativo, upload prévio de arquivo, duplicidade, ordem negativa, segunda imagem principal, `401` sem token e `403` sem permissão.
+- `ProdutoImagemBusinessFlowIntegrationTest`: valida o fluxo real Produto -> upload de Arquivo -> ProdutoImagem, confirmando vínculos e filtros principais.
+- `ProdutoCodigoBarrasServiceTest`: valida criação de código, produto inexistente, código duplicado, código obrigatório, segundo código principal, filtros, atualização mantendo principal e exclusão lógica.
+- `ProdutoCodigoBarrasControllerTests`: valida CRUD completo, filtros por produto/tipo/código/principal/ativo, duplicidade, segundo principal, código vazio, `401` sem token e `403` sem permissão.
+- `ProdutoCodigoBarrasBusinessFlowIntegrationTest`: valida o fluxo real Categoria/Marca/UnidadeMedida -> Produto -> ProdutoCodigoBarras, confirmando vínculos e filtros principais.
+- `ProdutoPrecoServiceTest`: valida criação de preço global e por empresa, produto/empresa inexistente, duplicidade por vigência, preço negativo, vigência inválida, segundo preço principal, filtros, atualização mantendo principal e exclusão lógica.
+- `ProdutoPrecoControllerTests`: valida CRUD completo, filtros por produto/tipo/principal/ativo/vigência, busca de preço vigente, duplicidade, segundo principal, preço negativo, vigência inválida, `401` sem token e `403` sem permissão.
+- `ProdutoPrecoBusinessFlowIntegrationTest`: valida o fluxo real Categoria/Marca/UnidadeMedida -> Produto -> ProdutoPreco, confirmando vínculos, filtros principais e leitura agregada do produto completo.
+- `ProdutoUnidadeServiceTest`: valida criação de unidade, produto/unidade inexistente, duplicidade produto+unidade, fator zero/negativo, unidade padrão com fator diferente de 1, segunda unidade padrão, fracionamento, filtros, atualização mantendo padrão e exclusão lógica.
+- `ProdutoUnidadeControllerTests`: valida CRUD completo, filtros por produto/unidade/padrão/flags/fracionamento/ativo, duplicidade, fatores inválidos, segunda unidade padrão, `401` sem token e `403` sem permissão.
+- `ProdutoUnidadeBusinessFlowIntegrationTest`: valida o fluxo real Produto -> ProdutoUnidade, confirmando vínculos, filtros principais e leitura agregada do produto completo.
+- `MigrationIdempotencyTest`: valida que migrations com `INSERT INTO` tenham proteção idempotente com `ON CONFLICT` ou `WHERE NOT EXISTS`, evitando duplicidade em seeds técnicos.
 
 Para executar:
 
@@ -924,10 +1200,44 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 177, Failures: 0, Errors: 0
+Tests run: 324, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
+
+### Politica de inserts em migrations
+
+- Migrations de schema devem focar em tabelas, colunas, indices, constraints, triggers e comentarios.
+- Inserts em migrations devem ser usados apenas para dados tecnicos do sistema, como permissoes, perfis, usuario administrador inicial e vinculos de seguranca.
+- Todo `INSERT INTO` deve ser idempotente, usando `ON CONFLICT` ou `WHERE NOT EXISTS`.
+- Dados operacionais ou demonstrativos nao devem entrar nas migrations versionadas de producao.
+
+### Storage e upload
+
+Configuracoes principais:
+
+```yaml
+invplus:
+  storage:
+    provider: ${INVPLUS_STORAGE_PROVIDER:LOCAL}
+    local-path: ${INVPLUS_STORAGE_LOCAL_PATH:./uploads}
+    public-base-url: ${INVPLUS_STORAGE_PUBLIC_BASE_URL:http://localhost:8080/uploads}
+  cdn:
+    enabled: ${INVPLUS_CDN_ENABLED:false}
+    base-url: ${INVPLUS_CDN_BASE_URL:http://localhost:8080/uploads}
+```
+
+Endpoint de upload:
+
+```text
+POST /api/v1/arquivos/upload
+multipart/form-data:
+  file
+  entidade
+  entidadeId
+```
+
+Tipos permitidos inicialmente: `image/jpeg`, `image/png`, `image/webp` e `application/pdf`. Tamanho maximo: 10 MB. O provider local grava em `./uploads` por padrao e `/uploads/**` fica liberado no Spring Security para desenvolvimento.
 
 ---
 
@@ -1026,6 +1336,26 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - `V33__permissoes_contato_pessoa.sql` adiciona permissões `CONTATO_PESSOA:*` e CRUD de ContatoPessoa.
 - `V34__schema_documento_pessoa.sql` cria documentos cadastrais vinculados a Pessoa e opcionalmente a Arquivo.
 - `V35__permissoes_documento_pessoa.sql` adiciona permissões `DOCUMENTO_PESSOA:*` e CRUD de DocumentoPessoa.
+- `V36__schema_produto.sql` cria a tabela central `produto`.
+- `V37__permissoes_produto.sql` adiciona permissões `PRODUTO:*` e CRUD de Produto.
+- `V38__schema_produto_fornecedor.sql` cria o vínculo entre Produto e Fornecedor.
+- `V39__permissoes_produto_fornecedor.sql` adiciona permissões `PRODUTO_FORNECEDOR:*` e CRUD de ProdutoFornecedor.
+- `V40__produto_fornecedor_melhorias.sql` adiciona prioridade, status, lead time e histórico de preços de fornecedor.
+- `V41__permissoes_produto_fornecedor_preco.sql` adiciona permissões `PRODUTO_FORNECEDOR_PRECO:*` e CRUD do histórico de preços.
+- `V42__schema_produto_fiscal.sql` cria dados fiscais separados do cadastro comercial do produto.
+- `V43__permissoes_produto_fiscal.sql` adiciona permissões `PRODUTO_FISCAL:*` e CRUD de ProdutoFiscal.
+- `V44__produto_tipo_natureza.sql` adiciona `tipo_produto` e `natureza_produto` ao cadastro de Produto.
+- `V45__produto_status_controles.sql` adiciona status e controles operacionais de estoque, compra e venda ao Produto.
+- `V46__arquivo_cloudflare_r2.sql` adiciona `CLOUDFLARE_R2` aos storages aceitos em Arquivo.
+- `V47__schema_produto_imagem.sql` cria o vínculo entre Produto e Arquivo para imagens.
+- `V48__permissoes_produto_imagem.sql` adiciona permissões `PRODUTO_IMAGEM:*` e CRUD de ProdutoImagem.
+- `V49__schema_produto_codigo_barras.sql` cria múltiplos códigos de barras por Produto.
+- `V50__permissoes_produto_codigo_barras.sql` adiciona permissões `PRODUTO_CODIGO_BARRAS:*` e CRUD de ProdutoCodigoBarras.
+- `V51__schema_produto_preco.sql` cria histórico de preços comerciais por produto, tipo, vigência e empresa opcional.
+- `V52__permissoes_produto_preco.sql` adiciona permissões `PRODUTO_PRECO:*` e CRUD de ProdutoPreco.
+- `V53__schema_produto_unidade.sql` cria unidades alternativas e fatores de conversão por Produto.
+- `V54__permissoes_produto_unidade.sql` adiciona permissões `PRODUTO_UNIDADE:*` e CRUD de ProdutoUnidade.
+- `V55__produto_unidade_fracionamento.sql` adiciona `permite_fracionamento` em ProdutoUnidade e índice parcial para consultas ativas.
 
 ### Docker
 
@@ -1065,7 +1395,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
  ├── [x] 7.  Segurança (JWT + Perfis)
  ├── [x] 8.  Cadastros - fases 1 e 2
  ├── [ ] 9.  Pessoas - iniciado com Pessoa, PessoaRole, Cliente, Fornecedor, Funcionário, Transportadora, ContatoPessoa e DocumentoPessoa
- ├── [ ] 10. Produtos
+ ├── [ ] 10. Produtos - iniciado com Produto, ProdutoFornecedor, ProdutoFornecedorPreco e ProdutoFiscal
  ├── [ ] 11. Estoque
  ├── [ ] 12. Compras
  ├── [ ] 13. Vendas
@@ -1115,12 +1445,16 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - [x] PessoaRole criado para registrar papeis ativos do aggregate Pessoa
 - [x] Entidade ContatoPessoa concluída para contatos operacionais da Pessoa
 - [x] Entidade DocumentoPessoa concluída para documentos cadastrais da Pessoa
+- [x] Módulo Produtos iniciado com entidade Produto
+- [x] Entidade ProdutoFiscal concluída para dados tributários separados do produto
+- [x] Produto classificado por `TipoProduto` e `NaturezaProduto`
+- [x] Produto com `StatusProduto`, `controlaEstoque`, `permiteCompra` e `permiteVenda`
 
 ### ⬜ Backend
 - [x] Módulo de Segurança (JWT)
 - [x] Módulo de Cadastros - fases 1 e 2
 - [ ] Módulo de Pessoas iniciado com Pessoa, PessoaRole, Cliente, Fornecedor, Funcionário, Transportadora, ContatoPessoa e DocumentoPessoa
-- [ ] Módulo de Produtos
+- [x] Módulo de Produtos iniciado com Produto, ProdutoFornecedor, ProdutoFornecedorPreco e ProdutoFiscal
 - [ ] Módulo de Estoque
 - [ ] Módulo de Compras
 - [ ] Módulo de Vendas
@@ -1209,10 +1543,199 @@ chore(docker): configura docker-compose para ambiente local
 
 ```
 GET    /api/v1/produtos          → listar
+GET    /api/v1/produtos/search   → busca rápida por termo
 GET    /api/v1/produtos/{id}     → buscar por id
+GET    /api/v1/produtos/{id}/completo → buscar visão agregada do produto
 POST   /api/v1/produtos          → criar
 PUT    /api/v1/produtos/{id}     → atualizar
 DELETE /api/v1/produtos/{id}     → remover (soft delete)
+GET    /api/v1/produtos-fornecedores      → listar vínculos produto-fornecedor
+GET    /api/v1/produtos-fornecedores/{id} → buscar vínculo por id
+POST   /api/v1/produtos-fornecedores      → criar vínculo
+PUT    /api/v1/produtos-fornecedores/{id} → atualizar vínculo
+DELETE /api/v1/produtos-fornecedores/{id} → remover vínculo (soft delete)
+GET    /api/v1/produtos-fornecedores-precos      → listar histórico de preços
+GET    /api/v1/produtos-fornecedores-precos/{id} → buscar preço por id
+POST   /api/v1/produtos-fornecedores-precos      → criar preço
+PUT    /api/v1/produtos-fornecedores-precos/{id} → atualizar preço
+DELETE /api/v1/produtos-fornecedores-precos/{id} → remover preço (soft delete)
+GET    /api/v1/produtos-fiscais      → listar dados fiscais
+GET    /api/v1/produtos-fiscais/{id} → buscar dado fiscal por id
+POST   /api/v1/produtos-fiscais      → criar dado fiscal
+PUT    /api/v1/produtos-fiscais/{id} → atualizar dado fiscal
+DELETE /api/v1/produtos-fiscais/{id} → remover dado fiscal (soft delete)
+POST   /api/v1/arquivos/upload        → upload multipart e registro de metadados
+GET    /api/v1/produtos-imagens      → listar imagens de produto
+GET    /api/v1/produtos-imagens/{id} → buscar imagem por id
+POST   /api/v1/produtos-imagens      → vincular Produto e Arquivo
+PUT    /api/v1/produtos-imagens/{id} → atualizar vínculo de imagem
+DELETE /api/v1/produtos-imagens/{id} → remover vínculo de imagem (soft delete)
+GET    /api/v1/produtos-codigos-barras      → listar códigos de barras
+GET    /api/v1/produtos-codigos-barras/{id} → buscar código de barras por id
+POST   /api/v1/produtos-codigos-barras      → criar código de barras
+PUT    /api/v1/produtos-codigos-barras/{id} → atualizar código de barras
+DELETE /api/v1/produtos-codigos-barras/{id} → remover código de barras (soft delete)
+GET    /api/v1/produtos-precos      → listar preços de produto
+GET    /api/v1/produtos-precos/vigente → buscar preço vigente por produto, tipo e data
+GET    /api/v1/produtos-precos/{id} → buscar preço por id
+POST   /api/v1/produtos-precos      → criar preço
+PUT    /api/v1/produtos-precos/{id} → atualizar preço
+DELETE /api/v1/produtos-precos/{id} → remover preço (soft delete)
+GET    /api/v1/produtos-unidades      → listar unidades do produto
+GET    /api/v1/produtos-unidades/{id} → buscar unidade por id
+POST   /api/v1/produtos-unidades      → criar unidade do produto
+PUT    /api/v1/produtos-unidades/{id} → atualizar unidade do produto
+DELETE /api/v1/produtos-unidades/{id} → remover unidade do produto (soft delete)
+```
+
+Filtros aceitos em `GET /api/v1/produtos`:
+
+```text
+nome
+codigo
+sku
+codigoBarras
+categoriaId
+marcaId
+tipoProduto
+naturezaProduto
+statusProduto
+controlaEstoque
+permiteCompra
+permiteVenda
+ativo
+page
+size
+sort
+```
+
+Busca rápida:
+
+```text
+GET /api/v1/produtos/search?termo=...
+```
+
+A busca rápida pesquisa em nome, código, SKU e código de barras. O código de barras é validado de forma flexível para GTIN, aceitando 8, 12, 13 ou 14 dígitos numéricos.
+
+Enums de Produto:
+
+```text
+TipoProduto:
+PRODUTO
+SERVICO
+MATERIA_PRIMA
+INSUMO
+EMBALAGEM
+COMBUSTIVEL
+ATIVO_IMOBILIZADO
+USO_CONSUMO
+
+NaturezaProduto:
+VENDA
+COMPRA
+AMBOS
+
+StatusProduto:
+EM_DESENVOLVIMENTO
+ATIVO
+DESCONTINUADO
+BLOQUEADO
+SUSPENSO
+```
+
+Filtros aceitos em `GET /api/v1/produtos-fornecedores`:
+
+```text
+produtoId
+fornecedorId
+principal
+ativo
+codigoFornecedor
+status
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/produtos-fornecedores-precos`:
+
+```text
+produtoFornecedorId
+vigenciaInicioDe
+vigenciaFimAte
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/produtos-fiscais`:
+
+```text
+produtoId
+ncm
+cest
+origemMercadoria
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/produtos-imagens`:
+
+```text
+produtoId
+arquivoId
+principal
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/produtos-codigos-barras`:
+
+```text
+produtoId
+tipoCodigo
+codigo
+principal
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/produtos-precos`:
+
+```text
+produtoId
+empresaId
+tipoPreco
+principal
+vigenciaInicioDe
+vigenciaFimAte
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/produtos-unidades`:
+
+```text
+produtoId
+unidadeMedidaId
+unidadePadrao
+permiteCompra
+permiteVenda
+permiteEstoque
+permiteFracionamento
+ativo
+page
+size
+sort
 ```
 
 ### Padrão de resposta da API

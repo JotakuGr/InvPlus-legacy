@@ -267,6 +267,26 @@ Migrations atuais ja implementadas:
 - `V33__permissoes_contato_pessoa.sql`
 - `V34__schema_documento_pessoa.sql`
 - `V35__permissoes_documento_pessoa.sql`
+- `V36__schema_produto.sql`
+- `V37__permissoes_produto.sql`
+- `V38__schema_produto_fornecedor.sql`
+- `V39__permissoes_produto_fornecedor.sql`
+- `V40__produto_fornecedor_melhorias.sql`
+- `V41__permissoes_produto_fornecedor_preco.sql`
+- `V42__schema_produto_fiscal.sql`
+- `V43__permissoes_produto_fiscal.sql`
+- `V44__produto_tipo_natureza.sql`
+- `V45__produto_status_controles.sql`
+- `V46__arquivo_cloudflare_r2.sql`
+- `V47__schema_produto_imagem.sql`
+- `V48__permissoes_produto_imagem.sql`
+- `V49__schema_produto_codigo_barras.sql`
+- `V50__permissoes_produto_codigo_barras.sql`
+- `V51__schema_produto_preco.sql`
+- `V52__permissoes_produto_preco.sql`
+- `V53__schema_produto_unidade.sql`
+- `V54__permissoes_produto_unidade.sql`
+- `V55__produto_unidade_fracionamento.sql`
 
 ## Docker
 
@@ -317,7 +337,19 @@ Essa entidade usa o endpoint `/api/v1/empresas`, paginacao, cache, permissao gra
 - `modules/cadastros/service/ArquivoServiceTest.java`
 - `modules/cadastros/controller/ArquivoControllerTests.java`
 
-Essa entidade usa o endpoint `/api/v1/arquivos`, paginacao, cache, permissao granular `ARQUIVO`, permissao wildcard `ARQUIVO:*`, storage multi-provedor (`LOCAL`, `S3`, `MINIO`, `AZURE`, `GOOGLE_CLOUD`), hash SHA-256 unico entre registros ativos, vinculo generico `entidade/entidadeId` e soft delete por padrao.
+Essa entidade usa o endpoint `/api/v1/arquivos`, paginacao, cache, permissao granular `ARQUIVO`, permissao wildcard `ARQUIVO:*`, storage multi-provedor (`LOCAL`, `S3`, `MINIO`, `AZURE`, `GOOGLE_CLOUD`, `CLOUDFLARE_R2`), hash SHA-256 unico entre registros ativos, vinculo generico `entidade/entidadeId` e soft delete por padrao. O endpoint `POST /api/v1/arquivos/upload` recebe multipart, valida tipo/tamanho, grava o binario pelo `shared/storage`, salva metadados e retorna `ArquivoResponse`.
+
+`shared/storage` centraliza a infraestrutura de arquivos:
+
+- `StorageProvider.java`
+- `StorageProperties.java`
+- `StoredFile.java`
+- `StorageService.java`
+- `LocalStorageService.java`
+- `StorageFacade.java`
+- `StorageWebConfig.java`
+
+O provider LOCAL grava em disco, calcula SHA-256, gera nome unico e monta URL publica. Cloudflare R2 ja esta previsto no enum e na constraint de banco, mas a implementacao fisica sera adicionada quando as credenciais e bucket forem definidos.
 
 `Pessoa` inicia o modulo Pessoas com testes dedicados:
 
@@ -376,6 +408,82 @@ Essa entidade usa o endpoint `/api/v1/contatos-pessoa`, paginacao, permissoes `C
 
 Essa entidade usa o endpoint `/api/v1/documentos-pessoa`, paginacao, permissoes `DOCUMENTO_PESSOA:*`, `PESSOAS:*` e CRUD granular. DocumentoPessoa guarda documentos cadastrais da Pessoa, como RG, CPF, CNH, contrato social, alvara, licenca sanitaria, certificado digital e comprovante de endereco. Pode se vincular opcionalmente a `Arquivo`, impede duplicidade ativa por pessoa/tipo/numero, valida validade posterior ou igual a emissao e usa soft delete por padrao.
 
+`Produto` inicia o modulo Produtos com testes dedicados:
+
+- `modules/produtos/service/ProdutoServiceTest.java`
+- `modules/produtos/controller/ProdutoControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos`, paginacao, permissoes `PRODUTO:*` e CRUD granular. Produto referencia Categoria, UnidadeMedida e, opcionalmente, Marca. Guarda codigo, SKU, codigo interno, codigo de barras, nome, descricao, tipo, natureza, status, precos, pesos, dimensoes, estoque minimo e controles de lote, validade, fracionamento, estoque, compra e venda. Impede duplicidade ativa de codigo, SKU e codigo de barras, valida valores nao negativos, valida codigo de barras de forma flexivel para GTIN com 8, 12, 13 ou 14 digitos numericos e usa soft delete por padrao.
+
+Filtros avancados foram centralizados em `modules/produtos/specification/ProdutoSpecification.java`. A listagem aceita filtros por nome, codigo, SKU, codigo de barras, categoria, marca, tipo, natureza, status, controle de estoque, permissao de compra, permissao de venda e ativo. O endpoint `GET /api/v1/produtos/search?termo=...` faz busca rapida em nome, codigo, SKU e codigo de barras para fluxos como PDV, vendas e compras.
+
+`ProdutoFornecedor` vincula Produto e Fornecedor para compras, cotacoes, entrada de mercadoria e historico de custo:
+
+- `modules/produtos/service/ProdutoFornecedorServiceTest.java`
+- `modules/produtos/controller/ProdutoFornecedorControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-fornecedores`, paginacao, permissoes `PRODUTO_FORNECEDOR:*`, `PRODUTO:*` e CRUD granular. O vinculo guarda codigo do fornecedor, lead time, prioridade, status, indicador de fornecedor principal e observacao. Impede duplicidade ativa de produto + fornecedor, garante apenas um fornecedor principal ativo por produto, valida lead time/prioridade nao negativos e usa soft delete por padrao. Os filtros foram centralizados em `modules/produtos/specification/ProdutoFornecedorSpecification.java` por produto, fornecedor, principal, ativo, status e codigo do fornecedor.
+
+`ProdutoFornecedorPreco` registra historico de custos por vigencia:
+
+- `modules/produtos/service/ProdutoFornecedorPrecoServiceTest.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-fornecedores-precos`, paginacao, permissoes `PRODUTO_FORNECEDOR_PRECO:*`, `PRODUTO:*` e CRUD granular. Guarda preco, vigencia inicial e vigencia final, impede duplicidade ativa por vinculo + vigencia inicial, valida preco nao negativo, valida vigencia final posterior ou igual a inicial e usa soft delete por padrao.
+
+`ProdutoFiscal` separa dados tributarios do cadastro comercial do produto:
+
+- `modules/produtos/service/ProdutoFiscalServiceTest.java`
+- `modules/produtos/controller/ProdutoFiscalControllerTests.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-fiscais`, paginacao, permissoes `PRODUTO_FISCAL:*`, `PRODUTO:*` e CRUD granular. Guarda NCM, CEST, origem da mercadoria, CFOP padrao, CST/CSOSN, CST PIS/COFINS, aliquotas de ICMS/IPI/PIS/COFINS e observacao. Impede mais de uma ficha fiscal ativa por produto, valida NCM com 8 digitos, CEST com 7 digitos quando informado, aliquotas nao negativas, filtros por produto/NCM/CEST/origem/ativo e usa soft delete por padrao.
+
+`ProdutoImagem` vincula Produto e Arquivo para imagens do catalogo:
+
+- `modules/produtos/service/ProdutoImagemServiceTest.java`
+- `modules/produtos/controller/ProdutoImagemControllerTests.java`
+- `modules/produtos/integration/ProdutoImagemBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-imagens`, paginacao, permissoes `PRODUTO_IMAGEM:*`, `PRODUTO:*` e CRUD granular. O vinculo guarda `principal`, `ordem` e `descricao`, impede duplicidade ativa de produto + arquivo, garante apenas uma imagem principal ativa por produto, valida ordem nao negativa, filtra por produto, arquivo, principal e ativo, e usa soft delete por padrao. O fluxo integrado usa `POST /api/v1/arquivos/upload` antes de criar o vinculo.
+
+`ProdutoCodigoBarras` permite multiplos codigos por Produto:
+
+- `modules/produtos/service/ProdutoCodigoBarrasServiceTest.java`
+- `modules/produtos/controller/ProdutoCodigoBarrasControllerTests.java`
+- `modules/produtos/integration/ProdutoCodigoBarrasBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-codigos-barras`, paginacao, permissoes `PRODUTO_CODIGO_BARRAS:*`, `PRODUTO:*` e CRUD granular. O vinculo guarda tipo do codigo, codigo, indicador de principal e observacao. Suporta EAN de unidade, EAN de caixa, EAN de pacote, GTIN logistico e codigo interno alternativo, impede duplicidade ativa de codigo, garante apenas um codigo principal ativo por produto, filtra por produto, tipo, codigo, principal e ativo, e usa soft delete por padrao.
+
+`ProdutoPreco` registra historico de precos comerciais por tipo, vigencia e empresa opcional:
+
+- `modules/produtos/service/ProdutoPrecoServiceTest.java`
+- `modules/produtos/controller/ProdutoPrecoControllerTests.java`
+- `modules/produtos/integration/ProdutoPrecoBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-precos`, paginacao, permissoes `PRODUTO_PRECO:*`, `PRODUTO:*` e CRUD granular. O registro guarda `tipoPreco`, `preco`, vigencia inicial/final, indicador de principal, observacao e `empresaId` opcional para multiempresa. Suporta precos `CUSTO`, `VENDA`, `ATACADO`, `VAREJO`, `PROMOCIONAL` e `ESPECIAL`, impede duplicidade ativa por produto/tipo/empresa/vigencia inicial, garante apenas um preco principal ativo por produto/tipo/empresa, filtra por produto, empresa, tipo, principal, vigencia e ativo, possui `GET /api/v1/produtos-precos/vigente` para buscar preco vigente por produto/tipo/data, e usa soft delete por padrao.
+
+`ProdutoUnidade` registra unidades alternativas e fatores de conversao do produto:
+
+- `modules/produtos/service/ProdutoUnidadeServiceTest.java`
+- `modules/produtos/controller/ProdutoUnidadeControllerTests.java`
+- `modules/produtos/integration/ProdutoUnidadeBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/produtos-unidades`, paginacao, permissoes `PRODUTO_UNIDADE:*`, `PRODUTO:*` e CRUD granular. O registro guarda unidade de medida, fator de conversao, unidade padrao, flags de compra, venda, estoque, fracionamento e observacao. Impede duplicidade ativa de produto + unidade, garante apenas uma unidade padrao ativa por produto, exige fator de conversao igual a 1 para unidade padrao, filtra por produto, unidade, unidade padrao, compra, venda, estoque, fracionamento e ativo, e usa soft delete por padrao.
+
+`ProdutoAggregateService` monta uma leitura completa de Produto para telas e processos que precisam de contexto consolidado:
+
+- `modules/produtos/service/ProdutoAggregateService.java`
+- `modules/produtos/dto/response/ProdutoCompletoResponse.java`
+
+O endpoint `GET /api/v1/produtos/{id}/completo` retorna Produto, fornecedores, precos, imagens, codigos de barras, ficha fiscal, unidade padrao e demais unidades ativas em uma unica chamada. Essa camada e somente de leitura e evita que o frontend precise chamar varios endpoints para montar a mesma tela.
+
+`ProdutoBusinessFlowIntegrationTest` cobre o fluxo completo entre modulos:
+
+- `modules/produtos/integration/ProdutoBusinessFlowIntegrationTest.java`
+
+Esse teste cria Pessoa Juridica, transforma em Fornecedor, cria Categoria, Marca e UnidadeMedida, cadastra Produto, vincula ProdutoFornecedor, registra ProdutoFornecedorPreco, cria ProdutoFiscal e valida os principais vinculos, filtros, buscas e leitura agregada do produto completo. Ele funciona como prova de integracao entre Cadastros, Pessoas, Produtos e fiscal basico.
+
+Backlog fiscal registrado: historico por vigencia, tributacao por UF, CFOP por tipo de operacao, validacao CST/CSOSN por CRT da Empresa, validacoes fiscais inteligentes, cache seletivo de ProdutoFiscal, busca fiscal ampliada e auditoria fiscal apos o modulo Fiscal. Backlog de catalogo registrado: `TipoControleEstoque`, `marcaPropria`, `ProdutoClassificacaoABC`, kits com `ProdutoKit`/`ProdutoKitItem` e migracao futura do preco legado de Produto para consumo integral de ProdutoPreco.
+
 ## Testes
 
 ```text
@@ -390,3 +498,5 @@ backend/src/test/
 └── resources/
     └── application-test.yml
 ```
+
+`shared/infrastructure/MigrationIdempotencyTest.java` valida a politica de seeds tecnicos em migrations. Qualquer arquivo SQL com `INSERT INTO` precisa conter `ON CONFLICT` ou `WHERE NOT EXISTS`, evitando duplicidade de permissoes, perfis, usuarios tecnicos e vinculos de seguranca.

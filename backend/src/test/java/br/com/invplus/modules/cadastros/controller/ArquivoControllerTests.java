@@ -3,6 +3,7 @@ package br.com.invplus.modules.cadastros.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -141,6 +143,96 @@ class ArquivoControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload("123", UUID.randomUUID().toString(), "LOCAL")))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Upload multipart valido deve gravar metadados de imagem.
+     */
+    @Test
+    void deveFazerUploadDeImagemValida() throws Exception {
+        String token = login().get("accessToken").asString();
+        String entidadeId = UUID.randomUUID().toString();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "produto.png",
+                "image/png",
+                ("imagem-" + UUID.randomUUID()).getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/arquivos/upload")
+                        .file(file)
+                        .param("entidade", "PRODUTO")
+                        .param("entidadeId", entidadeId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nomeOriginal").value("produto.png"))
+                .andExpect(jsonPath("$.tipoMime").value("image/png"))
+                .andExpect(jsonPath("$.extensao").value("png"))
+                .andExpect(jsonPath("$.storage").value("LOCAL"))
+                .andExpect(jsonPath("$.entidade").value("PRODUTO"))
+                .andExpect(jsonPath("$.entidadeId").value(entidadeId))
+                .andExpect(jsonPath("$.url").value(org.hamcrest.Matchers.containsString("/uploads/")));
+    }
+
+    /**
+     * Upload vazio deve retornar erro de validacao.
+     */
+    @Test
+    void deveBloquearUploadVazio() throws Exception {
+        String token = login().get("accessToken").asString();
+        MockMultipartFile file = new MockMultipartFile("file", "vazio.png", "image/png", new byte[0]);
+
+        mockMvc.perform(multipart("/api/v1/arquivos/upload")
+                        .file(file)
+                        .param("entidade", "PRODUTO")
+                        .param("entidadeId", UUID.randomUUID().toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Arquivo enviado nao pode ser vazio"));
+    }
+
+    /**
+     * Upload com tipo MIME fora da lista permitida deve retornar 400.
+     */
+    @Test
+    void deveBloquearUploadComTipoNaoPermitido() throws Exception {
+        String token = login().get("accessToken").asString();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "script.js",
+                "application/javascript",
+                "alert(1)".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/arquivos/upload")
+                        .file(file)
+                        .param("entidade", "PRODUTO")
+                        .param("entidadeId", UUID.randomUUID().toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Tipo de arquivo nao permitido"));
+    }
+
+    /**
+     * Upload maior que 10 MB deve ser recusado pela regra do ArquivoService.
+     */
+    @Test
+    void deveBloquearUploadAcimaDoLimite() throws Exception {
+        String token = login().get("accessToken").asString();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "grande.pdf",
+                "application/pdf",
+                new byte[(10 * 1024 * 1024) + 1]
+        );
+
+        mockMvc.perform(multipart("/api/v1/arquivos/upload")
+                        .file(file)
+                        .param("entidade", "PRODUTO")
+                        .param("entidadeId", UUID.randomUUID().toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Arquivo excede o tamanho maximo de 10 MB"));
     }
 
     /**

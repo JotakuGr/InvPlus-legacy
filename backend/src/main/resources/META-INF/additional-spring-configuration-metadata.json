@@ -14,5 +14,30 @@
     "name": "invplus.security.jwt.refresh-expiration-days",
     "type": "java.lang.String",
     "description": "A description for 'invplus.security.jwt.refresh-expiration-days'"
+  },
+  {
+    "name": "invplus.storage.provider",
+    "type": "java.lang.String",
+    "description": "A description for 'invplus.storage.provider'"
+  },
+  {
+    "name": "invplus.storage.local-path",
+    "type": "java.lang.String",
+    "description": "A description for 'invplus.storage.local-path'"
+  },
+  {
+    "name": "invplus.storage.public-base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'invplus.storage.public-base-url'"
+  },
+  {
+    "name": "invplus.cdn.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'invplus.cdn.enabled'"
+  },
+  {
+    "name": "invplus.cdn.base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'invplus.cdn.base-url'"
   }
 ]}

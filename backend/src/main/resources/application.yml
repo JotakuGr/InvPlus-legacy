@@ -43,3 +43,10 @@ invplus:
       secret: ${INVPLUS_JWT_SECRET}
       expiration-minutes: ${INVPLUS_JWT_EXPIRATION_MINUTES:60}
       refresh-expiration-days: ${INVPLUS_JWT_REFRESH_EXPIRATION_DAYS:7}
+  storage:
+    provider: ${INVPLUS_STORAGE_PROVIDER:LOCAL}
+    local-path: ${INVPLUS_STORAGE_LOCAL_PATH:./uploads}
+    public-base-url: ${INVPLUS_STORAGE_PUBLIC_BASE_URL:http://localhost:8080/uploads}
+  cdn:
+    enabled: ${INVPLUS_CDN_ENABLED:false}
+    base-url: ${INVPLUS_CDN_BASE_URL:http://localhost:8080/uploads}

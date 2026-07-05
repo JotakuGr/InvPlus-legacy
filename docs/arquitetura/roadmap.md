@@ -100,6 +100,11 @@
   - [x] Fase 2 - Marca completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao e documentacao
   - [x] Fase 2 - Empresa completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao e documentacao
   - [x] Fase 2 - Arquivo completa: migration, entity, repository, DTOs, mapper, validator, service, controller, paginacao, soft delete, auditoria, cache, logs, testes unitarios, testes de integracao, documentacao, storage multi-provedor, hash SHA-256 e vinculo generico entidade/entidadeId
+  - [x] Criar camada compartilhada `shared/storage` com provider LOCAL
+  - [x] Adicionar `CLOUDFLARE_R2` em `StorageArquivo` e migration `V46__arquivo_cloudflare_r2.sql`
+  - [x] Criar endpoint `POST /api/v1/arquivos/upload`
+  - [x] Validar upload vazio, tipos permitidos, limite de 10 MB e metadados salvos
+  - [ ] Implementar provider fisico Cloudflare R2 com bucket, credenciais e client S3-compatible
   - [x] Fase 2 - Revisao geral concluida antes de Pessoas
   - [ ] Fase 2 - Cadastros gerais fiscais: CategoriaProduto, SubCategoriaProduto, Fabricante, NCM, CEST, CFOP, OrigemMercadoria, CST, CSOSN e AliquotaICMS
 - [ ] Pessoas
@@ -152,6 +157,94 @@
   - [ ] Busca global `GET /api/v1/pessoas/search?termo=...`
   - [ ] Regras flexiveis por tipo de pessoa para papeis futuros
 - [ ] Produtos
+  - [x] Criar migration `V36__schema_produto.sql`
+  - [x] Criar migration `V37__permissoes_produto.sql`
+  - [x] Criar entidade central `Produto`
+  - [x] Criar repository, DTOs, mapper, validator, service e controller de Produto
+  - [x] Criar filtros avancados por nome, codigo, SKU, codigo de barras, categoria, marca e ativo
+  - [x] Criar enums `TipoProduto` e `NaturezaProduto`
+  - [x] Criar migration `V44__produto_tipo_natureza.sql`
+  - [x] Adicionar filtros por tipo e natureza do produto
+  - [x] Criar enum `StatusProduto`
+  - [x] Criar migration `V45__produto_status_controles.sql`
+  - [x] Adicionar `controlaEstoque`, `permiteCompra` e `permiteVenda`
+  - [x] Adicionar filtros por status e controles operacionais do produto
+  - [x] Criar endpoint `GET /api/v1/produtos/search?termo=...` para busca rapida
+  - [x] Validar codigo de barras de forma flexivel para GTIN com 8, 12, 13 ou 14 digitos numericos
+  - [x] Criar testes unitarios e de integracao para Produto
+  - [x] Criar ProdutoFiscal para NCM, CFOP, CEST, origem e tributacao
+  - [x] Criar migrations `V42__schema_produto_fiscal.sql` e `V43__permissoes_produto_fiscal.sql`
+  - [x] Criar enum `OrigemMercadoria`
+  - [x] Criar filtros de ProdutoFiscal por produto, NCM, CEST, origem e ativo
+  - [x] Garantir uma ficha fiscal ativa por produto
+  - [x] Criar testes unitarios e de integracao para ProdutoFiscal
+  - [ ] Backlog: criar historico fiscal por vigencia (`ProdutoFiscalHistorico` ou `vigenciaInicio/vigenciaFim`)
+  - [ ] Backlog: separar tributacao fiscal por UF com `ProdutoFiscalUF`
+  - [ ] Backlog: separar CFOP de compra, venda, transferencia e devolucao
+  - [ ] Backlog: validar CST/CSOSN conforme CRT da Empresa
+  - [ ] Backlog: criar validacoes fiscais inteligentes por regime tributario
+  - [ ] Backlog: aplicar cache seletivo em ProdutoFiscal
+  - [ ] Backlog: expandir busca fiscal para descricao, observacao, NCM, CEST e origem
+  - [ ] Backlog: criar auditoria fiscal apos o modulo Fiscal
+  - [ ] Backlog: criar `TipoControleEstoque` com NORMAL, LOTE, SERIE e LOTE_E_VALIDADE
+  - [ ] Backlog: adicionar `marcaPropria`
+  - [ ] Backlog: criar `ProdutoClassificacaoABC`
+  - [ ] Backlog: preparar kits com `ProdutoKit` e `ProdutoKitItem`
+  - [ ] Criar historico de preco para vendas e financeiro
+  - [x] Criar ProdutoImagem
+  - [x] Integrar ProdutoImagem com Arquivo
+  - [x] Criar migrations `V47__schema_produto_imagem.sql` e `V48__permissoes_produto_imagem.sql`
+  - [x] Criar filtros de ProdutoImagem por produto, arquivo, principal e ativo
+  - [x] Garantir apenas uma imagem principal ativa por produto
+  - [x] Criar testes unitarios, controller e fluxo integrado para ProdutoImagem
+  - [ ] Backlog: adicionar `tipoImagem` em ProdutoImagem para PRINCIPAL, GALERIA, FICHA_TECNICA, MANUAL e CERTIFICADO
+  - [x] Criar ProdutoCodigoBarras
+  - [x] Criar migrations `V49__schema_produto_codigo_barras.sql` e `V50__permissoes_produto_codigo_barras.sql`
+  - [x] Criar enum `TipoCodigoBarras` com EAN unidade, EAN caixa, EAN pacote, GTIN logistico e codigo interno alternativo
+  - [x] Criar filtros de ProdutoCodigoBarras por produto, tipo, codigo, principal e ativo
+  - [x] Garantir codigo unico entre registros ativos e apenas um codigo principal ativo por produto
+  - [x] Criar testes unitarios, controller e fluxo integrado para ProdutoCodigoBarras
+  - [ ] Backlog: adicionar origem do codigo de barras: GERADO, FABRICANTE e IMPORTADO
+  - [x] Criar ProdutoPreco
+  - [x] Criar migrations `V51__schema_produto_preco.sql` e `V52__permissoes_produto_preco.sql`
+  - [x] Criar enum `TipoPrecoProduto` com CUSTO, VENDA, ATACADO, VAREJO, PROMOCIONAL e ESPECIAL
+  - [x] Preparar `ProdutoPreco` para multiempresa com `empresa_id` opcional
+  - [x] Criar filtros de ProdutoPreco por produto, empresa, tipo, principal, vigencia e ativo
+  - [x] Garantir preco unico por produto, tipo, empresa e vigencia inicial entre registros ativos
+  - [x] Garantir apenas um preco principal ativo por produto, tipo e empresa
+  - [x] Criar busca de preco vigente por produto, tipo e data
+  - [x] Criar testes unitarios, controller e fluxo integrado para ProdutoPreco
+  - [x] Criar ProdutoUnidade
+  - [x] Criar migrations `V53__schema_produto_unidade.sql` e `V54__permissoes_produto_unidade.sql`
+  - [x] Criar migration `V55__produto_unidade_fracionamento.sql`
+  - [x] Criar filtros de ProdutoUnidade por produto, unidade, unidade padrao, compra, venda, estoque, fracionamento e ativo
+  - [x] Garantir produto + unidade unico entre registros ativos
+  - [x] Garantir apenas uma unidade padrao ativa por produto
+  - [x] Exigir fator de conversao igual a 1 para unidade padrao
+  - [x] Adicionar `permiteFracionamento` em ProdutoUnidade
+  - [x] Criar testes unitarios, controller e fluxo integrado para ProdutoUnidade
+  - [ ] Proxima ordem sugerida: ProdutoKit
+  - [x] Criar ProdutoFornecedor
+  - [x] Criar migrations `V38__schema_produto_fornecedor.sql` e `V39__permissoes_produto_fornecedor.sql`
+  - [x] Criar filtros de ProdutoFornecedor por produto, fornecedor, principal, ativo e codigo do fornecedor
+  - [x] Garantir apenas um fornecedor principal ativo por produto
+  - [x] Criar testes unitarios e de integracao para ProdutoFornecedor
+  - [x] Adicionar prioridade, status e lead time em ProdutoFornecedor
+  - [x] Criar `FornecedorProdutoStatus` com HOMOLOGADO, PREFERENCIAL, EVENTUAL e BLOQUEADO
+  - [x] Criar `ProdutoFornecedorPreco` para historico de custos por vigencia
+  - [x] Criar migrations `V40__produto_fornecedor_melhorias.sql` e `V41__permissoes_produto_fornecedor_preco.sql`
+  - [x] Criar testes unitarios para ProdutoFornecedorPreco
+  - [x] Criar teste de fluxo completo `ProdutoBusinessFlowIntegrationTest`
+  - [x] Validar integracao Pessoa -> Fornecedor -> Produto -> ProdutoFornecedor -> ProdutoFornecedorPreco -> ProdutoFiscal
+  - [x] Criar `ProdutoAggregateService` e `ProdutoCompletoResponse`
+  - [x] Criar endpoint `GET /api/v1/produtos/{id}/completo`
+  - [x] Documentar `precoCusto`, `precoVenda` e `codigoBarras` de Produto como campos legados
+  - [ ] Backlog: criar `ProdutoFacade` para operacoes compostas de negocio
+  - [ ] Backlog: criar testes especificos de concorrencia otimista para Produto, ProdutoPreco e ProdutoUnidade
+  - [ ] Criar ProdutoCategoria
+  - [ ] Avaliar cache seletivo apenas para consultas estaveis de catalogo, evitando cache agressivo de preco e estoque
+  - [ ] Migrar/remover preco de custo/venda legado de Produto apos estabilizar consumo de ProdutoPreco em Vendas/PDV
+  - [ ] Preparar PostgreSQL Full Text Search para nome, descricao, marca e categoria
 - [ ] Estoque
 - [ ] Compras
 - [ ] Vendas

@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers(AppConstants.API_BASE_PATH + "/auth/login").permitAll()
                         .requestMatchers(AppConstants.API_BASE_PATH + "/auth/refresh").permitAll()
                         .requestMatchers(AppConstants.API_BASE_PATH + "/auth/logout").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
