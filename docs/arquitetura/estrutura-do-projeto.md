@@ -287,6 +287,26 @@ Migrations atuais ja implementadas:
 - `V53__schema_produto_unidade.sql`
 - `V54__permissoes_produto_unidade.sql`
 - `V55__produto_unidade_fracionamento.sql`
+- `V56__schema_deposito.sql`
+- `V57__permissoes_deposito.sql`
+- `V58__deposito_controles_operacionais.sql`
+- `V59__schema_localizacao_estoque.sql`
+- `V60__permissoes_localizacao_estoque.sql`
+- `V61__schema_estoque.sql`
+- `V62__permissoes_estoque.sql`
+- `V63__schema_movimentacao_estoque.sql`
+- `V64__permissoes_movimentacao_estoque.sql`
+- `V65__schema_reserva_estoque.sql`
+- `V66__permissoes_reserva_estoque.sql`
+- `V67__schema_pedido_compra.sql`
+- `V68__permissoes_pedido_compra.sql`
+- `V69__schema_pedido_compra_item.sql`
+- `V70__permissoes_pedido_compra_item.sql`
+- `V71__schema_entrada_mercadoria.sql`
+- `V72__permissoes_entrada_mercadoria.sql`
+- `V73__schema_entrada_mercadoria_item.sql`
+- `V74__permissoes_entrada_mercadoria_item.sql`
+- `V75__compras_consolidacao.sql`
 
 ## Docker
 
@@ -483,6 +503,89 @@ O endpoint `GET /api/v1/produtos/{id}/completo` retorna Produto, fornecedores, p
 Esse teste cria Pessoa Juridica, transforma em Fornecedor, cria Categoria, Marca e UnidadeMedida, cadastra Produto, vincula ProdutoFornecedor, registra ProdutoFornecedorPreco, cria ProdutoFiscal e valida os principais vinculos, filtros, buscas e leitura agregada do produto completo. Ele funciona como prova de integracao entre Cadastros, Pessoas, Produtos e fiscal basico.
 
 Backlog fiscal registrado: historico por vigencia, tributacao por UF, CFOP por tipo de operacao, validacao CST/CSOSN por CRT da Empresa, validacoes fiscais inteligentes, cache seletivo de ProdutoFiscal, busca fiscal ampliada e auditoria fiscal apos o modulo Fiscal. Backlog de catalogo registrado: `TipoControleEstoque`, `marcaPropria`, `ProdutoClassificacaoABC`, kits com `ProdutoKit`/`ProdutoKitItem` e migracao futura do preco legado de Produto para consumo integral de ProdutoPreco.
+
+`Deposito` inicia o modulo Estoque com o local onde produtos serao armazenados:
+
+- `modules/estoque/service/DepositoServiceTest.java`
+- `modules/estoque/controller/DepositoControllerTests.java`
+- `modules/estoque/integration/DepositoBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/depositos`, paginacao, permissoes `DEPOSITO:*`, `ESTOQUE:*` e CRUD granular. O registro guarda empresa obrigatoria, filial opcional, codigo, nome, descricao, tipo do deposito, indicador de principal, flags de venda, compra e transferencia, controle de estoque e bloqueio operacional. Impede codigo duplicado por empresa entre registros ativos, garante apenas um deposito principal ativo por empresa, valida filial ativa e pertencente a empresa informada, filtra por empresa, filial, codigo, nome, tipo, principal, controle de estoque, bloqueado e ativo, e usa soft delete por padrao.
+
+`LocalizacaoEstoque` representa a posicao fisica ou logica dentro de um deposito:
+
+- `modules/estoque/service/LocalizacaoEstoqueServiceTest.java`
+- `modules/estoque/controller/LocalizacaoEstoqueControllerTests.java`
+- `modules/estoque/integration/LocalizacaoEstoqueBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/localizacoes-estoque`, paginacao, permissoes `LOCALIZACAO_ESTOQUE:*`, `ESTOQUE:*` e CRUD granular. O registro guarda deposito obrigatorio, codigo, descricao, rua, corredor, prateleira, nivel, posicao, indicador de principal e bloqueio operacional. Impede codigo duplicado por deposito entre registros ativos, garante apenas uma localizacao principal ativa por deposito, filtra por deposito, codigo, descricao, rua, corredor, prateleira, principal, bloqueada e ativo, e usa soft delete por padrao. A numeracao ficou em `V59`/`V60` porque `V58` ja estava ocupada pelos controles operacionais de Deposito.
+
+`Estoque` representa o saldo fisico atual de um produto em uma localizacao:
+
+- `modules/estoque/service/EstoqueServiceTest.java`
+- `modules/estoque/controller/EstoqueControllerTests.java`
+- `modules/estoque/integration/EstoqueBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/estoques`, o endpoint operacional `GET /api/v1/estoques/saldo`, paginacao, permissoes `ESTOQUE_SALDO:*`, `ESTOQUE:*` e CRUD granular. O saldo referencia Produto, Empresa, Deposito e LocalizacaoEstoque, com Filial opcional. A regra atual impede duplicidade ativa para produto + empresa + deposito + localizacao, valida que filial pertence a empresa, deposito pertence a empresa e localizacao pertence ao deposito. `quantidadeDisponivel` nao e digitada: e recalculada como `quantidade - quantidadeReservada`. A entidade tambem guarda quantidade avariada, quantidade em transito, estoque minimo, estoque maximo, `ultimoMovimentoEm` e `ultimoMovimentoId` preparado para a futura `MovimentacaoEstoque`.
+
+Leituras consolidadas de Estoque:
+
+- `modules/estoque/service/EstoqueAggregateService.java`
+- `modules/estoque/service/EstoqueFacade.java`
+- `modules/estoque/dto/response/EstoqueCompletoResponse.java`
+- `modules/estoque/dto/response/EstoqueDisponivelResponse.java`
+- `modules/estoque/integration/EstoqueConcurrencyTest.java`
+
+O endpoint `GET /api/v1/estoques/{id}/completo` retorna saldo, ultima movimentacao, reservas ativas e disponibilidade em uma unica resposta. O endpoint `GET /api/v1/estoques/disponivel` retorna saldo rapido por produto, empresa, deposito e localizacao. `EstoqueFacade` e a API interna que os proximos modulos devem usar para entrada, saida, transferencia, ajuste, inventario, reserva, cancelamento e baixa.
+
+`MovimentacaoEstoque` representa o historico imutavel das alteracoes de saldo:
+
+- `modules/estoque/service/MovimentacaoEstoqueServiceTest.java`
+- `modules/estoque/controller/MovimentacaoEstoqueControllerTests.java`
+- `shared/domain/service/EstoqueDomainServiceTest.java`
+
+Essa entidade usa os endpoints somente-leitura `/api/v1/movimentacoes-estoque` e `/api/v1/movimentacoes-estoque/{id}`, paginacao, permissoes `MOVIMENTACAO_ESTOQUE:*`, `MOVIMENTACAO_ESTOQUE:VISUALIZAR` e `ESTOQUE:*`. O registro guarda estoque, produto, empresa, filial opcional, deposito, localizacao, tipo da movimentacao, quantidade, saldo anterior, saldo posterior, origem, documento, observacao e data da movimentacao. `origem` usa o enum `MovimentacaoOrigem`, mantendo filtros e relatorios consistentes. A entidade nao usa soft delete, nao expoe update/delete funcional e e criada internamente pelo `EstoqueDomainService`, que passa a ser o ponto unico para entrada, saida, ajuste, transferencia, reserva, cancelamento e baixa de reserva. Nenhum modulo futuro deve alterar saldo por repository diretamente.
+
+`ReservaEstoque` representa quantidade separada sem baixa fisica imediata:
+
+- `modules/estoque/service/ReservaEstoqueServiceTest.java`
+- `modules/estoque/controller/ReservaEstoqueControllerTests.java`
+- `modules/estoque/integration/ReservaEstoqueBusinessFlowIntegrationTest.java`
+
+Essa entidade usa os endpoints `/api/v1/reservas-estoque`, `/api/v1/reservas-estoque/{id}`, `/api/v1/reservas-estoque/{id}/cancelar` e `/api/v1/reservas-estoque/{id}/baixar`, paginacao, permissoes `RESERVA_ESTOQUE:*`, `RESERVA_ESTOQUE:CRIAR`, `RESERVA_ESTOQUE:VISUALIZAR`, `RESERVA_ESTOQUE:CANCELAR`, `RESERVA_ESTOQUE:BAIXAR` e `ESTOQUE:*`. A reserva fotografa estoque, produto, empresa, filial, deposito e localizacao, usa status `ATIVA`, `CANCELADA`, `BAIXADA` e `EXPIRADA`, impede origem/origemId ativa duplicada e nao possui `PUT` generico. Criacao, cancelamento e baixa chamam `EstoqueDomainService`, garantindo que reservado, disponivel, saldo fisico e movimentacoes permaneçam sincronizados.
+
+Eventos preparados em `modules/estoque/events`: `EstoqueAlteradoEvent`, `ReservaCriadaEvent`, `ReservaCanceladaEvent` e `ReservaBaixadaEvent`. Eles documentam os contratos de dominio para futura invalidacao de cache, auditoria, mensageria e notificacoes.
+
+`PedidoCompra` inicia o modulo Compras com a intencao de compra por empresa e fornecedor:
+
+- `modules/compras/service/PedidoCompraService.java`
+- `modules/compras/controller/PedidoCompraController.java`
+- `modules/compras/integration/ComprasBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/pedidos-compra`, paginacao, permissoes `PEDIDO_COMPRA:*`, acoes granulares de criar, visualizar, editar, cancelar e aprovar. O pedido guarda empresa, filial opcional, fornecedor, numero, status, datas, observacao e valor total calculado pelos itens. A regra atual garante numero unico por empresa entre registros ativos, status inicial `ABERTO`, bloqueio de alteracao para pedidos `CANCELADO` ou `RECEBIDO`, aprovacao explicita e cancelamento por endpoint de estado.
+
+`PedidoCompraItem`, exposto em `/api/v1/pedidos-compra-itens`, representa os produtos comprados dentro do pedido. O item referencia pedido, produto e unidade do produto, guarda quantidade, valor unitario, valor total calculado e observacao. O service bloqueia itens em pedidos cancelados ou recebidos, valida quantidade maior que zero e valor unitario nao negativo, e recalcula o valor total do pedido ao criar, atualizar ou excluir logicamente um item.
+
+`EntradaMercadoria`, exposta em `/api/v1/entradas-mercadoria`, representa o recebimento fisico. Ela referencia empresa, filial opcional, fornecedor e pedido de compra opcional, usa status `ABERTA`, `CONFERIDA`, `EFETIVADA` e `CANCELADA`, e so movimenta estoque quando o endpoint `/efetivar` e chamado. A efetivacao busca os itens da entrada, chama `EstoqueFacade.entrada(...)`, registra `MovimentacaoEstoque` com origem `COMPRA`, atualiza o saldo existente e marca o pedido vinculado como `RECEBIDO`.
+
+`EntradaMercadoriaItem`, exposto em `/api/v1/entradas-mercadoria-itens`, representa cada produto recebido. O item referencia entrada, item do pedido opcional, produto, unidade do produto, deposito e localizacao, valida que a localizacao pertence ao deposito, calcula valor total por quantidade e valor unitario, e so pode ser alterado enquanto a entrada permanece editavel.
+
+`ComprasBusinessFlowIntegrationTest` cobre o fluxo real entre modulos: cria Empresa, Deposito, Localizacao, Categoria, UnidadeMedida, Produto, Estoque, Pessoa juridica, Fornecedor, PedidoCompra, PedidoCompraItem, EntradaMercadoria e EntradaMercadoriaItem; depois efetiva a entrada, valida aumento do saldo, disponibilidade, movimentacao de estoque com origem `COMPRA` e status final do pedido.
+
+A Sprint de Consolidacao de Compras adicionou:
+
+- `modules/compras/service/CompraAggregateService.java`
+- `modules/compras/service/CompraFacade.java`
+- `modules/compras/service/CompraHistoricoService.java`
+- `modules/compras/dto/response/PedidoCompraCompletoResponse.java`
+- `modules/compras/dto/response/EntradaMercadoriaCompletaResponse.java`
+- `modules/compras/entity/PedidoCompraHistorico.java`
+- `modules/compras/entity/EntradaMercadoriaHistorico.java`
+- `modules/compras/events/PedidoCompraCriadoEvent.java`
+- `modules/compras/events/PedidoCompraAprovadoEvent.java`
+- `modules/compras/events/EntradaMercadoriaEfetivadaEvent.java`
+
+Os endpoints `GET /api/v1/pedidos-compra/{id}/completo` e `GET /api/v1/entradas-mercadoria/{id}/completo` reduzem chamadas do frontend ao trazer pedido/entrada, itens, historico, entradas vinculadas e movimentacoes geradas. `CompraFacade` passa a ser a API interna recomendada para outros modulos chamarem criacao, aprovacao, cancelamento, registro e efetivacao de compras. A V75 tambem prepara aprovacao por nivel com `nivelAprovacao`, `aprovadoPor` e `aprovadoEm`.
 
 ## Testes
 

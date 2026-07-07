@@ -361,6 +361,26 @@ V52__permissoes_produto_preco.sql
 V53__schema_produto_unidade.sql
 V54__permissoes_produto_unidade.sql
 V55__produto_unidade_fracionamento.sql
+V56__schema_deposito.sql
+V57__permissoes_deposito.sql
+V58__deposito_controles_operacionais.sql
+V59__schema_localizacao_estoque.sql
+V60__permissoes_localizacao_estoque.sql
+V61__schema_estoque.sql
+V62__permissoes_estoque.sql
+V63__schema_movimentacao_estoque.sql
+V64__permissoes_movimentacao_estoque.sql
+V65__schema_reserva_estoque.sql
+V66__permissoes_reserva_estoque.sql
+V67__schema_pedido_compra.sql
+V68__permissoes_pedido_compra.sql
+V69__schema_pedido_compra_item.sql
+V70__permissoes_pedido_compra_item.sql
+V71__schema_entrada_mercadoria.sql
+V72__permissoes_entrada_mercadoria.sql
+V73__schema_entrada_mercadoria_item.sql
+V74__permissoes_entrada_mercadoria_item.sql
+V75__compras_consolidacao.sql
 ```
 
 ### Migration V1
@@ -916,6 +936,129 @@ Refina `produto_unidade` com a flag `permite_fracionamento`, separando a regra d
 - cria índice parcial para consultas de unidades fracionáveis ativas;
 - mantém compatibilidade com registros já existentes.
 
+### Migration V56
+
+Cria a tabela `deposito`, primeira entidade do modulo Estoque:
+
+- `empresa_id` obrigatorio e `filial_id` opcional;
+- `codigo`, `nome` e `tipo_deposito` obrigatorios;
+- tipos `LOJA`, `CENTRAL`, `ALMOXARIFADO`, `PRODUCAO`, `CAMARA_FRIA`, `TERCEIROS` e `TRANSITO`;
+- flags `principal`, `permite_venda`, `permite_compra` e `permite_transferencia`;
+- codigo unico por empresa entre registros ativos;
+- apenas um deposito principal ativo por empresa;
+- indices para empresa, filial, tipo e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V57
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `ESTOQUE:*`
+- `DEPOSITO:*`
+- `DEPOSITO:CRIAR`
+- `DEPOSITO:VISUALIZAR`
+- `DEPOSITO:EDITAR`
+- `DEPOSITO:EXCLUIR`
+
+### Migration V58
+
+Refina `deposito` com controles operacionais usados antes das movimentacoes de estoque:
+
+- adiciona `controla_estoque` com default `true`;
+- adiciona `bloqueado` com default `false`;
+- cria indices parciais para consultas por depositos que controlam estoque e depositos bloqueados;
+- permite representar depositos virtuais, devolucao, transito ou depositos temporariamente interditados sem excluir o cadastro.
+
+### Migration V59
+
+Cria a tabela `localizacao_estoque`, segunda entidade do modulo Estoque:
+
+- `deposito_id` obrigatorio;
+- `codigo` obrigatorio e unico por deposito entre registros ativos;
+- campos fisicos/logicos de endereco interno: rua, corredor, prateleira, nivel e posicao;
+- flags `principal` e `bloqueada`;
+- apenas uma localizacao principal ativa por deposito;
+- indices para deposito, bloqueio operacional e registros ativos;
+- auditoria, `version`, `ativo` e `deleted_at`.
+
+> A numeracao usou `V59` porque `V58` ja estava reservada para `deposito_controles_operacionais`.
+
+### Migration V60
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `LOCALIZACAO_ESTOQUE:*`
+- `LOCALIZACAO_ESTOQUE:CRIAR`
+- `LOCALIZACAO_ESTOQUE:VISUALIZAR`
+- `LOCALIZACAO_ESTOQUE:EDITAR`
+- `LOCALIZACAO_ESTOQUE:EXCLUIR`
+
+### Migration V61
+
+Cria a tabela `estoque`, responsavel pelo saldo fisico atual:
+
+- vincula Produto, Empresa, Deposito e LocalizacaoEstoque;
+- permite Filial opcional;
+- controla quantidade fisica, reservada, disponivel, avariada e em transito;
+- `quantidade_disponivel` e calculada pela aplicacao como `quantidade - quantidade_reservada`;
+- guarda estoque minimo, estoque maximo, data do ultimo movimento e `ultimo_movimento_id` preparado para `MovimentacaoEstoque`;
+- impede dois saldos ativos para o mesmo produto na mesma empresa, deposito e localizacao;
+- cria indices para produto, empresa, filial, deposito, localizacao, registros ativos e consulta de estoque baixo;
+- usa auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V62
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `ESTOQUE_SALDO:*`
+- `ESTOQUE_SALDO:CRIAR`
+- `ESTOQUE_SALDO:VISUALIZAR`
+- `ESTOQUE_SALDO:EDITAR`
+- `ESTOQUE_SALDO:EXCLUIR`
+
+### Migration V63
+
+Cria a tabela `movimentacao_estoque`, historico imutavel de tudo que altera estoque:
+
+- vincula Estoque, Produto, Empresa, Deposito e LocalizacaoEstoque;
+- permite Filial opcional;
+- registra tipo da movimentacao, quantidade, saldo anterior e saldo posterior;
+- permite origem, origem_id, documento e observacao para rastrear o processo gerador;
+- guarda `data_movimentacao`, `criado_em` e `criado_por`;
+- nao possui soft delete, update funcional ou delete funcional;
+- cria indices para estoque, produto, empresa, deposito, localizacao, periodo e origem.
+
+### Migration V64
+
+Adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `MOVIMENTACAO_ESTOQUE:*`
+- `MOVIMENTACAO_ESTOQUE:VISUALIZAR`
+
+### Migration V65
+
+Cria a tabela `reserva_estoque`, responsavel por separar quantidade para venda, pedido, separacao ou expedicao sem baixar fisicamente o saldo:
+
+- vincula Estoque, Produto, Empresa, Deposito e LocalizacaoEstoque;
+- permite Filial opcional;
+- fotografa os vinculos do saldo no momento da reserva;
+- controla quantidade, status, origem, origem_id, expiracao, data de baixa, data de cancelamento e observacao;
+- usa `StatusReservaEstoque`: `ATIVA`, `CANCELADA`, `BAIXADA` e `EXPIRADA`;
+- usa `MovimentacaoOrigem` para origem forte;
+- impede reserva ativa duplicada para a mesma origem/origem_id quando origem_id existir;
+- cria indices para estoque, produto, empresa, filial, deposito, localizacao, status, origem e registros ativos;
+- usa auditoria, `version`, `ativo` e `deleted_at`.
+
+### Migration V66
+
+Amplia o constraint de acoes de permissao para aceitar `CANCELAR` e `BAIXAR`, depois adiciona e vincula ao perfil `ADMIN` as permissoes:
+
+- `RESERVA_ESTOQUE:*`
+- `RESERVA_ESTOQUE:CRIAR`
+- `RESERVA_ESTOQUE:VISUALIZAR`
+- `RESERVA_ESTOQUE:CANCELAR`
+- `RESERVA_ESTOQUE:BAIXAR`
+
 Convenções do banco:
 - PKs do tipo `UUID` com `gen_random_uuid()`
 - Campos de auditoria em todas as tabelas: `criado_em`, `atualizado_em`, `criado_por`, `atualizado_por`
@@ -1187,6 +1330,23 @@ Testes existentes:
 - `ProdutoUnidadeServiceTest`: valida criação de unidade, produto/unidade inexistente, duplicidade produto+unidade, fator zero/negativo, unidade padrão com fator diferente de 1, segunda unidade padrão, fracionamento, filtros, atualização mantendo padrão e exclusão lógica.
 - `ProdutoUnidadeControllerTests`: valida CRUD completo, filtros por produto/unidade/padrão/flags/fracionamento/ativo, duplicidade, fatores inválidos, segunda unidade padrão, `401` sem token e `403` sem permissão.
 - `ProdutoUnidadeBusinessFlowIntegrationTest`: valida o fluxo real Produto -> ProdutoUnidade, confirmando vínculos, filtros principais e leitura agregada do produto completo.
+- `DepositoServiceTest`: valida criação de depósito, empresa/filial inexistentes, filial de outra empresa, código duplicado por empresa, segundo principal, filtros, controle de estoque, bloqueio operacional, atualização mantendo código/principal e exclusão lógica.
+- `DepositoControllerTests`: valida CRUD completo, filtros por empresa/filial/código/nome/tipo/principal/controle de estoque/bloqueado/ativo, soft delete, duplicidade, segundo principal, `401` sem token e `403` sem permissão.
+- `DepositoBusinessFlowIntegrationTest`: valida o fluxo real Empresa -> Filial -> Depósito usando APIs de Cadastros e Estoque.
+- `LocalizacaoEstoqueServiceTest`: valida criação de localização, depósito inexistente, código duplicado por depósito, segunda principal, filtros, atualização mantendo código/principal e exclusão lógica.
+- `LocalizacaoEstoqueControllerTests`: valida CRUD completo, filtros por depósito/código/descrição/rua/corredor/prateleira/principal/bloqueada/ativo, soft delete, duplicidade, segunda principal, `401` sem token e `403` sem permissão.
+- `LocalizacaoEstoqueBusinessFlowIntegrationTest`: valida o fluxo real Empresa -> Depósito -> LocalizaçãoEstoque usando APIs de Cadastros e Estoque.
+- `EstoqueServiceTest`: valida criação de saldo, produto inexistente, localização de outro depósito, duplicidade, estoque mínimo/máximo, cálculo de quantidade disponível, filtros e consulta de saldo.
+- `EstoqueControllerTests`: valida CRUD completo, endpoint `/saldo`, filtros por produto/empresa/depósito/localização/saldo, soft delete, duplicidade, localização inválida, `401` sem token e `403` sem permissão.
+- `EstoqueBusinessFlowIntegrationTest`: valida o fluxo real Empresa -> Depósito -> LocalizaçãoEstoque -> Categoria -> UnidadeMedida -> Produto -> Estoque.
+- `MovimentacaoEstoqueServiceTest`: valida registro interno de entrada e saída, bloqueio de quantidade zero/negativa, filtros e bloqueio de alteração/exclusão funcional.
+- `MovimentacaoEstoqueControllerTests`: valida leitura por ID, listagem filtrada, movimentação gerada pelo Estoque, `401` sem token e `403` sem permissão.
+- `EstoqueDomainServiceTest`: valida o ponto unico de alteracao de saldo, reserva, baixa, ajuste e atualizacao do ultimo movimento.
+- `ReservaEstoqueServiceTest`: valida criação, estoque inexistente, quantidade zero, reserva acima do disponível, origem duplicada, cancelamento, baixa, transições inválidas e filtros.
+- `ReservaEstoqueControllerTests`: valida criação, cancelamento, baixa, atualização real de saldo reservado/disponível/físico, filtros, duplicidade por origem, `401` sem token e `403` sem permissão.
+- `ReservaEstoqueBusinessFlowIntegrationTest`: valida o fluxo real Cadastros -> Produtos -> Estoque -> ReservaEstoque -> MovimentacaoEstoque.
+- `EstoqueConcurrencyTest`: valida concorrencia otimista com `@Version` em reservas simultaneas e executa carga simples com 100 reservas concorrentes, garantindo saldo reservado/disponivel consistente.
+- `ComprasBusinessFlowIntegrationTest`: valida o fluxo real Cadastros -> Pessoas -> Produtos -> Estoque -> PedidoCompra -> EntradaMercadoria, endpoints completos, historico de status, movimentacao com origem `COMPRA`, optimistic lock em PedidoCompra/EntradaMercadoria e carga simples com entradas simultaneas no mesmo estoque.
 - `MigrationIdempotencyTest`: valida que migrations com `INSERT INTO` tenham proteção idempotente com `ON CONFLICT` ou `WHERE NOT EXISTS`, evitando duplicidade em seeds técnicos.
 
 Para executar:
@@ -1200,7 +1360,7 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 324, Failures: 0, Errors: 0
+Tests run: 406, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
@@ -1356,6 +1516,26 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - `V53__schema_produto_unidade.sql` cria unidades alternativas e fatores de conversão por Produto.
 - `V54__permissoes_produto_unidade.sql` adiciona permissões `PRODUTO_UNIDADE:*` e CRUD de ProdutoUnidade.
 - `V55__produto_unidade_fracionamento.sql` adiciona `permite_fracionamento` em ProdutoUnidade e índice parcial para consultas ativas.
+- `V56__schema_deposito.sql` cria depósitos vinculados a Empresa e opcionalmente a Filial.
+- `V57__permissoes_deposito.sql` adiciona permissões `ESTOQUE:*`, `DEPOSITO:*` e CRUD de Depósito.
+- `V58__deposito_controles_operacionais.sql` adiciona `controla_estoque` e `bloqueado` ao cadastro de Depósito.
+- `V59__schema_localizacao_estoque.sql` cria localizações físicas/lógicas dentro de cada Depósito.
+- `V60__permissoes_localizacao_estoque.sql` adiciona permissões `LOCALIZACAO_ESTOQUE:*` e CRUD de LocalizaçãoEstoque.
+- `V61__schema_estoque.sql` cria saldos atuais por Produto, Empresa, Depósito e LocalizaçãoEstoque.
+- `V62__permissoes_estoque.sql` adiciona permissões `ESTOQUE_SALDO:*` e CRUD de Estoque.
+- `V63__schema_movimentacao_estoque.sql` cria histórico imutável de movimentações de estoque.
+- `V64__permissoes_movimentacao_estoque.sql` adiciona permissões `MOVIMENTACAO_ESTOQUE:*` e visualização de movimentações.
+- `V65__schema_reserva_estoque.sql` cria reservas de saldo vinculadas a Estoque e fotografadas por Produto/Empresa/Depósito/Localização.
+- `V66__permissoes_reserva_estoque.sql` adiciona permissões `RESERVA_ESTOQUE:*`, criação, visualização, cancelamento e baixa.
+- `V67__schema_pedido_compra.sql` cria pedidos de compra com empresa, filial, fornecedor, numero, status, datas e valor total calculado.
+- `V68__permissoes_pedido_compra.sql` adiciona permissoes `PEDIDO_COMPRA:*`, criar, visualizar, editar, cancelar e aprovar.
+- `V69__schema_pedido_compra_item.sql` cria itens do pedido de compra com produto, unidade, quantidade, valor unitario e valor total calculado.
+- `V70__permissoes_pedido_compra_item.sql` adiciona permissoes `PEDIDO_COMPRA_ITEM:*` e CRUD granular.
+- `V71__schema_entrada_mercadoria.sql` cria entradas de mercadoria vinculadas opcionalmente ao pedido de compra.
+- `V72__permissoes_entrada_mercadoria.sql` adiciona permissoes `ENTRADA_MERCADORIA:*`, criar, visualizar, editar, cancelar, conferir e efetivar.
+- `V73__schema_entrada_mercadoria_item.sql` cria itens de entrada com produto, unidade, deposito, localizacao, quantidade e valores.
+- `V74__permissoes_entrada_mercadoria_item.sql` adiciona permissoes `ENTRADA_MERCADORIA_ITEM:*` e CRUD granular.
+- `V75__compras_consolidacao.sql` adiciona campos de aprovacao em PedidoCompra e historicos de status para PedidoCompra e EntradaMercadoria.
 
 ### Docker
 
@@ -1397,7 +1577,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
  ├── [ ] 9.  Pessoas - iniciado com Pessoa, PessoaRole, Cliente, Fornecedor, Funcionário, Transportadora, ContatoPessoa e DocumentoPessoa
  ├── [ ] 10. Produtos - iniciado com Produto, ProdutoFornecedor, ProdutoFornecedorPreco e ProdutoFiscal
  ├── [ ] 11. Estoque
- ├── [ ] 12. Compras
+ ├── [ ] 12. Compras - iniciado com PedidoCompra, PedidoCompraItem, EntradaMercadoria e EntradaMercadoriaItem
  ├── [ ] 13. Vendas
  ├── [ ] 14. Pagamentos
  ├── [ ] 15. Faturamento
@@ -1456,7 +1636,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - [ ] Módulo de Pessoas iniciado com Pessoa, PessoaRole, Cliente, Fornecedor, Funcionário, Transportadora, ContatoPessoa e DocumentoPessoa
 - [x] Módulo de Produtos iniciado com Produto, ProdutoFornecedor, ProdutoFornecedorPreco e ProdutoFiscal
 - [ ] Módulo de Estoque
-- [ ] Módulo de Compras
+- [x] Módulo de Compras iniciado com fluxo PedidoCompra -> EntradaMercadoria -> Estoque
 - [ ] Módulo de Vendas
 - [ ] Módulo Financeiro
 - [ ] Módulo Fiscal
@@ -1586,6 +1766,56 @@ GET    /api/v1/produtos-unidades/{id} → buscar unidade por id
 POST   /api/v1/produtos-unidades      → criar unidade do produto
 PUT    /api/v1/produtos-unidades/{id} → atualizar unidade do produto
 DELETE /api/v1/produtos-unidades/{id} → remover unidade do produto (soft delete)
+GET    /api/v1/depositos      → listar depósitos
+GET    /api/v1/depositos/{id} → buscar depósito por id
+POST   /api/v1/depositos      → criar depósito
+PUT    /api/v1/depositos/{id} → atualizar depósito
+DELETE /api/v1/depositos/{id} → remover depósito (soft delete)
+GET    /api/v1/localizacoes-estoque      → listar localizações
+GET    /api/v1/localizacoes-estoque/{id} → buscar localização por id
+POST   /api/v1/localizacoes-estoque      → criar localização
+PUT    /api/v1/localizacoes-estoque/{id} → atualizar localização
+DELETE /api/v1/localizacoes-estoque/{id} → remover localização (soft delete)
+GET    /api/v1/estoques          → listar saldos de estoque
+GET    /api/v1/estoques/saldo    → consultar saldo por produto/empresa/depósito/localização
+GET    /api/v1/estoques/{id}     → buscar saldo por id
+POST   /api/v1/estoques          → criar saldo
+PUT    /api/v1/estoques/{id}     → atualizar saldo
+DELETE /api/v1/estoques/{id}     → remover saldo (soft delete)
+GET    /api/v1/movimentacoes-estoque      → listar movimentações
+GET    /api/v1/movimentacoes-estoque/{id} → buscar movimentação por id
+GET    /api/v1/reservas-estoque              → listar reservas
+GET    /api/v1/reservas-estoque/{id}         → buscar reserva por id
+POST   /api/v1/reservas-estoque              → criar reserva
+POST   /api/v1/reservas-estoque/{id}/cancelar → cancelar reserva ativa
+POST   /api/v1/reservas-estoque/{id}/baixar   → baixar reserva ativa
+GET    /api/v1/pedidos-compra                 → listar pedidos de compra
+GET    /api/v1/pedidos-compra/{id}            → buscar pedido de compra por id
+GET    /api/v1/pedidos-compra/{id}/completo   → buscar pedido com itens, entradas e historico
+POST   /api/v1/pedidos-compra                 → criar pedido de compra
+PUT    /api/v1/pedidos-compra/{id}            → atualizar pedido de compra
+POST   /api/v1/pedidos-compra/{id}/aprovar    → aprovar pedido de compra
+POST   /api/v1/pedidos-compra/{id}/cancelar   → cancelar pedido de compra
+DELETE /api/v1/pedidos-compra/{id}            → remover pedido de compra (soft delete)
+GET    /api/v1/pedidos-compra-itens           → listar itens de pedido de compra
+GET    /api/v1/pedidos-compra-itens/{id}      → buscar item por id
+POST   /api/v1/pedidos-compra-itens           → criar item de pedido de compra
+PUT    /api/v1/pedidos-compra-itens/{id}      → atualizar item de pedido de compra
+DELETE /api/v1/pedidos-compra-itens/{id}      → remover item (soft delete)
+GET    /api/v1/entradas-mercadoria            → listar entradas de mercadoria
+GET    /api/v1/entradas-mercadoria/{id}       → buscar entrada por id
+GET    /api/v1/entradas-mercadoria/{id}/completo → buscar entrada com itens, movimentacoes e historico
+POST   /api/v1/entradas-mercadoria            → criar entrada de mercadoria
+PUT    /api/v1/entradas-mercadoria/{id}       → atualizar entrada de mercadoria
+POST   /api/v1/entradas-mercadoria/{id}/conferir → conferir entrada
+POST   /api/v1/entradas-mercadoria/{id}/efetivar → efetivar entrada e movimentar estoque
+POST   /api/v1/entradas-mercadoria/{id}/cancelar → cancelar entrada
+DELETE /api/v1/entradas-mercadoria/{id}       → remover entrada (soft delete)
+GET    /api/v1/entradas-mercadoria-itens      → listar itens de entrada
+GET    /api/v1/entradas-mercadoria-itens/{id} → buscar item de entrada por id
+POST   /api/v1/entradas-mercadoria-itens      → criar item de entrada
+PUT    /api/v1/entradas-mercadoria-itens/{id} → atualizar item de entrada
+DELETE /api/v1/entradas-mercadoria-itens/{id} → remover item de entrada (soft delete)
 ```
 
 Filtros aceitos em `GET /api/v1/produtos`:
@@ -1737,6 +1967,163 @@ page
 size
 sort
 ```
+
+Filtros aceitos em `GET /api/v1/depositos`:
+
+```text
+empresaId
+filialId
+codigo
+nome
+tipoDeposito
+principal
+controlaEstoque
+bloqueado
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/localizacoes-estoque`:
+
+```text
+depositoId
+codigo
+descricao
+rua
+corredor
+prateleira
+principal
+bloqueada
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/estoques`:
+
+```text
+produtoId
+empresaId
+filialId
+depositoId
+localizacaoId
+estoqueBaixo
+estoqueZerado
+comSaldo
+semSaldo
+ativo
+page
+size
+sort
+```
+
+Consulta direta de saldo:
+
+```text
+GET /api/v1/estoques/saldo?produtoId=...&empresaId=...&depositoId=...&localizacaoId=...
+```
+
+Filtros aceitos em `GET /api/v1/movimentacoes-estoque`:
+
+```text
+estoqueId
+produtoId
+empresaId
+depositoId
+localizacaoId
+tipoMovimentacao
+origem
+dataInicial
+dataFinal
+page
+size
+sort
+```
+
+Movimentacoes de estoque sao imutaveis: nao existe `PUT` nem `DELETE` funcional para `/api/v1/movimentacoes-estoque`.
+
+O dominio de saldo deve ser alterado por `EstoqueDomainService`, em `shared/domain/service`. Modulos como Compras, Vendas, Inventario, Transferencia e ReservaEstoque nao devem chamar `EstoqueRepository.save()` diretamente para mudar quantidade, reserva ou disponibilidade. O fluxo esperado e sempre passar por metodos como `entrada`, `saida`, `ajuste`, `transferencia`, `reservar`, `cancelarReserva` e `baixarReserva`, mantendo saldo, disponibilidade, `ultimoMovimentoId` e `MovimentacaoEstoque` sincronizados.
+
+`EstoqueAggregateService` consolida a leitura operacional do saldo. O endpoint `GET /api/v1/estoques/{id}/completo` retorna o saldo, ultima movimentacao, reservas ativas e disponibilidade em uma unica chamada. O endpoint rapido `GET /api/v1/estoques/disponivel?produtoId=...&empresaId=...&depositoId=...&localizacaoId=...` retorna apenas `saldo`, `reservado` e `disponivel`, preparado para consultas frequentes de PDV, Vendas e Compras.
+
+`EstoqueFacade` foi criada como API interna para modulos futuros. Compras, Vendas, PDV e Inventario devem chamar a fachada para `entrada`, `saida`, `transferencia`, `ajuste`, `inventario`, `reserva`, `cancelamento` e `baixa`, mantendo a regra de que nenhum modulo externo altera saldo diretamente por repository.
+
+Eventos de dominio preparados para evolucao: `EstoqueAlteradoEvent`, `ReservaCriadaEvent`, `ReservaCanceladaEvent` e `ReservaBaixadaEvent`. Eles ainda funcionam como contratos internos e podem ser conectados depois a cache, auditoria, RabbitMQ ou notificacoes.
+
+`MovimentacaoEstoque.origem` agora usa o enum forte `MovimentacaoOrigem`: `COMPRA`, `VENDA`, `AJUSTE`, `TRANSFERENCIA`, `INVENTARIO`, `RESERVA`, `DEVOLUCAO`, `PRODUCAO`, `IMPORTACAO` e `API`. A coluna do banco continua `VARCHAR`, portanto nao foi necessaria nova migration para essa troca no codigo.
+
+Filtros aceitos em `GET /api/v1/reservas-estoque`:
+
+```text
+estoqueId
+produtoId
+empresaId
+filialId
+depositoId
+localizacaoId
+status
+origem
+origemId
+ativo
+page
+size
+sort
+```
+
+Reservas de estoque nao possuem `PUT` generico. O fluxo de estado deve usar `/cancelar` e `/baixar`. Criacao, cancelamento e baixa passam obrigatoriamente pelo `EstoqueDomainService`, mantendo `quantidadeReservada`, `quantidadeDisponivel`, saldo fisico e `MovimentacaoEstoque` sincronizados.
+
+Filtros aceitos em `GET /api/v1/pedidos-compra`:
+
+```text
+empresaId
+fornecedorId
+status
+numero
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/pedidos-compra-itens`:
+
+```text
+pedidoCompraId
+produtoId
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/entradas-mercadoria`:
+
+```text
+empresaId
+fornecedorId
+pedidoCompraId
+status
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/entradas-mercadoria-itens`:
+
+```text
+entradaMercadoriaId
+produtoId
+ativo
+page
+size
+sort
+```
+
+Pedidos de compra usam status `ABERTO`, `APROVADO`, `PARCIALMENTE_RECEBIDO`, `RECEBIDO` e `CANCELADO`. Entradas de mercadoria usam status `ABERTA`, `CONFERIDA`, `EFETIVADA` e `CANCELADA`. Apenas a efetivacao da entrada movimenta estoque, sempre via `EstoqueFacade.entrada(...)`; o fluxo registra `MovimentacaoEstoque` com origem `COMPRA` e atualiza o pedido vinculado para recebido.
 
 ### Padrão de resposta da API
 

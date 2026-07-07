@@ -246,7 +246,128 @@
   - [ ] Migrar/remover preco de custo/venda legado de Produto apos estabilizar consumo de ProdutoPreco em Vendas/PDV
   - [ ] Preparar PostgreSQL Full Text Search para nome, descricao, marca e categoria
 - [ ] Estoque
+  - [x] Criar migration `V56__schema_deposito.sql`
+  - [x] Criar migration `V57__permissoes_deposito.sql`
+  - [x] Criar migration `V58__deposito_controles_operacionais.sql`
+  - [x] Criar enum `TipoDeposito`
+  - [x] Criar entidade `Deposito`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de Deposito
+  - [x] Criar filtros por empresa, filial, codigo, nome, tipo, principal, controle de estoque, bloqueado e ativo
+  - [x] Garantir codigo unico por empresa entre registros ativos
+  - [x] Garantir apenas um deposito principal ativo por empresa
+  - [x] Validar filial ativa e pertencente a empresa informada
+  - [x] Adicionar `controlaEstoque` para depositos fisicos, virtuais ou de transito
+  - [x] Adicionar `bloqueado` para bloqueio operacional temporario sem excluir/desativar
+  - [x] Criar testes unitarios, controller e fluxo integrado para Deposito
+  - [x] Criar migration `V59__schema_localizacao_estoque.sql`
+  - [x] Criar migration `V60__permissoes_localizacao_estoque.sql`
+  - [x] Criar entidade `LocalizacaoEstoque`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de LocalizacaoEstoque
+  - [x] Criar filtros por deposito, codigo, descricao, rua, corredor, prateleira, principal, bloqueada e ativo
+  - [x] Garantir codigo unico por deposito entre registros ativos
+  - [x] Garantir apenas uma localizacao principal ativa por deposito
+  - [x] Adicionar `bloqueada` para impedir uso operacional sem excluir/desativar a localizacao
+  - [x] Criar testes unitarios, controller e fluxo integrado para LocalizacaoEstoque
+  - [x] Criar migration `V61__schema_estoque.sql`
+  - [x] Criar migration `V62__permissoes_estoque.sql`
+  - [x] Criar entidade `Estoque`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de Estoque
+  - [x] Garantir saldo unico por produto, empresa, deposito e localizacao
+  - [x] Calcular `quantidadeDisponivel` como `quantidade - quantidadeReservada`
+  - [x] Adicionar `ultimoMovimentoId` preparado para futura MovimentacaoEstoque
+  - [x] Criar metodos de dominio para adicionar, retirar, reservar, cancelar reserva, baixar reserva e controlar avarias
+  - [x] Criar filtros por produto, empresa, filial, deposito, localizacao, estoque baixo, estoque zerado, com saldo, sem saldo e ativo
+  - [x] Criar endpoint `GET /api/v1/estoques/saldo`
+  - [x] Criar testes unitarios, controller e fluxo integrado para Estoque
+  - [x] Criar migration `V63__schema_movimentacao_estoque.sql`
+  - [x] Criar migration `V64__permissoes_movimentacao_estoque.sql`
+  - [x] Criar enum `TipoMovimentacaoEstoque`
+  - [x] Criar enum `MovimentacaoOrigem`
+  - [x] Criar entidade `MovimentacaoEstoque` imutavel e sem soft delete
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller somente-leitura de MovimentacaoEstoque
+  - [x] Integrar criacao/ajuste de Estoque com registro automatico de movimentacao
+  - [x] Criar `EstoqueDomainService` como ponto unico para entrada, saida, ajuste, transferencia e reservas
+  - [x] Documentar regra: modulos futuros nao devem alterar saldo diretamente via repository
+  - [x] Criar endpoint `GET /api/v1/movimentacoes-estoque`
+  - [x] Criar endpoint `GET /api/v1/movimentacoes-estoque/{id}`
+  - [x] Bloquear alteracao e exclusao funcional de movimentacoes
+  - [x] Criar testes unitarios e controller para MovimentacaoEstoque
+  - [x] Criar migration `V65__schema_reserva_estoque.sql`
+  - [x] Criar migration `V66__permissoes_reserva_estoque.sql`
+  - [x] Criar enum `StatusReservaEstoque`
+  - [x] Criar entidade `ReservaEstoque`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de ReservaEstoque
+  - [x] Criar endpoints `POST /api/v1/reservas-estoque`, `GET /api/v1/reservas-estoque`, `GET /api/v1/reservas-estoque/{id}`
+  - [x] Criar endpoints de estado `POST /api/v1/reservas-estoque/{id}/cancelar` e `POST /api/v1/reservas-estoque/{id}/baixar`
+  - [x] Garantir reserva ativa sem baixar fisicamente o estoque
+  - [x] Garantir cancelamento devolvendo quantidade disponivel
+  - [x] Garantir baixa reduzindo quantidade fisica e quantidade reservada
+  - [x] Bloquear reserva acima do disponivel
+  - [x] Bloquear origem/origemId ativa duplicada
+  - [x] Integrar ReservaEstoque ao `EstoqueDomainService`
+  - [x] Criar testes unitarios, controller e fluxo integrado para ReservaEstoque
+  - [x] Criar `EstoqueAggregateService` e `EstoqueCompletoResponse`
+  - [x] Criar endpoint agregado `GET /api/v1/estoques/{id}/completo`
+  - [x] Criar endpoint rapido `GET /api/v1/estoques/disponivel`
+  - [x] Criar `EstoqueFacade` como API interna para Compras, Vendas, PDV e Inventario
+  - [x] Preparar eventos de dominio `EstoqueAlteradoEvent`, `ReservaCriadaEvent`, `ReservaCanceladaEvent` e `ReservaBaixadaEvent`
+  - [x] Criar teste de concorrencia otimista para reservas simultaneas
+  - [x] Criar teste simples de carga com 100 reservas concorrentes
+  - [ ] Proxima entidade sugerida: Inventario ou MovimentacaoEstoque de ajuste manual controlado
 - [ ] Compras
+  - [x] Criar migration `V67__schema_pedido_compra.sql`
+  - [x] Criar migration `V68__permissoes_pedido_compra.sql`
+  - [x] Criar enum `StatusPedidoCompra`
+  - [x] Criar entidade `PedidoCompra`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de PedidoCompra
+  - [x] Criar endpoints `POST /api/v1/pedidos-compra`, `GET /api/v1/pedidos-compra`, `GET /api/v1/pedidos-compra/{id}`, `PUT /api/v1/pedidos-compra/{id}` e `DELETE /api/v1/pedidos-compra/{id}`
+  - [x] Criar endpoints de estado `POST /api/v1/pedidos-compra/{id}/aprovar` e `POST /api/v1/pedidos-compra/{id}/cancelar`
+  - [x] Garantir numero unico por empresa entre registros ativos
+  - [x] Bloquear alteracao de pedido cancelado ou recebido
+  - [x] Recalcular `valorTotal` do pedido a partir dos itens
+  - [x] Criar migration `V69__schema_pedido_compra_item.sql`
+  - [x] Criar migration `V70__permissoes_pedido_compra_item.sql`
+  - [x] Criar entidade `PedidoCompraItem`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de PedidoCompraItem
+  - [x] Criar endpoints CRUD de `/api/v1/pedidos-compra-itens`
+  - [x] Validar quantidade maior que zero e valor unitario nao negativo
+  - [x] Bloquear itens em pedido cancelado ou recebido
+  - [x] Criar migration `V71__schema_entrada_mercadoria.sql`
+  - [x] Criar migration `V72__permissoes_entrada_mercadoria.sql`
+  - [x] Criar enum `StatusEntradaMercadoria`
+  - [x] Criar entidade `EntradaMercadoria`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de EntradaMercadoria
+  - [x] Criar endpoints `POST /api/v1/entradas-mercadoria`, `GET /api/v1/entradas-mercadoria`, `GET /api/v1/entradas-mercadoria/{id}`, `PUT /api/v1/entradas-mercadoria/{id}` e `DELETE /api/v1/entradas-mercadoria/{id}`
+  - [x] Criar endpoints de estado `POST /api/v1/entradas-mercadoria/{id}/conferir`, `/efetivar` e `/cancelar`
+  - [x] Garantir que somente entrada efetivada movimenta estoque
+  - [x] Criar migration `V73__schema_entrada_mercadoria_item.sql`
+  - [x] Criar migration `V74__permissoes_entrada_mercadoria_item.sql`
+  - [x] Criar entidade `EntradaMercadoriaItem`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de EntradaMercadoriaItem
+  - [x] Criar endpoints CRUD de `/api/v1/entradas-mercadoria-itens`
+  - [x] Validar deposito, localizacao, quantidade, valor unitario e vinculo localizacao/deposito
+  - [x] Integrar efetivacao com `EstoqueFacade.entrada(...)`
+  - [x] Registrar `MovimentacaoEstoque` com origem `COMPRA`
+  - [x] Atualizar pedido vinculado para `RECEBIDO` ao efetivar entrada
+  - [x] Criar teste integrado `ComprasBusinessFlowIntegrationTest`
+  - [x] Validar fluxo PedidoCompra -> Itens -> EntradaMercadoria -> Estoque -> MovimentacaoEstoque
+  - [x] Criar migration `V75__compras_consolidacao.sql`
+  - [x] Adicionar `nivelAprovacao`, `aprovadoPor` e `aprovadoEm` em PedidoCompra
+  - [x] Criar historico de status `PedidoCompraHistorico`
+  - [x] Criar historico de status `EntradaMercadoriaHistorico`
+  - [x] Criar `CompraAggregateService`
+  - [x] Criar `PedidoCompraCompletoResponse`
+  - [x] Criar `EntradaMercadoriaCompletaResponse`
+  - [x] Criar endpoint `GET /api/v1/pedidos-compra/{id}/completo`
+  - [x] Criar endpoint `GET /api/v1/entradas-mercadoria/{id}/completo`
+  - [x] Criar `CompraFacade` para uso interno por outros modulos
+  - [x] Criar eventos `PedidoCompraCriadoEvent`, `PedidoCompraAprovadoEvent` e `EntradaMercadoriaEfetivadaEvent`
+  - [x] Publicar eventos nos fluxos de criacao/aprovacao/efetivacao
+  - [x] Criar testes de concorrencia otimista para PedidoCompra e EntradaMercadoria
+  - [x] Criar teste simples de carga com 20 entradas simultaneas no mesmo estoque
+  - [ ] Melhorar recebimento parcial por quantidade recebida versus quantidade pedida
+  - [ ] Criar testes unitarios e controller dedicados por entidade de Compras
+  - [ ] Proxima entidade sugerida: EntradaMercadoria com conferencia fiscal/nota ou PedidoCompra aprovacao avancada
 - [ ] Vendas
 - [ ] Pagamentos
 - [ ] Faturamento

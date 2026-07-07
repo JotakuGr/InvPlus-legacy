@@ -1,0 +1,107 @@
+<div class="login-page">
+  <section class="login-brand">
+    <div class="brand">
+      <div class="brand-icon">iP</div>
+
+      <div>
+        <h1>invPlus</h1>
+        <span>ERP Management</span>
+      </div>
+    </div>
+
+    <div class="brand-content">
+      <h2>Gestão inteligente para empresas modernas</h2>
+
+      <p>
+        Controle produtos, estoque, vendas, compras, financeiro e clientes em
+        uma única plataforma.
+      </p>
+
+      <div class="features">
+        <div class="feature">
+          <span>📦</span>
+          <p>Produtos e estoque integrados</p>
+        </div>
+
+        <div class="feature">
+          <span>💰</span>
+          <p>Vendas e financeiro em tempo real</p>
+        </div>
+
+        <div class="feature">
+          <span>👥</span>
+          <p>Clientes, fornecedores e CRM</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-footer">
+      © 2026 invPlus. Todos os direitos reservados.
+    </div>
+  </section>
+
+  <section class="login-area">
+    <div class="login-card">
+      <div class="mobile-brand">
+        <div class="brand-icon">iP</div>
+        <h1>invPlus</h1>
+      </div>
+
+      <div class="login-header">
+        <h2>Acessar sistema</h2>
+        <p>Entre com suas credenciais para continuar</p>
+      </div>
+
+      <form class="login-form" (ngSubmit)="entrar()">
+        <div class="form-group">
+          <label>Usuário ou e-mail</label>
+
+          <input
+            type="text"
+            name="username"
+            [(ngModel)]="username"
+            placeholder="usuario@empresa.com"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Senha</label>
+
+          <div class="password-field">
+            <input
+              [type]="mostrarSenha ? 'text' : 'password'"
+              name="password"
+              [(ngModel)]="password"
+              placeholder="Digite sua senha"
+            />
+
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="mostrarSenha = !mostrarSenha"
+            >
+              {{ mostrarSenha ? 'Ocultar' : 'Ver' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <label class="remember">
+            <input type="checkbox" [(ngModel)]="lembrar" name="lembrar" />
+            <span>Lembrar acesso</span>
+          </label>
+
+          <a href="#">Esqueci minha senha</a>
+        </div>
+
+        <div class="error-message" *ngIf="erroLogin">
+          E-mail ou senha inválidos.
+        </div>
+
+        <button class="login-button" type="submit" [disabled]="carregando">
+          {{ carregando ? 'Entrando...' : 'Entrar' }}
+        </button>
+      </form>
+    </div>
+  </section>
+</div>

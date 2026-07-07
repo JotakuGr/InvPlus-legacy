@@ -14,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import java.util.UUID;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -134,6 +135,7 @@ class CadastrosControllerTests {
     void deveCriarHierarquiaGeograficaEFilial() throws Exception {
         String accessToken = login().get("accessToken").asString();
         String codigoIso2 = codigoIso2Unico();
+        String codigoBacen = codigoBacenUnico();
 
         String paisResponse = mockMvc.perform(post("/api/v1/cadastros/paises")
                         .header("Authorization", "Bearer " + accessToken)
@@ -143,9 +145,9 @@ class CadastrosControllerTests {
                                   "nome": "Pais %s",
                                   "codigoIso2": "%s",
                                   "codigoIso3": "PX%s",
-                                  "codigoBacen": "999"
+                                  "codigoBacen": "%s"
                                 }
-                                """.formatted(codigoIso2, codigoIso2, codigoIso2.substring(1))))
+                                """.formatted(codigoIso2, codigoIso2, codigoIso2.substring(1), codigoBacen)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.version").value(0))
                 .andReturn()
@@ -287,7 +289,12 @@ class CadastrosControllerTests {
     }
 
     private String codigoIso2Unico() {
-        long valor = Math.abs(System.nanoTime() % 1296);
+        long valor = Long.remainderUnsigned(UUID.randomUUID().getLeastSignificantBits(), 1296);
         return "%2s".formatted(Long.toString(valor, 36).toUpperCase()).replace(' ', '0');
+    }
+
+    private String codigoBacenUnico() {
+        long valor = Math.abs(System.nanoTime() % 10_000_000_000L);
+        return "%010d".formatted(valor);
     }
 }
