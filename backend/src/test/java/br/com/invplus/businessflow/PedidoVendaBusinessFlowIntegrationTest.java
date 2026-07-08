@@ -1,0 +1,181 @@
+package br.com.invplus.businessflow;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import br.com.invplus.modules.vendas.entity.PedidoVenda;
+import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
+/**
+ * Prova o fluxo inicial Empresa -> Cliente -> PedidoVenda com historico e concorrencia.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class PedidoVendaBusinessFlowIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private PedidoVendaRepository pedidoVendaRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Test
+    void deveCriarAprovarCancelarEConsultarPedidoVendaCompleto() throws Exception {
+        String token = login().get("accessToken").asString();
+        JsonNode empresa = criarEmpresa(token);
+        JsonNode cliente = criarCliente(token);
+        JsonNode pedido = criarPedidoVenda(token, empresa.get("id").asString(), cliente.get("id").asString());
+
+        mockMvc.perform(post("/api/v1/pedidos-venda/" + pedido.get("id").asString() + "/aprovar")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Pedido de venda precisa possuir itens para ser aprovado"));
+
+        mockMvc.perform(get("/api/v1/pedidos-venda/" + pedido.get("id").asString() + "/completo")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pedido.id").value(pedido.get("id").asString()))
+                .andExpect(jsonPath("$.pedido.status").value("ABERTO"))
+                .andExpect(jsonPath("$.reservas.length()").value(0))
+                .andExpect(jsonPath("$.historico[0].statusNovo").value("ABERTO"));
+
+        mockMvc.perform(post("/api/v1/pedidos-venda/" + pedido.get("id").asString() + "/cancelar")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADO"));
+    }
+
+    @Test
+    void deveBloquearAtualizacaoConcorrenteDePedidoVendaPorOptimisticLock() throws Exception {
+        String token = login().get("accessToken").asString();
+        JsonNode empresa = criarEmpresa(token);
+        JsonNode cliente = criarCliente(token);
+        JsonNode pedido = criarPedidoVenda(token, empresa.get("id").asString(), cliente.get("id").asString());
+        UUID pedidoId = UUID.fromString(pedido.get("id").asString());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+
+        PedidoVenda usuarioA = tx.execute(status -> pedidoVendaRepository.findById(pedidoId).orElseThrow());
+        PedidoVenda usuarioB = tx.execute(status -> pedidoVendaRepository.findById(pedidoId).orElseThrow());
+
+        usuarioA.setObservacao("Alteracao concorrente A");
+        tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioA));
+
+        usuarioB.setObservacao("Alteracao concorrente B");
+        assertThrows(ObjectOptimisticLockingFailureException.class,
+                () -> tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioB)));
+    }
+
+    private JsonNode login() throws Exception {
+        String response = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email": "admin@invplus.com", "senha": "admin123"}
+                                """))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response);
+    }
+
+    private JsonNode criarEmpresa(String token) throws Exception {
+        String cnpj = cnpjUnico();
+        String response = mockMvc.perform(post("/api/v1/empresas")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "razaoSocial": "Empresa Fluxo Venda %s",
+                                  "nomeFantasia": "Empresa Fluxo Venda",
+                                  "cnpj": "%s",
+                                  "inscricaoEstadual": "ISENTO",
+                                  "regimeTributario": "NORMAL",
+                                  "crt": 3,
+                                  "telefone": "71999990000",
+                                  "email": "fluxo-venda-%s@teste.com"
+                                }
+                                """.formatted(cnpj, cnpj, cnpj)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response);
+    }
+
+    private JsonNode criarCliente(String token) throws Exception {
+        String cnpj = cnpjUnico();
+        String pessoa = mockMvc.perform(post("/api/v1/pessoas")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "tipoPessoa": "JURIDICA",
+                                  "nome": "Cliente Fluxo Venda %s",
+                                  "nomeFantasia": "Cliente Fluxo Venda",
+                                  "cpfCnpj": "%s",
+                                  "rgIe": "ISENTO",
+                                  "telefone": "7133334444",
+                                  "email": "cliente-fluxo-venda-%s@teste.com"
+                                }
+                                """.formatted(cnpj, cnpj, cnpj)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        JsonNode pessoaNode = objectMapper.readTree(pessoa);
+
+        String response = mockMvc.perform(post("/api/v1/clientes")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pessoaId": "%s", "limiteCredito": 5000.00, "observacao": "Cliente do fluxo de vendas"}
+                                """.formatted(pessoaNode.get("id").asString())))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response);
+    }
+
+    private JsonNode criarPedidoVenda(String token, String empresaId, String clienteId) throws Exception {
+        String response = mockMvc.perform(post("/api/v1/pedidos-venda")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "empresaId": "%s",
+                                  "clienteId": "%s",
+                                  "numero": "PV-FLUXO-%s",
+                                  "dataEmissao": "2026-07-07",
+                                  "dataEntregaPrevista": "2026-07-10",
+                                  "desconto": 0,
+                                  "acrescimo": 0,
+                                  "observacao": "Pedido do fluxo de vendas"
+                                }
+                                """.formatted(empresaId, clienteId, codigoCurto())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("ABERTO"))
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response);
+    }
+
+    private String cnpjUnico() {
+        long parte = Math.abs(System.nanoTime() % 1_000_000_000_000L);
+        return "77" + "%012d".formatted(parte);
+    }
+
+    private String codigoCurto() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+}

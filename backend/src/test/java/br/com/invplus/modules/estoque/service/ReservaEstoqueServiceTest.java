@@ -69,8 +69,8 @@ class ReservaEstoqueServiceTest {
         Estoque estoque = estoque("100.000", "0.000");
         UUID origemId = UUID.randomUUID();
         when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
-        when(repository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
-                MovimentacaoOrigem.VENDA, origemId, StatusReservaEstoque.ATIVA)).thenReturn(false);
+        when(repository.existsByEstoqueIdAndOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+                estoque.getId(), MovimentacaoOrigem.VENDA, origemId, StatusReservaEstoque.ATIVA)).thenReturn(false);
         when(repository.save(any(ReservaEstoque.class))).thenAnswer(invocation -> {
             ReservaEstoque entity = invocation.getArgument(0);
             entity.setId(UUID.randomUUID());
@@ -82,7 +82,7 @@ class ReservaEstoqueServiceTest {
         assertThat(response.status()).isEqualTo(StatusReservaEstoque.ATIVA);
         assertThat(response.quantidade()).isEqualByComparingTo("20.000");
         assertThat(response.produtoId()).isEqualTo(estoque.getProduto().getId());
-        verify(estoqueDomainService).reservar(estoque, bd("20.000"), response.id(), null, "Reserva de estoque");
+        verify(estoqueDomainService).reservar(estoque, bd("20.000"), MovimentacaoOrigem.VENDA, origemId, null, "Reserva de estoque");
     }
 
     @Test
@@ -120,8 +120,8 @@ class ReservaEstoqueServiceTest {
         Estoque estoque = estoque("10.000", "0.000");
         UUID origemId = UUID.randomUUID();
         when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
-        when(repository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
-                MovimentacaoOrigem.VENDA, origemId, StatusReservaEstoque.ATIVA)).thenReturn(true);
+        when(repository.existsByEstoqueIdAndOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+                estoque.getId(), MovimentacaoOrigem.VENDA, origemId, StatusReservaEstoque.ATIVA)).thenReturn(true);
 
         assertThatThrownBy(() -> service.criar(request(estoque.getId(), "1.000", origemId)))
                 .isInstanceOf(ConflictException.class)
@@ -137,7 +137,7 @@ class ReservaEstoqueServiceTest {
 
         assertThat(response.status()).isEqualTo(StatusReservaEstoque.CANCELADA);
         assertThat(response.canceladaEm()).isNotNull();
-        verify(estoqueDomainService).cancelarReserva(reserva.getEstoque(), bd("5.000"), reserva.getId(),
+        verify(estoqueDomainService).cancelarReserva(reserva.getEstoque(), bd("5.000"), MovimentacaoOrigem.VENDA, reserva.getOrigemId(),
                 null, "Cancelamento de reserva de estoque");
     }
 
@@ -150,7 +150,7 @@ class ReservaEstoqueServiceTest {
 
         assertThat(response.status()).isEqualTo(StatusReservaEstoque.BAIXADA);
         assertThat(response.baixadaEm()).isNotNull();
-        verify(estoqueDomainService).baixarReserva(reserva.getEstoque(), bd("5.000"), reserva.getId(),
+        verify(estoqueDomainService).baixarReserva(reserva.getEstoque(), bd("5.000"), MovimentacaoOrigem.VENDA, reserva.getOrigemId(),
                 null, "Baixa de reserva de estoque");
     }
 

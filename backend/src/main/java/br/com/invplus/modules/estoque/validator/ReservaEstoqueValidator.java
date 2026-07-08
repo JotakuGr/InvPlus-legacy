@@ -27,7 +27,7 @@ public class ReservaEstoqueValidator {
         validarQuantidade(request.quantidade());
         validarEstoqueAtivo(estoque);
         validarDisponibilidade(request.quantidade(), estoque);
-        validarDuplicidadeOrigem(request);
+        validarDuplicidadeOrigem(request, estoque);
     }
 
     public void validarCancelamento(ReservaEstoque reserva) {
@@ -78,11 +78,12 @@ public class ReservaEstoqueValidator {
         }
     }
 
-    private void validarDuplicidadeOrigem(ReservaEstoqueRequest request) {
+    private void validarDuplicidadeOrigem(ReservaEstoqueRequest request, Estoque estoque) {
         if (request.origemId() == null) {
             return;
         }
-        if (repository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+        if (repository.existsByEstoqueIdAndOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+                estoque.getId(),
                 request.origem(),
                 request.origemId(),
                 StatusReservaEstoque.ATIVA

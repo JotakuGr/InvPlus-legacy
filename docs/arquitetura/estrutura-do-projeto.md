@@ -307,6 +307,11 @@ Migrations atuais ja implementadas:
 - `V73__schema_entrada_mercadoria_item.sql`
 - `V74__permissoes_entrada_mercadoria_item.sql`
 - `V75__compras_consolidacao.sql`
+- `V76__schema_pedido_venda.sql`
+- `V77__permissoes_pedido_venda.sql`
+- `V78__schema_pedido_venda_item.sql`
+- `V79__permissoes_pedido_venda_item.sql`
+- `V80__ajuste_reserva_estoque_origem_unica.sql`
 
 ## Docker
 
@@ -461,7 +466,7 @@ Essa entidade usa o endpoint `/api/v1/produtos-fiscais`, paginacao, permissoes `
 
 - `modules/produtos/service/ProdutoImagemServiceTest.java`
 - `modules/produtos/controller/ProdutoImagemControllerTests.java`
-- `modules/produtos/integration/ProdutoImagemBusinessFlowIntegrationTest.java`
+- `businessflow/ProdutoImagemBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/produtos-imagens`, paginacao, permissoes `PRODUTO_IMAGEM:*`, `PRODUTO:*` e CRUD granular. O vinculo guarda `principal`, `ordem` e `descricao`, impede duplicidade ativa de produto + arquivo, garante apenas uma imagem principal ativa por produto, valida ordem nao negativa, filtra por produto, arquivo, principal e ativo, e usa soft delete por padrao. O fluxo integrado usa `POST /api/v1/arquivos/upload` antes de criar o vinculo.
 
@@ -469,7 +474,7 @@ Essa entidade usa o endpoint `/api/v1/produtos-imagens`, paginacao, permissoes `
 
 - `modules/produtos/service/ProdutoCodigoBarrasServiceTest.java`
 - `modules/produtos/controller/ProdutoCodigoBarrasControllerTests.java`
-- `modules/produtos/integration/ProdutoCodigoBarrasBusinessFlowIntegrationTest.java`
+- `businessflow/ProdutoCodigoBarrasBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/produtos-codigos-barras`, paginacao, permissoes `PRODUTO_CODIGO_BARRAS:*`, `PRODUTO:*` e CRUD granular. O vinculo guarda tipo do codigo, codigo, indicador de principal e observacao. Suporta EAN de unidade, EAN de caixa, EAN de pacote, GTIN logistico e codigo interno alternativo, impede duplicidade ativa de codigo, garante apenas um codigo principal ativo por produto, filtra por produto, tipo, codigo, principal e ativo, e usa soft delete por padrao.
 
@@ -477,7 +482,7 @@ Essa entidade usa o endpoint `/api/v1/produtos-codigos-barras`, paginacao, permi
 
 - `modules/produtos/service/ProdutoPrecoServiceTest.java`
 - `modules/produtos/controller/ProdutoPrecoControllerTests.java`
-- `modules/produtos/integration/ProdutoPrecoBusinessFlowIntegrationTest.java`
+- `businessflow/ProdutoPrecoBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/produtos-precos`, paginacao, permissoes `PRODUTO_PRECO:*`, `PRODUTO:*` e CRUD granular. O registro guarda `tipoPreco`, `preco`, vigencia inicial/final, indicador de principal, observacao e `empresaId` opcional para multiempresa. Suporta precos `CUSTO`, `VENDA`, `ATACADO`, `VAREJO`, `PROMOCIONAL` e `ESPECIAL`, impede duplicidade ativa por produto/tipo/empresa/vigencia inicial, garante apenas um preco principal ativo por produto/tipo/empresa, filtra por produto, empresa, tipo, principal, vigencia e ativo, possui `GET /api/v1/produtos-precos/vigente` para buscar preco vigente por produto/tipo/data, e usa soft delete por padrao.
 
@@ -485,7 +490,7 @@ Essa entidade usa o endpoint `/api/v1/produtos-precos`, paginacao, permissoes `P
 
 - `modules/produtos/service/ProdutoUnidadeServiceTest.java`
 - `modules/produtos/controller/ProdutoUnidadeControllerTests.java`
-- `modules/produtos/integration/ProdutoUnidadeBusinessFlowIntegrationTest.java`
+- `businessflow/ProdutoUnidadeBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/produtos-unidades`, paginacao, permissoes `PRODUTO_UNIDADE:*`, `PRODUTO:*` e CRUD granular. O registro guarda unidade de medida, fator de conversao, unidade padrao, flags de compra, venda, estoque, fracionamento e observacao. Impede duplicidade ativa de produto + unidade, garante apenas uma unidade padrao ativa por produto, exige fator de conversao igual a 1 para unidade padrao, filtra por produto, unidade, unidade padrao, compra, venda, estoque, fracionamento e ativo, e usa soft delete por padrao.
 
@@ -498,7 +503,7 @@ O endpoint `GET /api/v1/produtos/{id}/completo` retorna Produto, fornecedores, p
 
 `ProdutoBusinessFlowIntegrationTest` cobre o fluxo completo entre modulos:
 
-- `modules/produtos/integration/ProdutoBusinessFlowIntegrationTest.java`
+- `businessflow/ProdutoBusinessFlowIntegrationTest.java`
 
 Esse teste cria Pessoa Juridica, transforma em Fornecedor, cria Categoria, Marca e UnidadeMedida, cadastra Produto, vincula ProdutoFornecedor, registra ProdutoFornecedorPreco, cria ProdutoFiscal e valida os principais vinculos, filtros, buscas e leitura agregada do produto completo. Ele funciona como prova de integracao entre Cadastros, Pessoas, Produtos e fiscal basico.
 
@@ -508,7 +513,7 @@ Backlog fiscal registrado: historico por vigencia, tributacao por UF, CFOP por t
 
 - `modules/estoque/service/DepositoServiceTest.java`
 - `modules/estoque/controller/DepositoControllerTests.java`
-- `modules/estoque/integration/DepositoBusinessFlowIntegrationTest.java`
+- `businessflow/DepositoBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/depositos`, paginacao, permissoes `DEPOSITO:*`, `ESTOQUE:*` e CRUD granular. O registro guarda empresa obrigatoria, filial opcional, codigo, nome, descricao, tipo do deposito, indicador de principal, flags de venda, compra e transferencia, controle de estoque e bloqueio operacional. Impede codigo duplicado por empresa entre registros ativos, garante apenas um deposito principal ativo por empresa, valida filial ativa e pertencente a empresa informada, filtra por empresa, filial, codigo, nome, tipo, principal, controle de estoque, bloqueado e ativo, e usa soft delete por padrao.
 
@@ -516,7 +521,7 @@ Essa entidade usa o endpoint `/api/v1/depositos`, paginacao, permissoes `DEPOSIT
 
 - `modules/estoque/service/LocalizacaoEstoqueServiceTest.java`
 - `modules/estoque/controller/LocalizacaoEstoqueControllerTests.java`
-- `modules/estoque/integration/LocalizacaoEstoqueBusinessFlowIntegrationTest.java`
+- `businessflow/LocalizacaoEstoqueBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/localizacoes-estoque`, paginacao, permissoes `LOCALIZACAO_ESTOQUE:*`, `ESTOQUE:*` e CRUD granular. O registro guarda deposito obrigatorio, codigo, descricao, rua, corredor, prateleira, nivel, posicao, indicador de principal e bloqueio operacional. Impede codigo duplicado por deposito entre registros ativos, garante apenas uma localizacao principal ativa por deposito, filtra por deposito, codigo, descricao, rua, corredor, prateleira, principal, bloqueada e ativo, e usa soft delete por padrao. A numeracao ficou em `V59`/`V60` porque `V58` ja estava ocupada pelos controles operacionais de Deposito.
 
@@ -524,7 +529,7 @@ Essa entidade usa o endpoint `/api/v1/localizacoes-estoque`, paginacao, permisso
 
 - `modules/estoque/service/EstoqueServiceTest.java`
 - `modules/estoque/controller/EstoqueControllerTests.java`
-- `modules/estoque/integration/EstoqueBusinessFlowIntegrationTest.java`
+- `businessflow/EstoqueBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/estoques`, o endpoint operacional `GET /api/v1/estoques/saldo`, paginacao, permissoes `ESTOQUE_SALDO:*`, `ESTOQUE:*` e CRUD granular. O saldo referencia Produto, Empresa, Deposito e LocalizacaoEstoque, com Filial opcional. A regra atual impede duplicidade ativa para produto + empresa + deposito + localizacao, valida que filial pertence a empresa, deposito pertence a empresa e localizacao pertence ao deposito. `quantidadeDisponivel` nao e digitada: e recalculada como `quantidade - quantidadeReservada`. A entidade tambem guarda quantidade avariada, quantidade em transito, estoque minimo, estoque maximo, `ultimoMovimentoEm` e `ultimoMovimentoId` preparado para a futura `MovimentacaoEstoque`.
 
@@ -534,7 +539,7 @@ Leituras consolidadas de Estoque:
 - `modules/estoque/service/EstoqueFacade.java`
 - `modules/estoque/dto/response/EstoqueCompletoResponse.java`
 - `modules/estoque/dto/response/EstoqueDisponivelResponse.java`
-- `modules/estoque/integration/EstoqueConcurrencyTest.java`
+- `concurrency/EstoqueConcurrencyTest.java`
 
 O endpoint `GET /api/v1/estoques/{id}/completo` retorna saldo, ultima movimentacao, reservas ativas e disponibilidade em uma unica resposta. O endpoint `GET /api/v1/estoques/disponivel` retorna saldo rapido por produto, empresa, deposito e localizacao. `EstoqueFacade` e a API interna que os proximos modulos devem usar para entrada, saida, transferencia, ajuste, inventario, reserva, cancelamento e baixa.
 
@@ -550,7 +555,7 @@ Essa entidade usa os endpoints somente-leitura `/api/v1/movimentacoes-estoque` e
 
 - `modules/estoque/service/ReservaEstoqueServiceTest.java`
 - `modules/estoque/controller/ReservaEstoqueControllerTests.java`
-- `modules/estoque/integration/ReservaEstoqueBusinessFlowIntegrationTest.java`
+- `businessflow/ReservaEstoqueBusinessFlowIntegrationTest.java`
 
 Essa entidade usa os endpoints `/api/v1/reservas-estoque`, `/api/v1/reservas-estoque/{id}`, `/api/v1/reservas-estoque/{id}/cancelar` e `/api/v1/reservas-estoque/{id}/baixar`, paginacao, permissoes `RESERVA_ESTOQUE:*`, `RESERVA_ESTOQUE:CRIAR`, `RESERVA_ESTOQUE:VISUALIZAR`, `RESERVA_ESTOQUE:CANCELAR`, `RESERVA_ESTOQUE:BAIXAR` e `ESTOQUE:*`. A reserva fotografa estoque, produto, empresa, filial, deposito e localizacao, usa status `ATIVA`, `CANCELADA`, `BAIXADA` e `EXPIRADA`, impede origem/origemId ativa duplicada e nao possui `PUT` generico. Criacao, cancelamento e baixa chamam `EstoqueDomainService`, garantindo que reservado, disponivel, saldo fisico e movimentacoes permaneçam sincronizados.
 
@@ -560,7 +565,7 @@ Eventos preparados em `modules/estoque/events`: `EstoqueAlteradoEvent`, `Reserva
 
 - `modules/compras/service/PedidoCompraService.java`
 - `modules/compras/controller/PedidoCompraController.java`
-- `modules/compras/integration/ComprasBusinessFlowIntegrationTest.java`
+- `businessflow/ComprasBusinessFlowIntegrationTest.java`
 
 Essa entidade usa o endpoint `/api/v1/pedidos-compra`, paginacao, permissoes `PEDIDO_COMPRA:*`, acoes granulares de criar, visualizar, editar, cancelar e aprovar. O pedido guarda empresa, filial opcional, fornecedor, numero, status, datas, observacao e valor total calculado pelos itens. A regra atual garante numero unico por empresa entre registros ativos, status inicial `ABERTO`, bloqueio de alteracao para pedidos `CANCELADO` ou `RECEBIDO`, aprovacao explicita e cancelamento por endpoint de estado.
 
@@ -587,6 +592,50 @@ A Sprint de Consolidacao de Compras adicionou:
 
 Os endpoints `GET /api/v1/pedidos-compra/{id}/completo` e `GET /api/v1/entradas-mercadoria/{id}/completo` reduzem chamadas do frontend ao trazer pedido/entrada, itens, historico, entradas vinculadas e movimentacoes geradas. `CompraFacade` passa a ser a API interna recomendada para outros modulos chamarem criacao, aprovacao, cancelamento, registro e efetivacao de compras. A V75 tambem prepara aprovacao por nivel com `nivelAprovacao`, `aprovadoPor` e `aprovadoEm`.
 
+`PedidoVenda` inicia o modulo Vendas com o cabecalho comercial por empresa e cliente:
+
+- `modules/vendas/service/PedidoVendaServiceTest.java`
+- `modules/vendas/controller/PedidoVendaControllerTests.java`
+- `businessflow/PedidoVendaBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/pedidos-venda`, paginacao, permissoes `PEDIDO_VENDA:*` e acoes granulares de criar, visualizar, editar, aprovar e cancelar. O pedido referencia Empresa, Filial opcional, Cliente obrigatorio e Funcionario vendedor opcional, guarda numero, status, datas, valor total, desconto, acrescimo, observacao e campos de aprovacao. A regra atual garante numero unico por empresa entre registros ativos, status inicial `ABERTO`, valor total inicial zerado e bloqueio de alteracao para pedidos `CANCELADO` ou `FATURADO`.
+
+`PedidoVendaItem` liga o pedido ao catalogo comercial:
+
+- `modules/vendas/entity/PedidoVendaItem.java`
+- `modules/vendas/repository/PedidoVendaItemRepository.java`
+- `modules/vendas/dto/request/PedidoVendaItemRequest.java`
+- `modules/vendas/dto/response/PedidoVendaItemResponse.java`
+- `modules/vendas/mapper/PedidoVendaItemMapper.java`
+- `modules/vendas/specification/PedidoVendaItemSpecification.java`
+- `modules/vendas/validator/PedidoVendaItemValidator.java`
+- `modules/vendas/service/PedidoVendaItemService.java`
+- `modules/vendas/controller/PedidoVendaItemController.java`
+- `modules/vendas/service/PedidoVendaItemServiceTest.java`
+- `modules/vendas/controller/PedidoVendaItemControllerTests.java`
+- `businessflow/PedidoVendaItemBusinessFlowIntegrationTest.java`
+
+Essa entidade usa o endpoint `/api/v1/pedidos-venda-itens`, paginacao, permissoes `PEDIDO_VENDA_ITEM:*` e CRUD granular. O item referencia PedidoVenda, Produto, ProdutoPreco e ProdutoUnidade. O frontend informa quantidade, desconto e acrescimo, mas nao informa valor unitario: o backend usa `ProdutoPreco.preco`, calcula subtotal e valor total, valida vigencia do preco, valida que preco e unidade pertencem ao produto e recalcula `PedidoVenda.valorTotal` ao criar, atualizar ou excluir logicamente um item.
+
+A aprovacao de PedidoVenda agora cria reservas automaticas de estoque usando `ReservaEstoqueService` e `EstoqueDomainService`. A origem da reserva e `MovimentacaoOrigem.VENDA`, com `origemId` igual ao id do pedido. Cancelar um pedido aprovado cancela as reservas ativas e restaura a disponibilidade do saldo. A migration `V80__ajuste_reserva_estoque_origem_unica.sql` ajusta o indice unico para permitir varias reservas do mesmo pedido em estoques diferentes, sem permitir duplicidade no mesmo estoque.
+
+Leituras e contratos de Vendas:
+
+- `modules/vendas/service/VendaAggregateService.java`
+- `modules/vendas/service/VendaFacade.java`
+- `modules/vendas/service/VendaHistoricoService.java`
+- `modules/vendas/dto/response/PedidoVendaCompletoResponse.java`
+- `modules/vendas/entity/PedidoVendaHistorico.java`
+- `modules/vendas/events/PedidoVendaCriadoEvent.java`
+- `modules/vendas/events/PedidoVendaReservadoEvent.java`
+- `modules/vendas/events/PedidoVendaAprovadoEvent.java`
+- `modules/vendas/events/PedidoVendaCanceladoEvent.java`
+- `modules/vendas/events/PedidoVendaItemCriadoEvent.java`
+- `modules/vendas/events/PedidoVendaItemAlteradoEvent.java`
+- `modules/vendas/events/PedidoVendaItemRemovidoEvent.java`
+
+O endpoint `GET /api/v1/pedidos-venda/{id}/completo` retorna pedido, itens, reservas e historico em uma unica chamada. `VendaFacade` passa a ser a API interna recomendada para outros modulos criarem, aprovarem, cancelarem, faturarem e manipularem itens de pedidos de venda sem conhecer services menores. `PedidoVendaBusinessFlowIntegrationTest` valida o fluxo real Empresa -> Cliente -> PedidoVenda, historico de status e optimistic lock. `PedidoVendaItemBusinessFlowIntegrationTest` valida Cliente -> PedidoVenda -> PedidoVendaItem -> ProdutoPreco -> ProdutoUnidade, totalizacao do pedido, leitura agregada e optimistic lock do item. `PedidoVendaReservaIntegrationTest` valida aprovacao com reserva automatica, cancelamento restaurando disponibilidade, movimentacao gerada e concorrencia retornando `409` sem reserva duplicada.
+
 ## Testes
 
 ```text
@@ -601,5 +650,27 @@ backend/src/test/
 └── resources/
     └── application-test.yml
 ```
+
+Estrutura atual dos testes:
+
+```text
+backend/src/test/java/br/com/invplus/
+|-- businessflow/              # Fluxos ponta a ponta entre modulos
+|-- concurrency/               # Concorrencia e optimistic lock
+|-- integration/
+|   |-- cadastros/
+|   |-- pessoas/
+|   |-- produtos/
+|   |-- estoque/
+|   |-- compras/
+|   |-- vendas/
+|   `-- financeiro/
+|-- performance/               # Cargas locais simples
+|-- security/                  # Auth, JWT, permissoes e seeds
+|-- modules/                   # Testes de service por dominio
+`-- shared/
+```
+
+Testes de service continuam em `modules/<modulo>/service/`, perto das regras de dominio.
 
 `shared/infrastructure/MigrationIdempotencyTest.java` valida a politica de seeds tecnicos em migrations. Qualquer arquivo SQL com `INSERT INTO` precisa conter `ON CONFLICT` ou `WHERE NOT EXISTS`, evitando duplicidade de permissoes, perfis, usuarios tecnicos e vinculos de seguranca.

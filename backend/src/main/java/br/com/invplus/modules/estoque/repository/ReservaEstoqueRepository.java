@@ -22,4 +22,22 @@ public interface ReservaEstoqueRepository extends BaseRepository<ReservaEstoque>
             UUID origemId,
             StatusReservaEstoque status
     );
+
+    boolean existsByEstoqueIdAndOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+            UUID estoqueId,
+            MovimentacaoOrigem origem,
+            UUID origemId,
+            StatusReservaEstoque status
+    );
+
+    List<ReservaEstoque> findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+            MovimentacaoOrigem origem,
+            UUID origemId,
+            StatusReservaEstoque status
+    );
+
+    List<ReservaEstoque> findByOrigemAndOrigemIdAndAtivoTrueAndDeletedAtIsNull(
+            MovimentacaoOrigem origem,
+            UUID origemId
+    );
 }

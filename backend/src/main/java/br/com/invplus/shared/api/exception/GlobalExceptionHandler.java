@@ -9,6 +9,7 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -45,6 +46,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Registro alterado por outro usuario. Atualize os dados e tente novamente.",
                 List.of("Conflito de concorrencia"),
+                request
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        return error(
+                HttpStatus.CONFLICT,
+                "Registro viola uma regra de unicidade ou integridade.",
+                List.of("Conflito de integridade dos dados"),
                 request
         );
     }

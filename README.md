@@ -225,7 +225,13 @@ invPlus/
 │       │       ├── application.yml
 │       │       └── META-INF/
 │       └── test/
-│           ├── java/                  # Testes de contexto, auth e repositories
+│           ├── java/br/com/invplus/
+│           │   ├── businessflow/      # Fluxos ponta a ponta entre módulos
+│           │   ├── concurrency/       # Concorrência e optimistic lock
+│           │   ├── integration/       # Testes de controller por módulo
+│           │   ├── performance/       # Cargas locais simples
+│           │   ├── security/          # Auth, JWT e seeds de segurança
+│           │   └── modules/           # Testes unitários/de service por domínio
 │           └── resources/
 ├── frontend/
 │   └── src/
@@ -381,6 +387,11 @@ V72__permissoes_entrada_mercadoria.sql
 V73__schema_entrada_mercadoria_item.sql
 V74__permissoes_entrada_mercadoria_item.sql
 V75__compras_consolidacao.sql
+V76__schema_pedido_venda.sql
+V77__permissoes_pedido_venda.sql
+V78__schema_pedido_venda_item.sql
+V79__permissoes_pedido_venda_item.sql
+V80__ajuste_reserva_estoque_origem_unica.sql
 ```
 
 ### Migration V1
@@ -1279,6 +1290,15 @@ O backend centraliza erros em `GlobalExceptionHandler` e responde sempre no form
 
 ## Testes
 
+Os testes estão organizados por intenção:
+
+- `businessflow/`: fluxos ponta a ponta entre vários módulos, como Produtos, Estoque, Compras e Vendas.
+- `concurrency/`: cenários de concorrência e `@Version`/optimistic lock.
+- `integration/<modulo>/`: testes de controller e integração focados em um módulo.
+- `security/`: autenticação, JWT, permissões e seed de segurança.
+- `performance/`: cargas locais simples para validar consistência sob concorrência.
+- `modules/<modulo>/service/`: testes de service/regra de domínio, mantidos próximos do código de negócio.
+
 Testes existentes:
 
 - `BackendApplicationTests`: valida o carregamento do contexto Spring.
@@ -1345,8 +1365,12 @@ Testes existentes:
 - `ReservaEstoqueServiceTest`: valida criação, estoque inexistente, quantidade zero, reserva acima do disponível, origem duplicada, cancelamento, baixa, transições inválidas e filtros.
 - `ReservaEstoqueControllerTests`: valida criação, cancelamento, baixa, atualização real de saldo reservado/disponível/físico, filtros, duplicidade por origem, `401` sem token e `403` sem permissão.
 - `ReservaEstoqueBusinessFlowIntegrationTest`: valida o fluxo real Cadastros -> Produtos -> Estoque -> ReservaEstoque -> MovimentacaoEstoque.
-- `EstoqueConcurrencyTest`: valida concorrencia otimista com `@Version` em reservas simultaneas e executa carga simples com 100 reservas concorrentes, garantindo saldo reservado/disponivel consistente.
+- `EstoqueConcurrencyTest`: valida concorrencia otimista com `@Version` em reservas simultaneas.
+- `EstoqueLoadTest`: executa carga simples com 100 reservas concorrentes, garantindo saldo reservado/disponivel consistente.
 - `ComprasBusinessFlowIntegrationTest`: valida o fluxo real Cadastros -> Pessoas -> Produtos -> Estoque -> PedidoCompra -> EntradaMercadoria, endpoints completos, historico de status, movimentacao com origem `COMPRA`, optimistic lock em PedidoCompra/EntradaMercadoria e carga simples com entradas simultaneas no mesmo estoque.
+- `PedidoVendaServiceTest`: valida criacao, empresa/cliente inexistentes, numero duplicado por empresa, valores negativos, aprovacao, cancelamento, bloqueio de alteracao de cancelado e filtros paginados.
+- `PedidoVendaControllerTests`: valida CRUD do cabecalho, filtros, `/completo`, historico, aprovacao, cancelamento, bloqueio de alteracao, soft delete, duplicidade, `401` sem token e `403` sem permissao.
+- `PedidoVendaBusinessFlowIntegrationTest`: valida o fluxo real Empresa -> Cliente -> PedidoVenda, historico de status e optimistic lock.
 - `MigrationIdempotencyTest`: valida que migrations com `INSERT INTO` tenham proteção idempotente com `ON CONFLICT` ou `WHERE NOT EXISTS`, evitando duplicidade em seeds técnicos.
 
 Para executar:
@@ -1360,7 +1384,7 @@ Resultado esperado no estado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 406, Failures: 0, Errors: 0
+Tests run: 646, Failures: 0, Errors: 0
 ```
 
 Os testes usam o profile `test`, configurado em `backend/src/test/resources/application-test.yml`.
@@ -1536,6 +1560,11 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - `V73__schema_entrada_mercadoria_item.sql` cria itens de entrada com produto, unidade, deposito, localizacao, quantidade e valores.
 - `V74__permissoes_entrada_mercadoria_item.sql` adiciona permissoes `ENTRADA_MERCADORIA_ITEM:*` e CRUD granular.
 - `V75__compras_consolidacao.sql` adiciona campos de aprovacao em PedidoCompra e historicos de status para PedidoCompra e EntradaMercadoria.
+- `V76__schema_pedido_venda.sql` cria PedidoVenda e PedidoVendaHistorico.
+- `V77__permissoes_pedido_venda.sql` adiciona permissoes `PEDIDO_VENDA:*`, criar, visualizar, editar, aprovar e cancelar.
+- `V78__schema_pedido_venda_item.sql` cria PedidoVendaItem vinculando PedidoVenda, Produto, ProdutoPreco e ProdutoUnidade.
+- `V79__permissoes_pedido_venda_item.sql` adiciona permissoes `PEDIDO_VENDA_ITEM:*` e CRUD granular.
+- `V80__ajuste_reserva_estoque_origem_unica.sql` ajusta a unicidade de ReservaEstoque para permitir varias reservas do mesmo pedido, desde que sejam de estoques diferentes, impedindo duplicidade apenas por `estoque_id + origem + origem_id`.
 
 ### Docker
 
@@ -1578,7 +1607,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
  ├── [ ] 10. Produtos - iniciado com Produto, ProdutoFornecedor, ProdutoFornecedorPreco e ProdutoFiscal
  ├── [ ] 11. Estoque
  ├── [ ] 12. Compras - iniciado com PedidoCompra, PedidoCompraItem, EntradaMercadoria e EntradaMercadoriaItem
- ├── [ ] 13. Vendas
+ ├── [ ] 13. Vendas - iniciado com PedidoVenda, historico, aggregate e facade
  ├── [ ] 14. Pagamentos
  ├── [ ] 15. Faturamento
  ├── [ ] 16. Financeiro
@@ -1637,7 +1666,7 @@ Esta seção documenta o estado atual do workspace antes do próximo commit.
 - [x] Módulo de Produtos iniciado com Produto, ProdutoFornecedor, ProdutoFornecedorPreco e ProdutoFiscal
 - [ ] Módulo de Estoque
 - [x] Módulo de Compras iniciado com fluxo PedidoCompra -> EntradaMercadoria -> Estoque
-- [ ] Módulo de Vendas
+- [x] Módulo de Vendas iniciado com PedidoVenda
 - [ ] Módulo Financeiro
 - [ ] Módulo Fiscal
 - [ ] Módulo CRM
@@ -1816,6 +1845,19 @@ GET    /api/v1/entradas-mercadoria-itens/{id} → buscar item de entrada por id
 POST   /api/v1/entradas-mercadoria-itens      → criar item de entrada
 PUT    /api/v1/entradas-mercadoria-itens/{id} → atualizar item de entrada
 DELETE /api/v1/entradas-mercadoria-itens/{id} → remover item de entrada (soft delete)
+GET    /api/v1/pedidos-venda                  → listar pedidos de venda
+GET    /api/v1/pedidos-venda/{id}             → buscar pedido de venda por id
+GET    /api/v1/pedidos-venda/{id}/completo    → buscar pedido com itens e historico
+POST   /api/v1/pedidos-venda                  → criar pedido de venda
+PUT    /api/v1/pedidos-venda/{id}             → atualizar pedido de venda
+POST   /api/v1/pedidos-venda/{id}/aprovar     → aprovar pedido de venda
+POST   /api/v1/pedidos-venda/{id}/cancelar    → cancelar pedido de venda
+DELETE /api/v1/pedidos-venda/{id}             → remover pedido de venda (soft delete)
+GET    /api/v1/pedidos-venda-itens            → listar itens de pedido de venda
+GET    /api/v1/pedidos-venda-itens/{id}       → buscar item de venda por id
+POST   /api/v1/pedidos-venda-itens            → criar item de venda
+PUT    /api/v1/pedidos-venda-itens/{id}       → atualizar item de venda
+DELETE /api/v1/pedidos-venda-itens/{id}       → remover item de venda (soft delete)
 ```
 
 Filtros aceitos em `GET /api/v1/produtos`:
@@ -2124,6 +2166,40 @@ sort
 ```
 
 Pedidos de compra usam status `ABERTO`, `APROVADO`, `PARCIALMENTE_RECEBIDO`, `RECEBIDO` e `CANCELADO`. Entradas de mercadoria usam status `ABERTA`, `CONFERIDA`, `EFETIVADA` e `CANCELADA`. Apenas a efetivacao da entrada movimenta estoque, sempre via `EstoqueFacade.entrada(...)`; o fluxo registra `MovimentacaoEstoque` com origem `COMPRA` e atualiza o pedido vinculado para recebido.
+
+Filtros aceitos em `GET /api/v1/pedidos-venda`:
+
+```text
+empresaId
+filialId
+clienteId
+vendedorId
+numero
+status
+dataEmissaoDe
+dataEmissaoAte
+ativo
+page
+size
+sort
+```
+
+Filtros aceitos em `GET /api/v1/pedidos-venda-itens`:
+
+```text
+pedidoVendaId
+produtoId
+ativo
+page
+size
+sort
+```
+
+Pedidos de venda usam status `ABERTO`, `APROVADO`, `SEPARANDO`, `FATURADO` e `CANCELADO`. O endpoint agregado `GET /api/v1/pedidos-venda/{id}/completo` retorna cabecalho, itens, reservas e historico. As acoes de estado atuais sao `/aprovar` e `/cancelar`.
+
+Itens de pedido de venda sempre usam o preco vindo de `ProdutoPreco`; o frontend nao envia `valorUnitario`. O total do item e calculado no backend como `(quantidade * preco) - desconto + acrescimo`, e o `valorTotal` do pedido e recalculado sempre que um item e criado, atualizado ou excluido logicamente.
+
+A aprovacao de PedidoVenda agora reserva estoque automaticamente. O fluxo busca os itens, converte a quantidade pela `ProdutoUnidade`, escolhe um Estoque disponivel do mesmo produto/empresa, cria `ReservaEstoque` com `MovimentacaoOrigem.VENDA` e `origemId = pedidoVendaId`, chama `EstoqueDomainService.reservar(...)`, gera `MovimentacaoEstoque`, grava historico e publica `PedidoVendaReservadoEvent` antes de `PedidoVendaAprovadoEvent`. Ao cancelar um pedido aprovado, as reservas ativas da origem `VENDA` sao canceladas e a disponibilidade do estoque e restaurada. Tentativas concorrentes de aprovacao retornam conflito `409`, sem gerar reserva duplicada.
 
 ### Padrão de resposta da API
 

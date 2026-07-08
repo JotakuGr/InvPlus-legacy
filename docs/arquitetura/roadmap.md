@@ -369,6 +369,43 @@
   - [ ] Criar testes unitarios e controller dedicados por entidade de Compras
   - [ ] Proxima entidade sugerida: EntradaMercadoria com conferencia fiscal/nota ou PedidoCompra aprovacao avancada
 - [ ] Vendas
+  - [x] Criar migration `V76__schema_pedido_venda.sql`
+  - [x] Criar migration `V77__permissoes_pedido_venda.sql`
+  - [x] Criar enum `StatusPedidoVenda`
+  - [x] Criar entidade `PedidoVenda`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de PedidoVenda
+  - [x] Criar endpoints CRUD de `/api/v1/pedidos-venda`
+  - [x] Criar endpoints de estado `POST /api/v1/pedidos-venda/{id}/aprovar` e `POST /api/v1/pedidos-venda/{id}/cancelar`
+  - [x] Criar endpoint agregado `GET /api/v1/pedidos-venda/{id}/completo`
+  - [x] Garantir numero unico por empresa entre registros ativos
+  - [x] Bloquear alteracao de pedido `CANCELADO` ou `FATURADO`
+  - [x] Criar historico de status `PedidoVendaHistorico`
+  - [x] Criar `VendaAggregateService`, `VendaFacade` e `PedidoVendaCompletoResponse`
+  - [x] Criar eventos `PedidoVendaCriadoEvent`, `PedidoVendaAprovadoEvent` e `PedidoVendaCanceladoEvent`
+  - [x] Criar testes unitarios, controller e fluxo integrado para PedidoVenda
+  - [x] Criar teste de concorrencia otimista para PedidoVenda
+  - [x] Criar migration `V78__schema_pedido_venda_item.sql`
+  - [x] Criar migration `V79__permissoes_pedido_venda_item.sql`
+  - [x] Criar entidade `PedidoVendaItem`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de PedidoVendaItem
+  - [x] Criar endpoints CRUD de `/api/v1/pedidos-venda-itens`
+  - [x] Usar `ProdutoPreco` como fonte do valor unitario, sem confiar em valor enviado pelo frontend
+  - [x] Validar vinculos ProdutoPreco/ProdutoUnidade com o Produto do item
+  - [x] Recalcular valor total do item e do pedido ao criar, atualizar ou excluir item
+  - [x] Atualizar `PedidoVendaCompletoResponse` e `VendaAggregateService` para retornar itens
+  - [x] Adicionar operacoes de item na `VendaFacade`
+  - [x] Criar eventos `PedidoVendaItemCriadoEvent`, `PedidoVendaItemAlteradoEvent` e `PedidoVendaItemRemovidoEvent`
+  - [x] Criar testes unitarios, controller, fluxo integrado e concorrencia otimista para PedidoVendaItem
+  - [x] Confirmar `MovimentacaoOrigem.VENDA` para reservas comerciais
+  - [x] Criar migration `V80__ajuste_reserva_estoque_origem_unica.sql`
+  - [x] Evoluir `VendaFacade` com `aprovarPedido`, `cancelarPedido` e `faturarPedido`
+  - [x] Aprovar PedidoVenda criando reservas automaticas por item via `ReservaEstoqueService` e `EstoqueDomainService`
+  - [x] Cancelar PedidoVenda aprovado cancelando reservas ativas e restaurando disponibilidade
+  - [x] Atualizar `PedidoVendaCompletoResponse` para retornar reservas do pedido
+  - [x] Criar evento `PedidoVendaReservadoEvent`
+  - [x] Padronizar conflito de integridade/concorrencia como `409`
+  - [x] Criar `PedidoVendaReservaIntegrationTest` cobrindo aprovacao, cancelamento, saldo, movimentacao e concorrencia
+  - [ ] Proxima entidade sugerida: Orcamento, Expedicao ou faturamento do PedidoVenda
 - [ ] Pagamentos
 - [ ] Faturamento
 - [ ] Financeiro
@@ -386,6 +423,7 @@
 ## Fase 8 - Qualidade e Entrega
 
 - [ ] Configurar OpenAPI/Swagger
+- [x] Organizar suites de teste por finalidade: businessflow, concurrency, integration, security e performance
 - [ ] Aumentar cobertura de testes
 - [ ] Configurar CI/CD
 - [ ] Configurar observabilidade

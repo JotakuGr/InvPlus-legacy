@@ -60,24 +60,36 @@ public class EstoqueDomainService {
     }
 
     public void reservar(Estoque estoque, BigDecimal quantidade, UUID origemId, String documento, String observacao) {
+        reservar(estoque, quantidade, MovimentacaoOrigem.RESERVA, origemId, documento, observacao);
+    }
+
+    public void reservar(Estoque estoque, BigDecimal quantidade, MovimentacaoOrigem origem, UUID origemId, String documento, String observacao) {
         BigDecimal saldoAnterior = estoque.getQuantidade();
         estoque.reservar(quantidade);
         registrar(estoque, TipoMovimentacaoEstoque.RESERVA, quantidade, saldoAnterior, estoque.getQuantidade(),
-                MovimentacaoOrigem.RESERVA, origemId, documento, observacao);
+                origem, origemId, documento, observacao);
     }
 
     public void cancelarReserva(Estoque estoque, BigDecimal quantidade, UUID origemId, String documento, String observacao) {
+        cancelarReserva(estoque, quantidade, MovimentacaoOrigem.RESERVA, origemId, documento, observacao);
+    }
+
+    public void cancelarReserva(Estoque estoque, BigDecimal quantidade, MovimentacaoOrigem origem, UUID origemId, String documento, String observacao) {
         BigDecimal saldoAnterior = estoque.getQuantidade();
         estoque.cancelarReserva(quantidade);
         registrar(estoque, TipoMovimentacaoEstoque.CANCELAMENTO_RESERVA, quantidade, saldoAnterior, estoque.getQuantidade(),
-                MovimentacaoOrigem.RESERVA, origemId, documento, observacao);
+                origem, origemId, documento, observacao);
     }
 
     public void baixarReserva(Estoque estoque, BigDecimal quantidade, UUID origemId, String documento, String observacao) {
+        baixarReserva(estoque, quantidade, MovimentacaoOrigem.RESERVA, origemId, documento, observacao);
+    }
+
+    public void baixarReserva(Estoque estoque, BigDecimal quantidade, MovimentacaoOrigem origem, UUID origemId, String documento, String observacao) {
         BigDecimal saldoAnterior = estoque.getQuantidade();
         estoque.baixarReserva(quantidade);
         registrar(estoque, TipoMovimentacaoEstoque.BAIXA_RESERVA, quantidade, saldoAnterior, estoque.getQuantidade(),
-                MovimentacaoOrigem.RESERVA, origemId, documento, observacao);
+                origem, origemId, documento, observacao);
     }
 
     /**

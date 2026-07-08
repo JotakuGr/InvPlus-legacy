@@ -14,6 +14,7 @@ import br.com.invplus.modules.estoque.validator.ReservaEstoqueValidator;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import br.com.invplus.shared.domain.service.EstoqueDomainService;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -86,7 +87,8 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
         entity.setStatus(StatusReservaEstoque.ATIVA);
         entity.vincularEstoque(estoque);
         ReservaEstoque salvo = repository.save(entity);
-        estoqueDomainService.reservar(estoque, salvo.getQuantidade(), salvo.getId(), null, "Reserva de estoque");
+        estoqueDomainService.reservar(estoque, salvo.getQuantidade(), salvo.getOrigem(), salvo.getOrigemId(),
+                null, "Reserva de estoque");
         return mapper.toResponse(salvo);
     }
 
@@ -94,7 +96,7 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
     public ReservaEstoqueResponse cancelar(UUID id) {
         ReservaEstoque reserva = buscarEntidade(id);
         validator.validarCancelamento(reserva);
-        estoqueDomainService.cancelarReserva(reserva.getEstoque(), reserva.getQuantidade(), reserva.getId(),
+        estoqueDomainService.cancelarReserva(reserva.getEstoque(), reserva.getQuantidade(), reserva.getOrigem(), reserva.getOrigemId(),
                 null, "Cancelamento de reserva de estoque");
         reserva.cancelar();
         return mapper.toResponse(reserva);
@@ -104,10 +106,22 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
     public ReservaEstoqueResponse baixar(UUID id) {
         ReservaEstoque reserva = buscarEntidade(id);
         validator.validarBaixa(reserva);
-        estoqueDomainService.baixarReserva(reserva.getEstoque(), reserva.getQuantidade(), reserva.getId(),
+        estoqueDomainService.baixarReserva(reserva.getEstoque(), reserva.getQuantidade(), reserva.getOrigem(), reserva.getOrigemId(),
                 null, "Baixa de reserva de estoque");
         reserva.baixar();
         return mapper.toResponse(reserva);
+    }
+
+    @Transactional
+    public List<ReservaEstoqueResponse> cancelarPorOrigem(MovimentacaoOrigem origem, UUID origemId) {
+        return repository.findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+                        origem,
+                        origemId,
+                        StatusReservaEstoque.ATIVA
+                )
+                .stream()
+                .map(reserva -> cancelar(reserva.getId()))
+                .toList();
     }
 
     private Estoque buscarEstoqueAtivo(UUID id) {
