@@ -405,10 +405,77 @@
   - [x] Criar evento `PedidoVendaReservadoEvent`
   - [x] Padronizar conflito de integridade/concorrencia como `409`
   - [x] Criar `PedidoVendaReservaIntegrationTest` cobrindo aprovacao, cancelamento, saldo, movimentacao e concorrencia
-  - [ ] Proxima entidade sugerida: Orcamento, Expedicao ou faturamento do PedidoVenda
+  - [x] Criar migration `V81__schema_venda_faturamento.sql`
+  - [x] Criar migration `V82__permissoes_venda_faturamento.sql`
+  - [x] Criar enum `StatusVendaFaturamento`
+  - [x] Criar entidade `VendaFaturamento`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de VendaFaturamento
+  - [x] Criar endpoint `POST /api/v1/vendas-faturamentos/faturar`
+  - [x] Criar endpoints `GET /api/v1/vendas-faturamentos`, `GET /api/v1/vendas-faturamentos/{id}` e `POST /api/v1/vendas-faturamentos/{id}/cancelar`
+  - [x] Faturar PedidoVenda aprovado baixando reservas ativas via `ReservaEstoqueService`
+  - [x] Atualizar PedidoVenda para `FATURADO` ao concluir o faturamento
+  - [x] Atualizar `PedidoVendaCompletoResponse` e `VendaAggregateService` para retornar faturamento
+  - [x] Criar eventos `VendaFaturamentoCriadoEvent` e `PedidoVendaFaturadoEvent`
+  - [x] Criar testes unitarios, controller e fluxo integrado para VendaFaturamento
+  - [ ] Proxima entidade sugerida: Expedicao, Orcamento ou cancelamento fiscal/financeiro do faturamento
 - [ ] Pagamentos
+  - [x] Criar migration `V83__schema_forma_pagamento.sql`
+  - [x] Criar migration `V84__permissoes_forma_pagamento.sql`
+  - [x] Criar enum `TipoFormaPagamento`
+  - [x] Criar entidade `FormaPagamento`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de FormaPagamento
+  - [x] Criar endpoint CRUD `/api/v1/formas-pagamento`
+  - [x] Validar codigo unico entre registros ativos
+  - [x] Validar troco apenas para `DINHEIRO`
+  - [x] Validar parcelamento apenas para `CARTAO_CREDITO`, `BOLETO` e `CREDIARIO`
+  - [x] Criar testes unitarios e controller para FormaPagamento
+  - [x] Criar migration `V85__schema_condicao_pagamento.sql`
+  - [x] Criar migration `V86__permissoes_condicao_pagamento.sql`
+  - [x] Criar migration evolutiva `V87__condicao_pagamento_parcelas.sql`
+  - [x] Criar entidade `CondicaoPagamento`
+  - [x] Criar entidade filha `CondicaoPagamentoParcela`
+  - [x] Criar enum `RegraVencimento`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de CondicaoPagamento
+  - [x] Criar endpoint CRUD `/api/v1/condicoes-pagamento`
+  - [x] Validar parcelas obrigatorias, numero unico, dias, percentuais e soma 100%
+  - [x] Criar endpoint `POST /api/v1/condicoes-pagamento/{id}/simular`
+  - [x] Criar `CalculadoraVencimentoService` e `GeradorParcelasService`
+  - [x] Criar testes unitarios e controller para CondicaoPagamento
+  - [x] Criar `PagamentosBusinessFlowIntegrationTest`
+  - [x] ContaBancaria implementada em `/api/v1/contas-bancarias`
 - [ ] Faturamento
 - [ ] Financeiro
+  - [x] Criar migration `V88__schema_conta_receber.sql`
+  - [x] Criar migration `V89__permissoes_conta_receber.sql`
+  - [x] Criar enum `StatusContaReceber`
+  - [x] Criar entidade `ContaReceber`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de ContaReceber
+  - [x] Criar endpoint CRUD `/api/v1/contas-receber`
+  - [x] Criar endpoint `POST /api/v1/contas-receber/{id}/cancelar`
+  - [x] Validar empresa e cliente obrigatorios, valor total positivo, numero unico por empresa e valor aberto calculado
+  - [x] Bloquear alteracao de contas pagas ou canceladas
+  - [x] Criar testes unitarios e controller para ContaReceber
+  - [x] Criar migration `V90__schema_parcela_receber.sql`
+  - [x] Criar migration `V91__permissoes_parcela_receber.sql`
+  - [x] Criar enum `StatusParcelaReceber`
+  - [x] Criar entidade `ParcelaReceber`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de ParcelaReceber
+  - [x] Criar endpoint CRUD `/api/v1/parcelas-receber`
+  - [x] Criar endpoint `POST /api/v1/contas-receber/{id}/gerar-parcelas`
+  - [x] Criar endpoint `POST /api/v1/parcelas-receber/{id}/baixar`
+  - [x] Criar endpoint `POST /api/v1/parcelas-receber/{id}/cancelar`
+  - [x] Validar conta ativa, numero unico por conta, valor positivo, baixa parcial/total e bloqueio de parcelas pagas/canceladas
+  - [x] Atualizar status e saldos de ContaReceber a partir das baixas das parcelas
+  - [x] Criar testes unitarios, controller e fluxo integrado para ParcelaReceber
+  - [x] Criar migration `V92__schema_recebimento.sql`
+  - [x] Criar migration `V93__permissoes_recebimento.sql`
+  - [x] Criar enum `StatusRecebimento`
+  - [x] Criar entidade `Recebimento`
+  - [x] Criar repository, DTOs, mapper, specification, validator, service e controller de Recebimento
+  - [x] Criar endpoints `POST /api/v1/recebimentos`, `GET /api/v1/recebimentos`, `GET /api/v1/recebimentos/{id}` e `POST /api/v1/recebimentos/{id}/cancelar`
+  - [x] Criar cancelamento com estorno da parcela e reconsolidacao da ContaReceber
+  - [x] Criar testes unitarios, controller e fluxo integrado para Recebimento
+  - [ ] Proxima entidade sugerida: ContaPagar ou Caixa
 - [ ] Fiscal
 - [ ] CRM
 

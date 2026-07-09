@@ -15,10 +15,16 @@ public class VendaFacade {
 
     private final PedidoVendaService pedidoVendaService;
     private final PedidoVendaItemService pedidoVendaItemService;
+    private final VendaFaturamentoService vendaFaturamentoService;
 
-    public VendaFacade(PedidoVendaService pedidoVendaService, PedidoVendaItemService pedidoVendaItemService) {
+    public VendaFacade(
+            PedidoVendaService pedidoVendaService,
+            PedidoVendaItemService pedidoVendaItemService,
+            VendaFaturamentoService vendaFaturamentoService
+    ) {
         this.pedidoVendaService = pedidoVendaService;
         this.pedidoVendaItemService = pedidoVendaItemService;
+        this.vendaFaturamentoService = vendaFaturamentoService;
     }
 
     public PedidoVendaResponse criarPedido(PedidoVendaRequest request) {
@@ -34,7 +40,13 @@ public class VendaFacade {
     }
 
     public PedidoVendaResponse faturarPedido(UUID pedidoId) {
-        return pedidoVendaService.faturar(pedidoId);
+        vendaFaturamentoService.faturarPedido(pedidoId);
+        return pedidoVendaService.buscar(pedidoId);
+    }
+
+    public PedidoVendaResponse faturarPedido(UUID pedidoId, UUID condicaoPagamentoId) {
+        vendaFaturamentoService.faturarPedido(pedidoId, condicaoPagamentoId);
+        return pedidoVendaService.buscar(pedidoId);
     }
 
     public PedidoVendaItemResponse adicionarItem(PedidoVendaItemRequest request) {

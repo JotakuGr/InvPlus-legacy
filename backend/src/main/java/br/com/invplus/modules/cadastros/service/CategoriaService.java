@@ -27,6 +27,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CategoriaService {
 
+    private static final String FIELD_ORDEM = "ordem";
+    private static final String FIELD_NOME = "nome";
+
     private final CategoriaRepository categoriaRepository;
     private final CategoriaMapper categoriaMapper;
     private final CategoriaValidator categoriaValidator;
@@ -101,6 +104,9 @@ public class CategoriaService {
         if (pageable.getSort().isSorted()) {
             return pageable;
         }
-        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("ordem").ascending().and(Sort.by("nome").ascending()));
+        Sort ordenacao = Sort.by(
+                Sort.Order.asc(FIELD_ORDEM),
+                Sort.Order.asc(FIELD_NOME));
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), ordenacao);
     }
 }

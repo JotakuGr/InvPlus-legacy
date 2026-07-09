@@ -180,14 +180,7 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
 
     @Transactional
     public PedidoVendaResponse faturar(UUID id) {
-        PedidoVenda entity = buscarEntidade(id);
-        StatusPedidoVenda anterior = entity.getStatus();
-        if (entity.getStatus() != StatusPedidoVenda.APROVADO && entity.getStatus() != StatusPedidoVenda.SEPARANDO) {
-            throw new InvalidOperationException("Somente pedido aprovado ou em separacao pode ser faturado");
-        }
-        entity.setStatus(StatusPedidoVenda.FATURADO);
-        historicoService.registrarPedido(entity, anterior, entity.getStatus(), "Pedido de venda faturado");
-        return mapper.toResponse(entity);
+        throw new InvalidOperationException("Use o fluxo de faturamento de venda para faturar o pedido");
     }
 
     @Override

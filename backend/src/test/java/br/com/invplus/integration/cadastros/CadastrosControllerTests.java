@@ -14,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import java.util.UUID;
 
 import tools.jackson.databind.JsonNode;
@@ -134,30 +135,12 @@ class CadastrosControllerTests {
     @Test
     void deveCriarHierarquiaGeograficaEFilial() throws Exception {
         String accessToken = login().get("accessToken").asString();
-        String codigoIso2 = codigoIso2Unico();
-        String codigoBacen = codigoBacenUnico();
         String estadoCodigoIbge = codigoIbgeEstadoUnico();
         String cidadeCodigoIbge = codigoIbgeCidadeUnico();
 
-        String paisResponse = mockMvc.perform(post("/api/v1/cadastros/paises")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nome": "Pais %s",
-                                  "codigoIso2": "%s",
-                                  "codigoIso3": "PX%s",
-                                  "codigoBacen": "%s"
-                                }
-                                """.formatted(codigoIso2, codigoIso2, codigoIso2.substring(1), codigoBacen)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.version").value(0))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        String paisId = objectMapper.readTree(paisResponse).get("id").asString();
-        String uf = codigoIso2;
+        PaisCriado pais = criarPaisUnico(accessToken);
+        String paisId = pais.id();
+        String uf = pais.codigoIso2();
 
         String estadoResponse = mockMvc.perform(post("/api/v1/cadastros/estados")
                         .header("Authorization", "Bearer " + accessToken)
@@ -295,6 +278,35 @@ class CadastrosControllerTests {
         return "%2s".formatted(Long.toString(valor, 36).toUpperCase()).replace(' ', '0');
     }
 
+    private PaisCriado criarPaisUnico(String accessToken) throws Exception {
+        for (int tentativa = 0; tentativa < 40; tentativa++) {
+            String codigoIso2 = codigoIso2Unico();
+            String codigoBacen = codigoBacenUnico();
+            MvcResult result = mockMvc.perform(post("/api/v1/cadastros/paises")
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "nome": "Pais %s",
+                                      "codigoIso2": "%s",
+                                      "codigoIso3": "PX%s",
+                                      "codigoBacen": "%s"
+                                    }
+                                    """.formatted(codigoIso2, codigoIso2, codigoIso2.substring(1), codigoBacen)))
+                    .andReturn();
+            int statusCode = result.getResponse().getStatus();
+            if (statusCode == 201) {
+                JsonNode pais = objectMapper.readTree(result.getResponse().getContentAsString());
+                assertThat(pais.get("version").asInt()).isZero();
+                return new PaisCriado(pais.get("id").asString(), codigoIso2);
+            }
+            if (statusCode != 409) {
+                assertThat(statusCode).isEqualTo(201);
+            }
+        }
+        throw new AssertionError("Nao foi possivel gerar codigo ISO2 unico para o teste de cadastros");
+    }
+
     private String codigoBacenUnico() {
         long valor = Math.abs(System.nanoTime() % 10_000_000_000L);
         return "%010d".formatted(valor);
@@ -308,5 +320,8 @@ class CadastrosControllerTests {
     private String codigoIbgeCidadeUnico() {
         long valor = Math.abs(System.nanoTime() % 10_000_000);
         return "%07d".formatted(valor);
+    }
+
+    private record PaisCriado(String id, String codigoIso2) {
     }
 }

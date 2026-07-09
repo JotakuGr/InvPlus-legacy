@@ -1,0 +1,107 @@
+package br.com.invplus.modules.financeiro.service;
+
+import br.com.invplus.modules.financeiro.dto.request.ExtratoBancarioLancamentoRequest;
+import br.com.invplus.modules.financeiro.dto.response.ExtratoBancarioLancamentoResponse;
+import br.com.invplus.modules.financeiro.entity.ExtratoBancario;
+import br.com.invplus.modules.financeiro.entity.ExtratoBancarioLancamento;
+import br.com.invplus.modules.financeiro.enums.CategoriaLancamentoBancario;
+import br.com.invplus.modules.financeiro.enums.TipoLancamentoBancario;
+import br.com.invplus.modules.financeiro.mapper.ExtratoBancarioLancamentoMapper;
+import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
+import br.com.invplus.modules.financeiro.specification.ExtratoBancarioLancamentoSpecification;
+import br.com.invplus.modules.financeiro.validator.ExtratoBancarioLancamentoValidator;
+import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import java.time.LocalDate;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Orquestra CRUD e marcacao de conciliacao dos lancamentos de extrato.
+ */
+@Service
+@RequiredArgsConstructor
+public class ExtratoBancarioLancamentoService {
+
+    private final ExtratoBancarioLancamentoRepository repository;
+    private final ExtratoBancarioService extratoBancarioService;
+    private final ExtratoBancarioLancamentoMapper mapper;
+    private final ExtratoBancarioLancamentoValidator validator;
+
+    @Transactional
+    public ExtratoBancarioLancamentoResponse criar(ExtratoBancarioLancamentoRequest request) {
+        ExtratoBancario extrato = extratoBancarioService.buscarEntidade(request.extratoBancarioId());
+        validator.validarCriacao(request, extrato);
+
+        ExtratoBancarioLancamento entity = new ExtratoBancarioLancamento();
+        mapper.aplicar(entity, request, extrato);
+        return mapper.toResponse(repository.save(entity));
+    }
+
+    @Transactional(readOnly = true)
+    public ExtratoBancarioLancamentoResponse buscar(UUID id) {
+        return mapper.toResponse(buscarEntidade(id));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ExtratoBancarioLancamentoResponse> listar(UUID extratoBancarioId, UUID contaBancariaId,
+            TipoLancamentoBancario tipo, CategoriaLancamentoBancario categoriaBancaria, Boolean conciliado,
+            LocalDate dataLancamentoDe, LocalDate dataLancamentoAte, Boolean ativo, Pageable pageable) {
+        Specification<ExtratoBancarioLancamento> specification = ExtratoBancarioLancamentoSpecification.naoDeletado();
+        specification = and(specification, ExtratoBancarioLancamentoSpecification.extratoIgual(extratoBancarioId));
+        specification = and(specification, ExtratoBancarioLancamentoSpecification.contaBancariaIgual(contaBancariaId));
+        specification = and(specification, ExtratoBancarioLancamentoSpecification.tipoIgual(tipo));
+        specification = and(specification, ExtratoBancarioLancamentoSpecification.categoriaIgual(categoriaBancaria));
+        specification = and(specification, ExtratoBancarioLancamentoSpecification.conciliadoIgual(conciliado));
+        specification = and(specification,
+                ExtratoBancarioLancamentoSpecification.dataLancamentoMaiorOuIgual(dataLancamentoDe));
+        specification = and(specification,
+                ExtratoBancarioLancamentoSpecification.dataLancamentoMenorOuIgual(dataLancamentoAte));
+        specification = and(specification, ExtratoBancarioLancamentoSpecification.ativo(ativo));
+        return repository.findAll(specification, pageable).map(mapper::toResponse);
+    }
+
+    @Transactional
+    public ExtratoBancarioLancamentoResponse atualizar(UUID id, ExtratoBancarioLancamentoRequest request) {
+        ExtratoBancarioLancamento entity = buscarEntidade(id);
+        ExtratoBancario extrato = extratoBancarioService.buscarEntidade(request.extratoBancarioId());
+        validator.validarAtualizacao(id, request, extrato, entity);
+        mapper.aplicar(entity, request, extrato);
+        return mapper.toResponse(entity);
+    }
+
+    @Transactional
+    public void excluir(UUID id) {
+        ExtratoBancarioLancamento entity = buscarEntidade(id);
+        validator.validarExclusao(entity);
+        entity.excluirLogicamente();
+    }
+
+    @Transactional
+    public ExtratoBancarioLancamentoResponse marcarComoConciliado(UUID id) {
+        ExtratoBancarioLancamento entity = buscarEntidade(id);
+        entity.marcarComoConciliado();
+        return mapper.toResponse(entity);
+    }
+
+    @Transactional
+    public ExtratoBancarioLancamentoResponse desmarcarComoConciliado(UUID id) {
+        ExtratoBancarioLancamento entity = buscarEntidade(id);
+        entity.desmarcarComoConciliado();
+        return mapper.toResponse(entity);
+    }
+
+    public ExtratoBancarioLancamento buscarEntidade(UUID id) {
+        return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Lancamento de extrato bancario nao encontrado"));
+    }
+
+    private Specification<ExtratoBancarioLancamento> and(Specification<ExtratoBancarioLancamento> base,
+            Specification<ExtratoBancarioLancamento> filtro) {
+        return filtro == null ? base : base.and(filtro);
+    }
+}

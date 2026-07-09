@@ -312,6 +312,19 @@ Migrations atuais ja implementadas:
 - `V78__schema_pedido_venda_item.sql`
 - `V79__permissoes_pedido_venda_item.sql`
 - `V80__ajuste_reserva_estoque_origem_unica.sql`
+- `V81__schema_venda_faturamento.sql`
+- `V82__permissoes_venda_faturamento.sql`
+- `V83__schema_forma_pagamento.sql`
+- `V84__permissoes_forma_pagamento.sql`
+- `V85__schema_condicao_pagamento.sql`
+- `V86__permissoes_condicao_pagamento.sql`
+- `V87__condicao_pagamento_parcelas.sql`
+- `V88__schema_conta_receber.sql`
+- `V89__permissoes_conta_receber.sql`
+- `V90__schema_parcela_receber.sql`
+- `V91__permissoes_parcela_receber.sql`
+- `V92__schema_recebimento.sql`
+- `V93__permissoes_recebimento.sql`
 
 ## Docker
 
@@ -633,8 +646,124 @@ Leituras e contratos de Vendas:
 - `modules/vendas/events/PedidoVendaItemCriadoEvent.java`
 - `modules/vendas/events/PedidoVendaItemAlteradoEvent.java`
 - `modules/vendas/events/PedidoVendaItemRemovidoEvent.java`
+- `modules/vendas/events/VendaFaturamentoCriadoEvent.java`
+- `modules/vendas/events/PedidoVendaFaturadoEvent.java`
 
-O endpoint `GET /api/v1/pedidos-venda/{id}/completo` retorna pedido, itens, reservas e historico em uma unica chamada. `VendaFacade` passa a ser a API interna recomendada para outros modulos criarem, aprovarem, cancelarem, faturarem e manipularem itens de pedidos de venda sem conhecer services menores. `PedidoVendaBusinessFlowIntegrationTest` valida o fluxo real Empresa -> Cliente -> PedidoVenda, historico de status e optimistic lock. `PedidoVendaItemBusinessFlowIntegrationTest` valida Cliente -> PedidoVenda -> PedidoVendaItem -> ProdutoPreco -> ProdutoUnidade, totalizacao do pedido, leitura agregada e optimistic lock do item. `PedidoVendaReservaIntegrationTest` valida aprovacao com reserva automatica, cancelamento restaurando disponibilidade, movimentacao gerada e concorrencia retornando `409` sem reserva duplicada.
+O endpoint `GET /api/v1/pedidos-venda/{id}/completo` retorna pedido, itens, faturamento, reservas e historico em uma unica chamada. `VendaFacade` passa a ser a API interna recomendada para outros modulos criarem, aprovarem, cancelarem, faturarem e manipularem itens de pedidos de venda sem conhecer services menores. `PedidoVendaBusinessFlowIntegrationTest` valida o fluxo real Empresa -> Cliente -> PedidoVenda, historico de status e optimistic lock. `PedidoVendaItemBusinessFlowIntegrationTest` valida Cliente -> PedidoVenda -> PedidoVendaItem -> ProdutoPreco -> ProdutoUnidade, totalizacao do pedido, leitura agregada e optimistic lock do item. `PedidoVendaReservaIntegrationTest` valida aprovacao com reserva automatica, cancelamento restaurando disponibilidade, movimentacao gerada e concorrencia retornando `409` sem reserva duplicada.
+
+`VendaFaturamento` conclui a primeira versao do fluxo comercial de venda:
+
+- `modules/vendas/entity/VendaFaturamento.java`
+- `modules/vendas/repository/VendaFaturamentoRepository.java`
+- `modules/vendas/dto/request/VendaFaturamentoRequest.java`
+- `modules/vendas/dto/response/VendaFaturamentoResponse.java`
+- `modules/vendas/mapper/VendaFaturamentoMapper.java`
+- `modules/vendas/specification/VendaFaturamentoSpecification.java`
+- `modules/vendas/validator/VendaFaturamentoValidator.java`
+- `modules/vendas/service/VendaFaturamentoService.java`
+- `modules/vendas/controller/VendaFaturamentoController.java`
+- `modules/vendas/service/VendaFaturamentoServiceTest.java`
+- `integration/vendas/VendaFaturamentoControllerTests.java`
+- `businessflow/VendaFaturamentoBusinessFlowIntegrationTest.java`
+
+O endpoint `POST /api/v1/vendas-faturamentos/faturar` exige um PedidoVenda aprovado, com reservas ativas de origem `VENDA`. O service cria o faturamento, baixa as reservas com `ReservaEstoqueService.baixar(...)`, reduz o saldo fisico, gera movimentacoes de estoque, grava historico e atualiza o PedidoVenda para `FATURADO`. As permissoes usam `VENDA_FATURAMENTO:*`, `VENDA_FATURAMENTO:CRIAR`, `VENDA_FATURAMENTO:VISUALIZAR`, `VENDA_FATURAMENTO:FATURAR` e `VENDA_FATURAMENTO:CANCELAR`.
+
+`FormaPagamento` inicia o modulo Pagamentos com os meios de pagamento/recebimento:
+
+- `modules/pagamentos/entity/FormaPagamento.java`
+- `modules/pagamentos/enums/TipoFormaPagamento.java`
+- `modules/pagamentos/repository/FormaPagamentoRepository.java`
+- `modules/pagamentos/dto/request/FormaPagamentoRequest.java`
+- `modules/pagamentos/dto/response/FormaPagamentoResponse.java`
+- `modules/pagamentos/mapper/FormaPagamentoMapper.java`
+- `modules/pagamentos/specification/FormaPagamentoSpecification.java`
+- `modules/pagamentos/validator/FormaPagamentoValidator.java`
+- `modules/pagamentos/service/FormaPagamentoService.java`
+- `modules/pagamentos/controller/FormaPagamentoController.java`
+- `modules/pagamentos/service/FormaPagamentoServiceTest.java`
+- `integration/pagamentos/FormaPagamentoControllerTests.java`
+
+Essa entidade usa `/api/v1/formas-pagamento`, paginacao, permissoes `FORMA_PAGAMENTO:*` e CRUD granular. A regra atual garante codigo unico entre registros ativos, troco apenas para `DINHEIRO` e parcelamento apenas para `CARTAO_CREDITO`, `BOLETO` e `CREDIARIO`.
+
+`CondicaoPagamento` representa regras de vencimento e parcelamento:
+
+- `modules/pagamentos/entity/CondicaoPagamento.java`
+- `modules/pagamentos/entity/CondicaoPagamentoParcela.java`
+- `modules/financeiro/enums/RegraVencimento.java`
+- `modules/financeiro/service/CalculadoraVencimentoService.java`
+- `modules/financeiro/service/GeradorParcelasService.java`
+- `modules/financeiro/service/ParcelaGerada.java`
+- `modules/pagamentos/repository/CondicaoPagamentoRepository.java`
+- `modules/pagamentos/dto/request/CondicaoPagamentoRequest.java`
+- `modules/pagamentos/dto/request/CondicaoPagamentoParcelaRequest.java`
+- `modules/pagamentos/dto/request/SimulacaoCondicaoPagamentoRequest.java`
+- `modules/pagamentos/dto/response/CondicaoPagamentoResponse.java`
+- `modules/pagamentos/dto/response/CondicaoPagamentoParcelaResponse.java`
+- `modules/pagamentos/mapper/CondicaoPagamentoMapper.java`
+- `modules/pagamentos/specification/CondicaoPagamentoSpecification.java`
+- `modules/pagamentos/validator/CondicaoPagamentoValidator.java`
+- `modules/pagamentos/service/CondicaoPagamentoService.java`
+- `modules/pagamentos/controller/CondicaoPagamentoController.java`
+- `modules/pagamentos/service/CondicaoPagamentoServiceTest.java`
+- `integration/pagamentos/CondicaoPagamentoControllerTests.java`
+- `businessflow/PagamentosBusinessFlowIntegrationTest.java`
+
+Essa entidade usa `/api/v1/condicoes-pagamento`, paginacao, permissoes `CONDICAO_PAGAMENTO:*` e CRUD granular. A regra atual garante codigo unico entre registros ativos, parcelas obrigatorias, numero de parcela unico por condicao, dias nao negativos, percentual maior que zero e soma total das parcelas fechando 100%. O endpoint `POST /api/v1/condicoes-pagamento/{id}/simular` calcula vencimentos e valores usando `RegraVencimento`, considerando finais de semana e deixando feriados preparados para evolucao futura.
+
+`ContaReceber` inicia o modulo Financeiro com titulos a receber:
+
+- `modules/financeiro/entity/ContaReceber.java`
+- `modules/financeiro/enums/StatusContaReceber.java`
+- `modules/financeiro/repository/ContaReceberRepository.java`
+- `modules/financeiro/dto/request/ContaReceberRequest.java`
+- `modules/financeiro/dto/response/ContaReceberResponse.java`
+- `modules/financeiro/mapper/ContaReceberMapper.java`
+- `modules/financeiro/specification/ContaReceberSpecification.java`
+- `modules/financeiro/validator/ContaReceberValidator.java`
+- `modules/financeiro/service/ContaReceberService.java`
+- `modules/financeiro/controller/ContaReceberController.java`
+- `modules/financeiro/service/ContaReceberServiceTest.java`
+- `integration/financeiro/ContaReceberControllerTests.java`
+
+Essa entidade usa `/api/v1/contas-receber`, paginacao, permissoes `CONTA_RECEBER:*`, criar, visualizar, editar, cancelar e baixar. A regra atual exige Empresa e Cliente ativos, valor total maior que zero, numero unico por empresa entre registros ativos, `valorPago` inicial igual a zero e `valorAberto` calculado por `valorTotal - valorPago`. Contas `PAGA` ou `CANCELADA` nao podem ser alteradas, e o cancelamento usa endpoint proprio `POST /api/v1/contas-receber/{id}/cancelar`.
+
+`ParcelaReceber` representa cada vencimento de uma ContaReceber:
+
+- `modules/financeiro/entity/ParcelaReceber.java`
+- `modules/financeiro/enums/StatusParcelaReceber.java`
+- `modules/financeiro/repository/ParcelaReceberRepository.java`
+- `modules/financeiro/dto/request/ParcelaReceberRequest.java`
+- `modules/financeiro/dto/request/BaixaParcelaReceberRequest.java`
+- `modules/financeiro/dto/request/GerarParcelasReceberRequest.java`
+- `modules/financeiro/dto/response/ParcelaReceberResponse.java`
+- `modules/financeiro/mapper/ParcelaReceberMapper.java`
+- `modules/financeiro/specification/ParcelaReceberSpecification.java`
+- `modules/financeiro/validator/ParcelaReceberValidator.java`
+- `modules/financeiro/service/ParcelaReceberService.java`
+- `modules/financeiro/controller/ParcelaReceberController.java`
+- `modules/financeiro/service/ParcelaReceberServiceTest.java`
+- `integration/financeiro/ParcelaReceberControllerTests.java`
+- `businessflow/ParcelaReceberBusinessFlowIntegrationTest.java`
+
+Essa entidade usa `/api/v1/parcelas-receber`, paginacao, permissoes `PARCELA_RECEBER:*`, criar, visualizar, editar, cancelar e baixar. O endpoint `POST /api/v1/contas-receber/{id}/gerar-parcelas` usa `CondicaoPagamento` e `GeradorParcelasService` para criar as parcelas da conta, respeitando regra de vencimento e bloqueando nova geracao quando ja existem parcelas ativas. A baixa em `POST /api/v1/parcelas-receber/{id}/baixar` aceita pagamento parcial ou total, separa juros, multa e desconto, recalcula o saldo aberto da parcela e consolida `valorPago`, `valorAberto` e status da ContaReceber.
+
+`Recebimento` registra cada entrada financeira vinculada a uma ParcelaReceber:
+
+- `modules/financeiro/entity/Recebimento.java`
+- `modules/financeiro/enums/StatusRecebimento.java`
+- `modules/financeiro/repository/RecebimentoRepository.java`
+- `modules/financeiro/dto/request/RecebimentoRequest.java`
+- `modules/financeiro/dto/response/RecebimentoResponse.java`
+- `modules/financeiro/mapper/RecebimentoMapper.java`
+- `modules/financeiro/specification/RecebimentoSpecification.java`
+- `modules/financeiro/validator/RecebimentoValidator.java`
+- `modules/financeiro/service/RecebimentoService.java`
+- `modules/financeiro/controller/RecebimentoController.java`
+- `modules/financeiro/service/RecebimentoServiceTest.java`
+- `integration/financeiro/RecebimentoControllerTests.java`
+- `businessflow/RecebimentoBusinessFlowIntegrationTest.java`
+
+Essa entidade usa `/api/v1/recebimentos`, paginacao, filtros por parcela, conta, forma de pagamento, empresa, filial, cliente e periodo. Nao possui `PUT` generico: a criacao registra o recebimento e baixa a parcela; o cancelamento usa `/cancelar`, muda o status para `CANCELADO`, estorna a parcela e atualiza a ContaReceber.
 
 ## Testes
 
@@ -672,5 +801,23 @@ backend/src/test/java/br/com/invplus/
 ```
 
 Testes de service continuam em `modules/<modulo>/service/`, perto das regras de dominio.
+
+`ContaPagar` amplia o modulo Financeiro com a estrutura:
+
+- `modules/financeiro/entity/ContaPagar.java`
+- `modules/financeiro/repository/ContaPagarRepository.java`
+- `modules/financeiro/dto/request/ContaPagarRequest.java`
+- `modules/financeiro/dto/response/ContaPagarResponse.java`
+- `modules/financeiro/mapper/ContaPagarMapper.java`
+- `modules/financeiro/validator/ContaPagarValidator.java`
+- `modules/financeiro/specification/ContaPagarSpecification.java`
+- `modules/financeiro/service/ContaPagarService.java`
+- `modules/financeiro/controller/ContaPagarController.java`
+- `modules/financeiro/service/ContaPagarServiceTest.java`
+- `integration/financeiro/ContaPagarControllerTests.java`
+- `businessflow/ContaPagarBusinessFlowIntegrationTest.java`
+
+O endpoint base e `/api/v1/contas-pagar`; migrations V95 e V96 criam o schema,
+indices, constraints e permissoes.
 
 `shared/infrastructure/MigrationIdempotencyTest.java` valida a politica de seeds tecnicos em migrations. Qualquer arquivo SQL com `INSERT INTO` precisa conter `ON CONFLICT` ou `WHERE NOT EXISTS`, evitando duplicidade de permissoes, perfis, usuarios tecnicos e vinculos de seguranca.
