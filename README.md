@@ -1,317 +1,710 @@
-<h1 align="center">
-  invPlus ERP
-</h1>
+<div align="center">
 
-<p align="center">
-  ERP moderno, modular e escalável para gestão empresarial.
-</p>
+<img src="docs/images/logo-invplus.png" alt="invPlus ERP" width="320"/>
 
-<p align="center">
-  Desenvolvido com Java, Spring Boot, Angular, PostgreSQL e Docker.
-</p>
+# invPlus ERP
 
-<p align="center">
-  <img src="https://img.shields.io/badge/status-em%20desenvolvimento-yellow?style=flat-square"/>
-  <img src="https://img.shields.io/badge/versão-0.1.0--alpha-orange?style=flat-square"/>
-  <img src="https://img.shields.io/badge/licença-MIT-blue?style=flat-square"/>
-</p>
+### Sistema ERP moderno, modular e escalável para gestão empresarial
 
-> **Aviso de maturidade:** o invPlus está em desenvolvimento ativo. O backend já possui uma base avançada, mas o produto ainda não deve ser usado em produção.
+Desenvolvido com **Java 25**, **Spring Boot**, **Angular**, **PostgreSQL**, **Docker** e arquitetura orientada a domínio.
 
-## Sobre o projeto
+<br>
 
-O **invPlus ERP** é um sistema de gestão empresarial construído como monólito modular, com separação por domínios de negócio e uma API REST preparada para evoluir com segurança.
+<a href="https://github.com/JotakuGr/invPlus/actions/workflows/backend-ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/JotakuGr/invPlus/backend-ci.yml?label=Backend%20CI&style=for-the-badge"/>
+</a>
 
-A proposta é cobrir o fluxo operacional de um ERP real: cadastros, pessoas, produtos, estoque, compras, vendas, faturamento, pagamentos e financeiro.
+<a href="https://github.com/JotakuGr/invPlus/actions/workflows/docker.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/JotakuGr/invPlus/docker.yml?label=Docker&style=for-the-badge"/>
+</a>
 
-## Diferenciais
+<a href="https://github.com/JotakuGr/invPlus/actions/workflows/codeql.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/JotakuGr/invPlus/codeql.yml?label=CodeQL&style=for-the-badge"/>
+</a>
 
-- Arquitetura modular
-- DDD
-- Clean Architecture
-- SOLID
-- Soft delete
-- Auditoria
-- Optimistic lock
-- JWT
-- Flyway
-- Docker
-- Testes automatizados
-- Redis preparado
-- RabbitMQ preparado
-- Cloudflare R2 preparado
+<a href="https://github.com/JotakuGr/invPlus/actions/workflows/dependency-review.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/JotakuGr/invPlus/dependency-review.yml?label=Dependency%20Review&style=for-the-badge"/>
+</a>
 
-## Demonstração
+<!--Licença-->
+<img src="https://img.shields.io/github/license/JotakuGr/invPlus?style=for-the-badge">
 
-Os GIFs da aplicação serão adicionados quando o frontend Angular estiver pronto.
+<br>
 
-Arquivos previstos:
+<img src="https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Versão-0.1.0--alpha-orange?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Licença-MIT-blue?style=for-the-badge"/>
 
-```text
-docs/images/login.gif
-docs/images/dashboard.gif
-docs/images/produtos.gif
-docs/images/vendas.gif
-```
+<br>
 
-## Tecnologias
+<img src="https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white"/>
+<img src="https://img.shields.io/badge/Spring_Boot-3.x-6DB33F?style=for-the-badge&logo=springboot&logoColor=white"/>
+<img src="https://img.shields.io/badge/Angular-20-DD0031?style=for-the-badge&logo=angular&logoColor=white"/>
+<img src="https://img.shields.io/badge/PostgreSQL-17-336791?style=for-the-badge&logo=postgresql&logoColor=white"/>
+<img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white"/>
+<img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white"/>
+<img src="https://img.shields.io/badge/RabbitMQ-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white"/>
 
-| Camada | Tecnologia |
-|---|---|
-| Backend | Java 25, Spring Boot |
-| Frontend | Angular |
-| Banco de dados | PostgreSQL |
-| Migrações | Flyway |
-| Segurança | Spring Security, JWT |
-| Persistência | Spring Data JPA, Hibernate |
-| Build | Maven |
-| Infraestrutura | Docker, Docker Compose |
-| Storage | Local, Cloudflare R2 preparado |
-| Cache e mensageria | Redis e RabbitMQ preparados |
+</div>
 
-## Status do projeto
+---
 
-| Área | Status |
-|---|---|
-| Backend | ✅ Em desenvolvimento avançado |
-| Frontend | 🚧 Em desenvolvimento |
-| API REST | ✅ Implementada |
-| Docker | ✅ Configurado |
-| PostgreSQL | ✅ Configurado |
-| Flyway | ✅ Configurado |
-| Testes | ✅ 626 testes |
-| Documentação | 🚧 Em organização |
-| CI/CD | ⬜ Futuro |
+> [!WARNING]
+>
+> ## 🚧 Projeto em Desenvolvimento
+>
+> O **invPlus ERP** encontra-se em desenvolvimento ativo.
+>
+> O backend possui uma base sólida, arquitetura consolidada e ampla cobertura de testes automatizados, porém **o sistema ainda não está pronto para utilização em ambiente de produção**.
 
-## Métricas
+---
+
+<div align="center">
+
+## 📚 Navegação Rápida
+
+[📖 Documentação](docs/) •
+[🏗 Arquitetura](docs/arquitetura/arquitetura-geral.md) •
+[📚 API REST](docs/api/endpoints.md) •
+[🧪 Testes](docs/testes/testes.md) •
+[🗺 Roadmap](docs/roadmap/roadmap.md) •
+[📋 Regras de Negócio](docs/regras-negocio/)
+
+</div>
+
+---
+
+# 📖 Sobre
+
+O **invPlus ERP** é um sistema ERP moderno desenvolvido para oferecer uma base robusta para gestão empresarial, utilizando uma arquitetura modular baseada em boas práticas de engenharia de software.
+
+O projeto foi concebido priorizando:
+
+- Arquitetura escalável
+- Baixo acoplamento
+- Alta coesão
+- Código limpo
+- Segurança
+- Testabilidade
+- Facilidade de manutenção
+- Evolução contínua
+
+Toda a estrutura foi desenvolvida utilizando **Spring Boot**, separando claramente responsabilidades através de:
+
+- Controllers
+- Services
+- Validators
+- Specifications
+- Domain Services
+- Aggregate Services
+- Facades
+- Eventos de Domínio
+
+---
+
+# ✨ Principais Características
+
+- ✅ Arquitetura Modular
+- ✅ Java 25
+- ✅ Spring Boot 3
+- ✅ Spring Security + JWT
+- ✅ PostgreSQL
+- ✅ Flyway
+- ✅ Docker
+- ✅ Redis
+- ✅ RabbitMQ
+- ✅ Domain Services
+- ✅ Aggregate Services
+- ✅ Facades
+- ✅ Eventos de Domínio
+- ✅ Soft Delete
+- ✅ Auditoria
+- ✅ Optimistic Lock
+- ✅ Paginação
+- ✅ Specifications
+- ✅ GitHub Actions
+- ✅ CodeQL
+- ✅ Dependency Review
+- ✅ Testes Automatizados
+
+---
+
+# 🛠 Tecnologias
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=java,spring,angular,postgres,docker,redis,rabbitmq,git,github,idea"/>
+
+</div>
+
+---
+
+# 📊 Arquitetura em Números
 
 | Métrica | Valor |
-|---|---|
-| Migrations | 115 |
-| Testes automatizados | 626 |
-| Módulos backend | 12+ |
-| Arquitetura | Monólito modular |
-| API | REST JSON |
-| Autenticação | JWT |
+|---------|------:|
+| Java | **25** |
+| Spring Boot | **3.x** |
+| Angular | **20** |
+| Migrations Flyway | **115+** |
+| Testes Automatizados | **600+** |
+| Controllers REST | **60+** |
+| Entidades | **70+** |
+| DTOs | **200+** |
+| Services | **70+** |
+| Arquitetura | **Modular** |
+| Banco de Dados | **PostgreSQL** |
+| Segurança | **JWT + RBAC** |
+| Integração Contínua | **GitHub Actions** |
 
-## Arquitetura em Números
+---
 
-| Métrica | Valor |
-|---|---|
-| Migrations Flyway | 115 |
-| Testes automatizados | 626 |
-| Módulos funcionais | 10+ |
-| Endpoints REST | 150+ |
-| Entidades de domínio | 60+ |
-| Controllers | 40+ |
-| Services | 50+ |
-| Specifications | 30+ |
-
-## Arquitetura Resumida
-
-```text
-Angular
-   ↓ REST/JSON
-Spring Boot
-   ↓ JPA/Flyway
-PostgreSQL
-
-Infraestrutura preparada:
-Redis, RabbitMQ, Docker, Cloudflare R2
-```
-
-Fluxo padrão de implementação por entidade:
-
-```text
-Migration → Entity → Repository → DTOs → Mapper → Validator → Service → Controller → Testes → Documentação
-```
-
-## Módulos
+# 📦 Módulos Implementados
 
 | Módulo | Status |
-|---|---|
-| Segurança | ✅ Implementado |
-| Cadastros | ✅ Implementado |
-| Pessoas | ✅ Implementado |
-| Produtos | ✅ Implementado |
-| Estoque | ✅ Implementado |
-| Compras | ✅ Implementado |
-| Vendas | ✅ Implementado |
-| Pagamentos | ✅ Implementado |
-| Contas a receber | ✅ Implementado |
-| Contas a pagar | ✅ Implementado |
-| Fiscal | ⬜ Futuro |
-| CRM | ⬜ Futuro |
+|---------|:------:|
+| 🔐 Segurança | ✅ |
+| 🏢 Cadastros | ✅ |
+| 👥 Pessoas | ✅ |
+| 📦 Produtos | ✅ |
+| 🏬 Estoque | ✅ |
+| 🛒 Compras | ✅ |
+| 💰 Vendas | ✅ |
+| 🏦 Financeiro | ✅ |
 
-## Funcionalidades
+---
 
-- Autenticação JWT com refresh token e logout.
-- Controle de permissões granulares por módulo.
-- Cadastros base com paginação, filtros, auditoria e soft delete.
-- Pessoa como entidade central com papéis comerciais e operacionais.
-- Produto separado em preço, fiscal, fornecedor, imagem, código de barras e unidade.
-- Estoque com saldo, reserva, movimentação e consulta rápida de disponibilidade.
-- Compras com pedido, entrada de mercadoria e integração com estoque.
-- Vendas com pedido, itens, reserva automática e faturamento.
-- Pagamentos com formas e condições de parcelamento.
-- Financeiro com contas e parcelas, contas bancárias, extratos e lançamentos bancários, movimentos rastreáveis, dashboard, DRE, centros de custo e plano de contas integrados.
-
-## Fluxos de Negócio
+# 🏗 Arquitetura
 
 ```text
 Cliente
-  ↓
-Pedido de Venda
-  ↓
-Reserva de Estoque
-  ↓
-Faturamento
-  ↓
-Financeiro
-  ↓
-Fiscal
+      │
+      ▼
+Controllers
+      │
+      ▼
+Services
+      │
+      ▼
+Validators
+      │
+      ▼
+Domain Services
+      │
+      ▼
+Repositories
+      │
+      ▼
+PostgreSQL
 ```
+
+---
+
+# 📂 Estrutura do Projeto
+
+<details>
+<summary>Visualizar estrutura</summary>
 
 ```text
-Fornecedor
-  ↓
-Pedido de Compra
-  ↓
-Entrada de Mercadoria
-  ↓
-Estoque
-  ↓
-Financeiro
+invPlus
+│
+├── backend
+├── frontend
+├── docs
+├── database
+├── docker
+├── scripts
+└── .github
 ```
 
-## Como Executar
+</details>
 
-Pré-requisitos:
+---
+
+# 🎥 Demonstração
+
+Em breve serão adicionados:
+
+- GIFs
+- Screenshots
+- Dashboard
+- Fluxos de negócio
+- Swagger/OpenAPI
+- Vídeos de demonstração
+
+---
+# 🏛 Arquitetura
+
+O **invPlus ERP** foi desenvolvido utilizando uma arquitetura modular, baseada em princípios de **DDD (Domain-Driven Design)**, **SOLID** e **Clean Architecture**, buscando alta coesão, baixo acoplamento e facilidade de evolução.
+
+## Camadas da Aplicação
+
+```text
+                    Cliente
+                        │
+                        ▼
+                 REST Controllers
+                        │
+                        ▼
+                    Services
+                        │
+         ┌──────────────┴──────────────┐
+         ▼                             ▼
+   Domain Services              Aggregate Services
+         │                             │
+         └──────────────┬──────────────┘
+                        ▼
+                    Repositories
+                        │
+                        ▼
+                   PostgreSQL
+```
+
+---
+
+## Padrões Utilizados
+
+| Padrão | Utilização |
+|---------|------------|
+| Domain Service | Regras compartilhadas entre entidades |
+| Aggregate Service | Consultas consolidadas |
+| Facade | Comunicação entre módulos |
+| Specification | Filtros dinâmicos |
+| Mapper | Conversão Entity ⇄ DTO |
+| Validator | Validações de negócio |
+| DTO | Comunicação da API |
+| Soft Delete | Exclusão lógica |
+| Auditoria | Rastreabilidade |
+| Optimistic Lock | Controle de concorrência |
+| Eventos de Domínio | Integrações internas |
+
+---
+
+# 📦 Estrutura do Projeto
+
+```text
+invPlus
+│
+├── backend
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java
+│   │   │   │   └── br/com/invplus
+│   │   │   │       ├── modules
+│   │   │   │       └── shared
+│   │   │   └── resources
+│   │   └── test
+│   │
+│   ├── pom.xml
+│   └── Dockerfile
+│
+├── frontend
+│
+├── docs
+│
+├── docker
+│
+├── scripts
+│
+└── .github
+```
+
+---
+
+# 🧩 Módulos
+
+| Módulo | Descrição | Status |
+|---------|-----------|:------:|
+| 🔐 Segurança | JWT, autenticação, autorização e permissões | ✅ |
+| 🏢 Cadastros | Empresas, filiais, países, estados e cidades | ✅ |
+| 👥 Pessoas | Clientes, fornecedores e funcionários | ✅ |
+| 📦 Produtos | Produtos, preços, unidades e classificações | ✅ |
+| 🏬 Estoque | Saldo, movimentações, reservas e localização | ✅ |
+| 🛒 Compras | Pedido de compra e entrada de mercadoria | ✅ |
+| 💰 Vendas | Pedido, faturamento e reservas | ✅ |
+| 🏦 Financeiro | Contas, parcelas, pagamentos, recebimentos, DRE e conciliação | ✅ |
+| 📊 Relatórios | Dashboard, Fluxo de Caixa e DRE | ✅ |
+| 🌐 API Pública | Planejado | 🚧 |
+| 📱 Mobile | Planejado | 🚧 |
+
+---
+
+# 🔄 Fluxos de Negócio
+
+## Fluxo Comercial
+
+```text
+Pedido de Venda
+        │
+        ▼
+Reserva de Estoque
+        │
+        ▼
+Faturamento
+        │
+        ▼
+Conta a Receber
+        │
+        ▼
+Parcelas
+        │
+        ▼
+Recebimento
+        │
+        ▼
+Movimento Financeiro
+```
+
+---
+
+## Fluxo de Compras
+
+```text
+Pedido de Compra
+        │
+        ▼
+Entrada de Mercadoria
+        │
+        ▼
+Estoque
+        │
+        ▼
+Conta a Pagar
+        │
+        ▼
+Parcelas
+        │
+        ▼
+Pagamento
+        │
+        ▼
+Movimento Financeiro
+```
+
+---
+
+## Fluxo Bancário
+
+```text
+Conta Bancária
+        │
+        ▼
+Extrato Bancário
+        │
+        ▼
+Lançamentos
+        │
+        ▼
+Conciliação Bancária
+        │
+        ▼
+Movimento Financeiro
+```
+
+---
+
+# ⚙ Como Executar
+
+## Pré-requisitos
 
 - Java 25
-- Maven
-- Docker e Docker Compose
-- PostgreSQL, quando não usar Docker
+- Maven Wrapper
+- Docker Desktop
+- PostgreSQL
+- Redis
+- RabbitMQ
 
-Subir infraestrutura:
+---
 
-```powershell
-docker compose -f docker/compose/docker-compose.yml up -d
+## Clonar o projeto
+
+```bash
+git clone https://github.com/JotakuGr/invPlus.git
 ```
 
-Executar backend:
-
-```powershell
-mvn test
-mvn spring-boot:run
+```bash
+cd invPlus
 ```
 
-> O wrapper Maven (`mvnw.cmd`) deve ser mantido funcional para garantir portabilidade entre desenvolvedores.
+---
 
-## Testes
+## Backend
 
-O projeto possui testes para:
+```bash
+cd backend
 
-- Services
-- Controllers
-- Segurança
-- Integração
+./mvnw spring-boot:run
+```
+
+Windows
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+---
+
+## Executar os testes
+
+```bash
+./mvnw test
+```
+
+ou
+
+```powershell
+.\mvnw.cmd test
+```
+
+---
+
+## Docker
+
+```bash
+docker compose up -d
+```
+
+---
+
+# 🧪 Qualidade
+
+O projeto utiliza uma suíte completa de testes automatizados.
+
+### Tipos de testes
+
+- Testes Unitários
+- Testes REST
+- Testes de Integração
 - Business Flow
+- Segurança
 - Concorrência
 - Performance
-- Idempotência de migrations
 
-Resultado atual:
+---
+
+### Organização
 
 ```text
-BUILD SUCCESS
-Tests run: 626, Failures: 0, Errors: 0
+src/test/java
+
+integration/
+
+businessflow/
+
+security/
+
+performance/
+
+concurrency/
+
+modules/
 ```
 
-Mais detalhes:
+---
 
-- `docs/testes/testes.md`
-- `docs/testes/organizacao-dos-testes.md`
+### Ferramentas
 
-## Banco de Dados
+- JUnit 5
+- Mockito
+- MockMvc
+- Spring Boot Test
 
-O banco é versionado com Flyway.
+---
 
-Atualmente existem migrations para:
+# 🔒 Segurança
 
-- Segurança
-- Cadastros
-- Pessoas
-- Produtos
-- Estoque
-- Compras
-- Vendas
-- Pagamentos
-- Financeiro
+O projeto possui:
 
-Mais detalhes em:
+- JWT Authentication
+- Spring Security
+- RBAC (Role Based Access Control)
+- Permissões Granulares
+- Auditoria
+- Soft Delete
+- Optimistic Lock
+- GitHub CodeQL
+- Dependency Review
+- GitHub Actions
 
-- `docs/banco/banco-de-dados.md`
-- `docs/banco/migrations.md`
+---
 
-## Documentação
+# 📚 Documentação
+
+Toda a documentação do projeto encontra-se organizada em:
 
 | Documento | Descrição |
-|---|---|
-| `docs/arquitetura/arquitetura-geral.md` | Arquitetura do sistema |
-| `docs/arquitetura/estrutura-do-projeto.md` | Estrutura de pastas |
-| `docs/api/endpoints.md` | Endpoints da API |
-| `docs/banco/banco-de-dados.md` | Convenções do banco |
-| `docs/banco/migrations.md` | Lista das migrations |
-| `docs/diagramas/README.md` | Diagramas Mermaid |
-| `docs/testes/testes.md` | Testes automatizados |
-| `docs/testes/organizacao-dos-testes.md` | Organização dos testes |
-| `docs/seguranca/jwt.md` | Autenticação JWT |
-| `docs/seguranca/permissoes.md` | Permissões |
-| `docs/roadmap/roadmap.md` | Roadmap do produto |
-| `docs/regras-negocio/regras-negocio.md` | Regras de negócio |
-| `docs/adr/README.md` | Decisões arquiteturais |
-| `docs/padroes/modulo.md` | Padrão de implementação de módulos |
+|------------|-----------|
+| docs/api | Endpoints REST |
+| docs/arquitetura | Arquitetura do sistema |
+| docs/banco | Banco de dados e migrations |
+| docs/regras-negocio | Regras por módulo |
+| docs/testes | Estratégia de testes |
+| docs/roadmap | Roadmap do projeto |
+| docs/diagramas | Diagramas Mermaid |
+| docs/padroes | Padrões utilizados |
+| docs/adr | Architecture Decision Records |
 
-## Roadmap
+---
 
-### Concluído
+# 🗺 Roadmap
 
-- ✅ Segurança
+O desenvolvimento do **invPlus ERP** segue uma evolução contínua.
+
+## Concluído
+
+- ✅ Arquitetura Modular
+- ✅ Spring Security + JWT
 - ✅ Cadastros
 - ✅ Pessoas
 - ✅ Produtos
 - ✅ Estoque
 - ✅ Compras
 - ✅ Vendas
-- ✅ Pagamentos
-- ✅ Contas a receber
-- ✅ Contas a pagar
-- ✅ Financeiro com centros de custo, plano de contas, DRE, contas bancárias, extratos e lançamentos bancários
+- ✅ Financeiro
+- ✅ Conta Bancária
+- ✅ Extrato Bancário
+- ✅ Fluxo de Caixa
+- ✅ DRE
+- ✅ Plano de Contas
+- ✅ Centro de Custo
+- ✅ GitHub Actions
+- ✅ Docker
+- ✅ CodeQL
+- ✅ Dependency Review
+- ✅ Documentação Técnica
 
-### Em desenvolvimento
+---
 
-- 🚧 Financeiro completo
+## Em desenvolvimento
+
+- 🚧 Conciliação Bancária
+- 🚧 Open Finance
+- 🚧 Dashboard Gerencial
+- 🚧 Indicadores Financeiros
+- 🚧 API Pública
 - 🚧 Frontend Angular
 
-### Futuro
+---
 
-- ⬜ Fiscal
-- ⬜ CRM
-- ⬜ Dashboard
-- ⬜ BI
-- ⬜ Mobile
-- ⬜ Marketplace
-- ⬜ Integração bancária
+## Futuro
 
-## Contribuição
+- 📱 Aplicativo Mobile
+- ☁ Multiempresa Avançado
+- 📊 Business Intelligence
+- 🤖 Inteligência Artificial
+- 📈 Analytics
+- 🌎 Internacionalização
+- 📄 Emissão Fiscal
+- 📦 Integração com Marketplaces
 
-Contribuições, sugestões e revisões são bem-vindas. Para novas funcionalidades, mantenha o padrão modular, crie testes automatizados e atualize a documentação relacionada.
+---
 
-## Licença
+# 🤝 Como Contribuir
 
-Este projeto está licenciado sob a licença MIT.
+Contribuições são muito bem-vindas!
 
-## Autor
+Antes de abrir uma Pull Request, leia:
 
-Desenvolvido por **Josiel Amorim**.
+- 📖 [CONTRIBUTING.md](CONTRIBUTING.md)
+- 🔒 [SECURITY.md](SECURITY.md)
+
+Também utilize os templates disponíveis:
+
+- Pull Request Template
+- Bug Report
+- Feature Request
+- Task
+
+---
+
+# 🧪 Qualidade do Projeto
+
+O projeto utiliza práticas modernas de desenvolvimento para garantir qualidade, segurança e estabilidade.
+
+## Integração Contínua
+
+- ✅ GitHub Actions
+- ✅ Build Automatizado
+- ✅ Docker Build
+- ✅ CodeQL
+- ✅ Dependency Review
+
+## Testes
+
+- ✅ Testes Unitários
+- ✅ Testes REST
+- ✅ Testes de Integração
+- ✅ Business Flow
+- ✅ Testes de Segurança
+- ✅ Testes de Concorrência
+- ✅ Testes de Performance
+
+---
+
+# 📈 Estatísticas do Projeto
+
+| Indicador | Valor |
+|-----------|------:|
+| Java | 25 |
+| Spring Boot | 3.x |
+| Migrations Flyway | 115+ |
+| Testes Automatizados | 600+ |
+| Controllers REST | 60+ |
+| Entidades | 70+ |
+| DTOs | 200+ |
+| Services | 70+ |
+| Arquitetura | Modular |
+| Banco de Dados | PostgreSQL |
+| Integração Contínua | GitHub Actions |
+
+---
+
+# 📄 Licença
+
+Este projeto está licenciado sob os termos da **Licença MIT**.
+
+Consulte o arquivo [LICENSE](LICENSE) para mais informações.
+
+---
+
+# 📬 Contato
+
+**Autor**
+
+Josiel Amorim
+
+GitHub
+
+https://github.com/JotakuGr
+
+LinkedIn
+
+> Adicione aqui o link do seu perfil do LinkedIn.
+
+---
+
+<div align="center">
+
+## ⭐ Gostou do projeto?
+
+Se este projeto foi útil para você:
+
+⭐ Deixe uma estrela no repositório.
+
+🐛 Reporte problemas utilizando as Issues.
+
+💡 Sugira novas funcionalidades.
+
+🤝 Contribua com melhorias.
+
+---
+
+### Desenvolvido com ❤️ utilizando Java, Spring Boot e boas práticas de engenharia de software.
+
+<img src="docs/images/logo-invplus.png" width="110">
+
+**invPlus ERP**
+
+*Modern ERP Platform*
+
+</div>
