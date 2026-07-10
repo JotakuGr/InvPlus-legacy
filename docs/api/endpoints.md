@@ -156,6 +156,8 @@ Ao faturar, o backend baixa reservas, cria a ContaReceber e gera as ParcelasRece
 | Extratos bancários | `/api/v1/extratos-bancarios` |
 | Lançamentos de extrato bancário | `/api/v1/extratos-bancarios-lancamentos` |
 | Conciliações bancárias | `/api/v1/conciliacoes-bancarias` |
+| Importar extrato OFX | `/api/v1/extratos-bancarios/importar/ofx` |
+| Histórico de importações | `/api/v1/importacoes-extratos` |
 
 As listagens de contas a receber, contas a pagar e movimentos financeiros aceitam
 os filtros opcionais `centroCustoId` e `planoContaId`.
@@ -236,6 +238,24 @@ exclusão; cancelamentos preservam a trilha financeira.
 
 As operações exigem `CONCILIACAO_BANCARIA:*` ou permissão granular de criar,
 visualizar ou cancelar.
+
+### Importação de extratos OFX
+
+| Método | Endpoint | Finalidade |
+|---|---|---|
+| POST | `/api/v1/extratos-bancarios/importar/ofx` | Enviar OFX por `multipart/form-data` |
+| GET | `/api/v1/importacoes-extratos` | Listar processos de importação |
+| GET | `/api/v1/importacoes-extratos/{id}` | Consultar relatório da importação |
+
+O multipart recebe `arquivo`, `contaBancariaId` opcional e `observacao` opcional.
+Sem conta informada, banco, agência e número do OFX são normalizados e usados para
+localizar uma única conta ativa. O arquivo é limitado a 10 MB, processado somente
+em memória e identificado por SHA-256. Reenvio do mesmo conteúdo retorna `409`.
+
+Os filtros de acompanhamento são `contaBancariaId`, `formato`, `status`,
+`arquivoHash`, `iniciadaEmDe` e `iniciadaEmAte`. As operações exigem
+`IMPORTACAO_EXTRATO:*`, `IMPORTACAO_EXTRATO:IMPORTAR` ou
+`IMPORTACAO_EXTRATO:VISUALIZAR`.
 
 ### Relatórios financeiros
 

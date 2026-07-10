@@ -137,3 +137,17 @@
 - Ao conciliar, o lançamento fica bloqueado para edição/exclusão; ao cancelar, ele volta a ficar disponível.
 - O extrato fica `IMPORTADO` sem conciliações, `PROCESSANDO` quando parcial e `CONCILIADO` quando todas as linhas ativas estão conciliadas.
 - Criação, marcação do lançamento e recálculo do extrato acontecem na mesma transação.
+
+## Importação de extratos OFX
+
+- O processo de importação não substitui `ExtratoBancario` nem `ExtratoBancarioLancamento`.
+- `OfxParser` converte OFX 1.x/2.x para DTOs intermediários independentes do domínio.
+- O conteúdo é lido uma única vez em memória, limitado a 10 MB e nunca salvo em pasta pública.
+- O nome original é sanitizado e o SHA-256 completo impede reimportação do mesmo arquivo.
+- Banco, agência e conta são normalizados antes da comparação com `ContaBancaria`.
+- Valores positivos viram `CREDITO`; negativos viram `DEBITO` com valor absoluto no domínio.
+- `FEE` e `SRVCHG` mapeiam para `TARIFA`, `INT` para `JUROS`, `XFER` para `TRANSFERENCIA`; demais tipos usam `OUTRO`.
+- FITID duplicado dentro do arquivo é ignorado e registrado como alerta.
+- A criação de extrato e lançamentos é atômica; falha em uma linha desfaz todo o domínio bancário criado.
+- O saldo final importado pertence ao extrato e não altera `ContaBancaria.saldoAtual`.
+- Todos os lançamentos entram com `conciliado = false`; conciliação permanece responsabilidade de `ConciliacaoBancaria`.

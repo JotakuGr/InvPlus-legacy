@@ -3,6 +3,7 @@ package br.com.invplus.modules.financeiro.repository;
 import br.com.invplus.modules.financeiro.entity.ExtratoBancarioLancamento;
 import br.com.invplus.shared.domain.repository.BaseRepository;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -16,4 +17,6 @@ public interface ExtratoBancarioLancamentoRepository extends BaseRepository<Extr
     long countByExtratoBancarioIdAndAtivoTrueAndDeletedAtIsNull(UUID extratoBancarioId);
 
     long countByExtratoBancarioIdAndConciliadoTrueAndAtivoTrueAndDeletedAtIsNull(UUID extratoBancarioId);
+
+    List<ExtratoBancarioLancamento> findByExtratoBancarioIdAndAtivoTrueAndDeletedAtIsNull(UUID extratoBancarioId);
 }

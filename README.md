@@ -146,8 +146,8 @@ Toda a estrutura foi desenvolvida utilizando **Spring Boot**, separando claramen
 | Java | **25** |
 | Spring Boot | **3.x** |
 | Angular | **20** |
-| Migrations Flyway | **117+** |
-| Testes Automatizados | **638** |
+| Migrations Flyway | **119+** |
+| Testes Automatizados | **650** |
 | Controllers REST | **60+** |
 | Entidades | **70+** |
 | DTOs | **200+** |
@@ -568,6 +568,7 @@ O desenvolvimento do **invPlus ERP** segue uma evolução contínua.
 - ✅ Plano de Contas
 - ✅ Centro de Custo
 - ✅ Conciliação Bancária
+- ✅ Importação de extratos OFX
 - ✅ GitHub Actions
 - ✅ Docker
 - ✅ CodeQL
@@ -647,8 +648,8 @@ O projeto utiliza práticas modernas de desenvolvimento para garantir qualidade,
 |-----------|------:|
 | Java | 25 |
 | Spring Boot | 3.x |
-| Migrations Flyway | 117+ |
-| Testes Automatizados | 638 |
+| Migrations Flyway | 119+ |
+| Testes Automatizados | 650 |
 | Controllers REST | 60+ |
 | Entidades | 70+ |
 | DTOs | 200+ |

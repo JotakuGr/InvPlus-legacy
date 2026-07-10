@@ -84,6 +84,19 @@ graph LR
     ConciliacaoBancaria --> StatusExtrato[IMPORTADO / PROCESSANDO / CONCILIADO]
 ```
 
+## Importação OFX
+
+```mermaid
+graph TD
+    ArquivoOFX[Arquivo OFX] --> ImportacaoExtratoService
+    ImportacaoExtratoService --> OfxParser
+    OfxParser --> ExtratoImportado[Modelo intermediário]
+    ExtratoImportado --> ContaBancaria[Identificação da ContaBancaria]
+    ContaBancaria --> ExtratoBancario
+    ExtratoBancario --> ExtratoBancarioLancamento
+    ExtratoBancarioLancamento --> ConciliacaoBancaria
+```
+
 ## Produto
 
 ```mermaid

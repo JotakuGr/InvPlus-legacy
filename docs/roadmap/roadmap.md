@@ -26,6 +26,7 @@
 - ✅ Extratos bancários com importação, filtros, hash SHA-256 e cancelamento histórico
 - ✅ Lançamentos de extrato bancário com crédito, débito, categorias e bloqueio após conciliação
 - ✅ Conciliação bancária exata com cancelamento histórico e proteção concorrente
+- ✅ Importação OFX com parser intermediário, hash SHA-256 e relatório de processamento
 
 ## Em Desenvolvimento
 
@@ -71,4 +72,4 @@ Sugestões:
 
 ## Atualizacao Recente
 
-- ConciliacaoBancaria concluida em `/api/v1/conciliacoes-bancarias`, com permissões `CONCILIACAO_BANCARIA:*`, migrations V116/V117, conciliação exata, cancelamento auditado, status automático do extrato e índices parciais contra duplicidade concorrente.
+- ImportacaoExtratoBancario concluida com upload em `/api/v1/extratos-bancarios/importar/ofx`, consultas em `/api/v1/importacoes-extratos`, permissões `IMPORTACAO_EXTRATO:*`, migrations V118/V119, parser OFX extensível, hash idempotente e integração com conciliação.

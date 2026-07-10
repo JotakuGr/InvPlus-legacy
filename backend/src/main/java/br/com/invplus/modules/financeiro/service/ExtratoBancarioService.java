@@ -11,6 +11,7 @@ import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.specification.ExtratoBancarioSpecification;
 import br.com.invplus.modules.financeiro.validator.ExtratoBancarioValidator;
+import br.com.invplus.modules.financeiro.importacao.parser.dto.ExtratoImportado;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -42,6 +43,19 @@ public class ExtratoBancarioService {
         ExtratoBancario entity = new ExtratoBancario();
         mapper.aplicarImportacao(entity, request, contaBancaria);
         return mapper.toResponse(repository.save(entity));
+    }
+
+    /** Cria o mesmo aggregate de extrato a partir do modelo intermediario do importador. */
+    @Transactional
+    public ExtratoBancario criarPorImportacao(ContaBancaria conta, ExtratoImportado dados,
+            String arquivoNome, String arquivoHash, String observacao) {
+        ExtratoBancarioRequest request = new ExtratoBancarioRequest(conta.getId(), dados.dataInicio(),
+                dados.dataFim(), dados.saldoInicial(), dados.saldoFinal(), OrigemExtratoBancario.OFX,
+                arquivoNome, arquivoHash, observacao);
+        validator.validarImportacao(request);
+        ExtratoBancario entity = new ExtratoBancario();
+        mapper.aplicarImportacao(entity, request, conta);
+        return repository.saveAndFlush(entity);
     }
 
     @Transactional(readOnly = true)
