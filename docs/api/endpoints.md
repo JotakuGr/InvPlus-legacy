@@ -154,6 +154,7 @@ Ao faturar, o backend baixa reservas, cria a ContaReceber e gera as ParcelasRece
 | Movimentos financeiros | `/api/v1/movimentos-financeiros` |
 | Contas bancárias | `/api/v1/contas-bancarias` |
 | Extratos bancários | `/api/v1/extratos-bancarios` |
+| Lançamentos de extrato bancário | `/api/v1/extratos-bancarios-lancamentos` |
 
 As listagens de contas a receber, contas a pagar e movimentos financeiros aceitam
 os filtros opcionais `centroCustoId` e `planoContaId`.
@@ -197,6 +198,25 @@ Os filtros disponíveis são `contaBancariaId`, `origem`, `status`, `dataInicioD
 SHA-256 quando informado e não pode duplicar outro extrato ativo.
 As operações exigem `EXTRATO_BANCARIO:*`, `EXTRATO_BANCARIO:IMPORTAR`,
 `EXTRATO_BANCARIO:VISUALIZAR` ou `EXTRATO_BANCARIO:CANCELAR`.
+
+### Lançamentos de extrato bancário
+
+| Método | Endpoint | Finalidade |
+|---|---|---|
+| POST | `/api/v1/extratos-bancarios-lancamentos` | Criar lançamento de crédito ou débito |
+| GET | `/api/v1/extratos-bancarios-lancamentos` | Listar com paginação e filtros |
+| GET | `/api/v1/extratos-bancarios-lancamentos/{id}` | Consultar um lançamento |
+| PUT | `/api/v1/extratos-bancarios-lancamentos/{id}` | Atualizar lançamento não conciliado |
+| DELETE | `/api/v1/extratos-bancarios-lancamentos/{id}` | Excluir logicamente lançamento não conciliado |
+
+Os filtros disponíveis são `extratoBancarioId`, `contaBancariaId`, `tipo`,
+`categoriaBancaria`, `conciliado`, `dataLancamentoDe`, `dataLancamentoAte` e
+`ativo`. O identificador bancário é opcional, mas não pode duplicar dentro do
+mesmo extrato ativo. Lançamentos conciliados ficam bloqueados para edição e
+exclusão.
+
+As operações exigem `EXTRATO_BANCARIO_LANCAMENTO:*` ou permissão granular de
+criar, visualizar, editar ou excluir.
 
 ### Relatórios financeiros
 

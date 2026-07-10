@@ -109,3 +109,18 @@
 - O cancelamento não exclui o registro: o extrato permanece ativo com status `CANCELADO` para preservar histórico.
 - Extrato `CANCELADO` não pode ser cancelado novamente.
 - As consultas aceitam filtros por conta bancária, origem, status, período e ativo.
+
+## Lançamento de extrato bancário
+
+- Todo lançamento pertence obrigatoriamente a um ExtratoBancario ativo.
+- ExtratoBancario com status `CANCELADO` não pode receber lançamentos.
+- `dataLancamento`, `descricao`, `tipo` e `valor` são obrigatórios.
+- `valor` deve ser maior que zero.
+- `tipo` aceita `CREDITO` ou `DEBITO`.
+- `categoriaBancaria` assume `OUTRO` quando não informada.
+- `conciliado` inicia sempre como `false`.
+- O identificador bancário é opcional, mas deve ser único dentro do mesmo extrato ativo quando informado.
+- O mesmo identificador bancário pode existir em extratos diferentes.
+- Lançamento conciliado não pode ser editado nem excluído logicamente.
+- O service já expõe métodos internos para marcar e desmarcar conciliação, preparando a futura ConciliacaoBancaria.
+- As consultas aceitam filtros por extrato, conta bancária, tipo, categoria, conciliação, período e ativo.

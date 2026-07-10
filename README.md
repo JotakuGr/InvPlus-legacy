@@ -79,7 +79,7 @@ docs/images/vendas.gif
 | Docker | ✅ Configurado |
 | PostgreSQL | ✅ Configurado |
 | Flyway | ✅ Configurado |
-| Testes | ✅ 615 testes |
+| Testes | ✅ 626 testes |
 | Documentação | 🚧 Em organização |
 | CI/CD | ⬜ Futuro |
 
@@ -87,8 +87,8 @@ docs/images/vendas.gif
 
 | Métrica | Valor |
 |---|---|
-| Migrations | 113 |
-| Testes automatizados | 615 |
+| Migrations | 115 |
+| Testes automatizados | 626 |
 | Módulos backend | 12+ |
 | Arquitetura | Monólito modular |
 | API | REST JSON |
@@ -98,8 +98,8 @@ docs/images/vendas.gif
 
 | Métrica | Valor |
 |---|---|
-| Migrations Flyway | 113 |
-| Testes automatizados | 615 |
+| Migrations Flyway | 115 |
+| Testes automatizados | 626 |
 | Módulos funcionais | 10+ |
 | Endpoints REST | 150+ |
 | Entidades de domínio | 60+ |
@@ -154,7 +154,7 @@ Migration → Entity → Repository → DTOs → Mapper → Validator → Servic
 - Compras com pedido, entrada de mercadoria e integração com estoque.
 - Vendas com pedido, itens, reserva automática e faturamento.
 - Pagamentos com formas e condições de parcelamento.
-- Financeiro com contas e parcelas, contas bancárias, extratos, movimentos rastreáveis, dashboard, DRE, centros de custo e plano de contas integrados.
+- Financeiro com contas e parcelas, contas bancárias, extratos e lançamentos bancários, movimentos rastreáveis, dashboard, DRE, centros de custo e plano de contas integrados.
 
 ## Fluxos de Negócio
 
@@ -225,7 +225,7 @@ Resultado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 615, Failures: 0, Errors: 0
+Tests run: 626, Failures: 0, Errors: 0
 ```
 
 Mais detalhes:
@@ -287,7 +287,7 @@ Mais detalhes em:
 - ✅ Pagamentos
 - ✅ Contas a receber
 - ✅ Contas a pagar
-- ✅ Financeiro com centros de custo, plano de contas, DRE, contas bancárias e extratos bancários
+- ✅ Financeiro com centros de custo, plano de contas, DRE, contas bancárias, extratos e lançamentos bancários
 
 ### Em desenvolvimento
 

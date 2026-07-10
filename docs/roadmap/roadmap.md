@@ -24,6 +24,7 @@
 - ✅ DRE financeira agrupada por plano de conta
 - ✅ Contas bancárias por empresa e filial
 - ✅ Extratos bancários com importação, filtros, hash SHA-256 e cancelamento histórico
+- ✅ Lançamentos de extrato bancário com crédito, débito, categorias e bloqueio após conciliação
 
 ## Em Desenvolvimento
 
@@ -69,4 +70,4 @@ Sugestões:
 
 ## Atualizacao Recente
 
-- ExtratoBancario concluido em `/api/v1/extratos-bancarios`, com permissões `EXTRATO_BANCARIO:*`, migrations V112/V113, filtros por conta/origem/status/periodo, hash SHA-256 unico e cancelamento sem exclusao historica.
+- ExtratoBancarioLancamento concluido em `/api/v1/extratos-bancarios-lancamentos`, com permissões `EXTRATO_BANCARIO_LANCAMENTO:*`, migrations V114/V115, filtros por extrato/conta/tipo/categoria/conciliado/periodo, identificador bancario unico por extrato e bloqueio de edicao/exclusao apos conciliacao.

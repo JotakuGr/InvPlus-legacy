@@ -119,6 +119,8 @@ As migrations ficam em `database/migrations/database` e são executadas pelo Fly
 | V111 | `V111__permissoes_conta_bancaria.sql` |
 | V112 | `V112__schema_extrato_bancario.sql` |
 | V113 | `V113__permissoes_extrato_bancario.sql` |
+| V114 | `V114__schema_extrato_bancario_lancamento.sql` |
+| V115 | `V115__permissoes_extrato_bancario_lancamento.sql` |
 
 ## Política de Inserts
 
