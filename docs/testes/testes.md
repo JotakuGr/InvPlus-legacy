@@ -4,7 +4,7 @@ Resultado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 626, Failures: 0, Errors: 0
+Tests run: 638, Failures: 0, Errors: 0
 ```
 
 ## Cobertura
@@ -42,7 +42,7 @@ O projeto possui testes para:
 - Compras integradas ao estoque.
 - Vendas com item, reserva automática e faturamento.
 - Pagamentos com simulação de parcelas.
-- Financeiro com contas, parcelas, recebimentos, pagamentos, movimentos, centros de custo, plano de contas, DRE, contas bancárias, extratos e lançamentos bancários.
+- Financeiro com contas, parcelas, recebimentos, pagamentos, movimentos, centros de custo, plano de contas, DRE, contas bancárias, extratos, lançamentos e conciliação bancária concorrente.
 
 ## Execução
 

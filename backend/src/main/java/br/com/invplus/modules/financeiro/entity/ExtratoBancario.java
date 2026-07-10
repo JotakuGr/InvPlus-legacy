@@ -103,6 +103,14 @@ public class ExtratoBancario extends SoftDeleteEntity {
         this.status = StatusExtratoBancario.CANCELADO;
     }
 
+    /** Atualiza o progresso da conciliacao sem permitir reabrir extrato cancelado. */
+    public void atualizarStatusConciliacao(StatusExtratoBancario novoStatus) {
+        if (this.status == StatusExtratoBancario.CANCELADO) {
+            throw new InvalidOperationException("Extrato bancario cancelado nao pode ter status recalculado");
+        }
+        this.status = novoStatus;
+    }
+
     /**
      * Monta uma descricao curta da conta para respostas de API.
      */

@@ -25,6 +25,7 @@
 - ✅ Contas bancárias por empresa e filial
 - ✅ Extratos bancários com importação, filtros, hash SHA-256 e cancelamento histórico
 - ✅ Lançamentos de extrato bancário com crédito, débito, categorias e bloqueio após conciliação
+- ✅ Conciliação bancária exata com cancelamento histórico e proteção concorrente
 
 ## Em Desenvolvimento
 
@@ -70,4 +71,4 @@ Sugestões:
 
 ## Atualizacao Recente
 
-- ExtratoBancarioLancamento concluido em `/api/v1/extratos-bancarios-lancamentos`, com permissões `EXTRATO_BANCARIO_LANCAMENTO:*`, migrations V114/V115, filtros por extrato/conta/tipo/categoria/conciliado/periodo, identificador bancario unico por extrato e bloqueio de edicao/exclusao apos conciliacao.
+- ConciliacaoBancaria concluida em `/api/v1/conciliacoes-bancarias`, com permissões `CONCILIACAO_BANCARIA:*`, migrations V116/V117, conciliação exata, cancelamento auditado, status automático do extrato e índices parciais contra duplicidade concorrente.

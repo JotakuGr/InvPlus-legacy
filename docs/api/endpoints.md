@@ -155,6 +155,7 @@ Ao faturar, o backend baixa reservas, cria a ContaReceber e gera as ParcelasRece
 | Contas bancárias | `/api/v1/contas-bancarias` |
 | Extratos bancários | `/api/v1/extratos-bancarios` |
 | Lançamentos de extrato bancário | `/api/v1/extratos-bancarios-lancamentos` |
+| Conciliações bancárias | `/api/v1/conciliacoes-bancarias` |
 
 As listagens de contas a receber, contas a pagar e movimentos financeiros aceitam
 os filtros opcionais `centroCustoId` e `planoContaId`.
@@ -217,6 +218,24 @@ exclusão.
 
 As operações exigem `EXTRATO_BANCARIO_LANCAMENTO:*` ou permissão granular de
 criar, visualizar, editar ou excluir.
+
+### Conciliações bancárias
+
+| Método | Endpoint | Finalidade |
+|---|---|---|
+| POST | `/api/v1/conciliacoes-bancarias` | Conciliar lançamento bancário e movimento financeiro |
+| GET | `/api/v1/conciliacoes-bancarias` | Listar o histórico com paginação e filtros |
+| GET | `/api/v1/conciliacoes-bancarias/{id}` | Consultar uma conciliação |
+| POST | `/api/v1/conciliacoes-bancarias/{id}/cancelar` | Cancelar e liberar o lançamento bancário |
+
+Os filtros são `extratoBancarioLancamentoId`, `movimentoFinanceiroId`,
+`contaBancariaId`, `tipoConciliacao`, `status`, `conciliadoEmDe` e
+`conciliadoEmAte`. A primeira versão aceita apenas valores exatos e exige
+`CREDITO` com `ENTRADA` ou `DEBITO` com `SAIDA`. Não existem rotas de edição ou
+exclusão; cancelamentos preservam a trilha financeira.
+
+As operações exigem `CONCILIACAO_BANCARIA:*` ou permissão granular de criar,
+visualizar ou cancelar.
 
 ### Relatórios financeiros
 

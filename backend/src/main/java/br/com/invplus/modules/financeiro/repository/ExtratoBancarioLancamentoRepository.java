@@ -12,4 +12,8 @@ public interface ExtratoBancarioLancamentoRepository extends BaseRepository<Extr
 
     Optional<ExtratoBancarioLancamento> findByExtratoBancarioIdAndIdentificadorBancarioIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
             UUID extratoBancarioId, String identificadorBancario);
+
+    long countByExtratoBancarioIdAndAtivoTrueAndDeletedAtIsNull(UUID extratoBancarioId);
+
+    long countByExtratoBancarioIdAndConciliadoTrueAndAtivoTrueAndDeletedAtIsNull(UUID extratoBancarioId);
 }

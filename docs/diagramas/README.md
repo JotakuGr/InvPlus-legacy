@@ -73,6 +73,17 @@ graph TD
     Caixa -. futuro .-> FluxoCaixa[FluxoCaixa]
 ```
 
+## Conciliação Bancária
+
+```mermaid
+graph LR
+    MovimentoFinanceiro[MovimentoFinanceiro] --> ConciliacaoBancaria[ConciliacaoBancaria]
+    ExtratoBancarioLancamento[ExtratoBancarioLancamento] --> ConciliacaoBancaria
+    ExtratoBancario[ExtratoBancario] --> ExtratoBancarioLancamento
+    ContaBancaria[ContaBancaria] --> ExtratoBancario
+    ConciliacaoBancaria --> StatusExtrato[IMPORTADO / PROCESSANDO / CONCILIADO]
+```
+
 ## Produto
 
 ```mermaid

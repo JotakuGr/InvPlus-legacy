@@ -14,6 +14,7 @@ import br.com.invplus.modules.financeiro.enums.StatusExtratoBancario;
 import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.mapper.ExtratoBancarioMapper;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
+import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.validator.ExtratoBancarioValidator;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
@@ -40,6 +41,8 @@ class ExtratoBancarioServiceTest {
     @Mock
     private ExtratoBancarioRepository repository;
     @Mock
+    private ExtratoBancarioLancamentoRepository lancamentoRepository;
+    @Mock
     private ContaBancariaService contaBancariaService;
 
     private ExtratoBancarioService service;
@@ -47,7 +50,7 @@ class ExtratoBancarioServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ExtratoBancarioService(repository, contaBancariaService,
+        service = new ExtratoBancarioService(repository, lancamentoRepository, contaBancariaService,
                 new ExtratoBancarioMapper(), new ExtratoBancarioValidator(repository));
         contaBancaria = contaBancaria();
     }

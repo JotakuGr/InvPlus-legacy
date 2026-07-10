@@ -8,6 +8,7 @@ import br.com.invplus.modules.financeiro.enums.OrigemExtratoBancario;
 import br.com.invplus.modules.financeiro.enums.StatusExtratoBancario;
 import br.com.invplus.modules.financeiro.mapper.ExtratoBancarioMapper;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
+import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.specification.ExtratoBancarioSpecification;
 import br.com.invplus.modules.financeiro.validator.ExtratoBancarioValidator;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExtratoBancarioService {
 
     private final ExtratoBancarioRepository repository;
+    private final ExtratoBancarioLancamentoRepository lancamentoRepository;
     private final ContaBancariaService contaBancariaService;
     private final ExtratoBancarioMapper mapper;
     private final ExtratoBancarioValidator validator;
@@ -73,6 +75,20 @@ public class ExtratoBancarioService {
     public ExtratoBancario buscarEntidade(UUID id) {
         return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Extrato bancario nao encontrado"));
+    }
+
+    /** Recalcula IMPORTADO, PROCESSANDO ou CONCILIADO conforme as linhas ativas. */
+    @Transactional
+    public void recalcularStatusConciliacao(UUID extratoId) {
+        ExtratoBancario extrato = buscarEntidade(extratoId);
+        long total = lancamentoRepository.countByExtratoBancarioIdAndAtivoTrueAndDeletedAtIsNull(extratoId);
+        long conciliados = lancamentoRepository
+                .countByExtratoBancarioIdAndConciliadoTrueAndAtivoTrueAndDeletedAtIsNull(extratoId);
+
+        StatusExtratoBancario status = total > 0 && conciliados == total
+                ? StatusExtratoBancario.CONCILIADO
+                : conciliados > 0 ? StatusExtratoBancario.PROCESSANDO : StatusExtratoBancario.IMPORTADO;
+        extrato.atualizarStatusConciliacao(status);
     }
 
     private Specification<ExtratoBancario> and(Specification<ExtratoBancario> base,

@@ -124,3 +124,16 @@
 - Lançamento conciliado não pode ser editado nem excluído logicamente.
 - O service já expõe métodos internos para marcar e desmarcar conciliação, preparando a futura ConciliacaoBancaria.
 - As consultas aceitam filtros por extrato, conta bancária, tipo, categoria, conciliação, período e ativo.
+
+## Conciliação bancária
+
+- Uma conciliação vincula exatamente um `ExtratoBancarioLancamento` a um `MovimentoFinanceiro`.
+- `CREDITO` bancário somente concilia com movimento `ENTRADA`; `DEBITO` somente com `SAIDA`.
+- A primeira versão exige igualdade exata entre `valorExtrato` e `valorMovimento`; a diferença deve ser zero.
+- Lançamento, extrato, movimento e conta bancária precisam estar ativos e o extrato não pode estar cancelado.
+- Um lançamento e um movimento podem possuir somente uma conciliação com status `CONCILIADA`.
+- A proteção contra duplicidade combina validação de domínio, optimistic lock e índices únicos parciais.
+- A conciliação não usa soft delete. O cancelamento muda o status para `CANCELADA` e preserva usuário, data e motivo.
+- Ao conciliar, o lançamento fica bloqueado para edição/exclusão; ao cancelar, ele volta a ficar disponível.
+- O extrato fica `IMPORTADO` sem conciliações, `PROCESSANDO` quando parcial e `CONCILIADO` quando todas as linhas ativas estão conciliadas.
+- Criação, marcação do lançamento e recálculo do extrato acontecem na mesma transação.

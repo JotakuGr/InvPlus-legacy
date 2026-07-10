@@ -97,6 +97,9 @@ public class ExtratoBancarioLancamento extends SoftDeleteEntity {
      * Marca a linha como conciliada para impedir alteracoes manuais posteriores.
      */
     public void marcarComoConciliado() {
+        if (Boolean.TRUE.equals(this.conciliado)) {
+            throw new InvalidOperationException("Lancamento bancario ja esta conciliado");
+        }
         this.conciliado = true;
     }
 
@@ -104,6 +107,9 @@ public class ExtratoBancarioLancamento extends SoftDeleteEntity {
      * Libera a linha para ajustes quando uma conciliacao futura for desfeita.
      */
     public void desmarcarComoConciliado() {
+        if (!Boolean.TRUE.equals(this.conciliado)) {
+            throw new InvalidOperationException("Lancamento bancario nao esta conciliado");
+        }
         this.conciliado = false;
     }
 
