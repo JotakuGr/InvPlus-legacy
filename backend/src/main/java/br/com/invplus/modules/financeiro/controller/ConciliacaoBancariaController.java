@@ -7,8 +7,12 @@ import br.com.invplus.modules.financeiro.dto.response.ConciliacaoBancariaRespons
 import br.com.invplus.modules.financeiro.enums.StatusConciliacaoBancaria;
 import br.com.invplus.modules.financeiro.enums.TipoConciliacaoBancaria;
 import br.com.invplus.modules.financeiro.service.ConciliacaoBancariaService;
+import br.com.invplus.modules.financeiro.conciliacao.dto.ResumoSugestoesConciliacaoResponse;
+import br.com.invplus.modules.financeiro.conciliacao.service.ConciliacaoBancariaSugestaoService;
 import br.com.invplus.shared.api.controller.BaseCrudController;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -24,14 +28,25 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
 
 /** API imutavel de criacao, consulta e cancelamento de conciliacoes. */
 @RestController
 @RequestMapping(AppConstants.API_BASE_PATH + "/conciliacoes-bancarias")
 @RequiredArgsConstructor
+@Validated
 public class ConciliacaoBancariaController extends BaseCrudController {
 
     private final ConciliacaoBancariaService service;
+    private final ConciliacaoBancariaSugestaoService sugestaoService;
+
+    @GetMapping("/sugestoes")
+    @PreAuthorize("hasAnyAuthority('CONCILIACAO_BANCARIA:*', 'CONCILIACAO_BANCARIA:SUGERIR')")
+    public ResponseEntity<ResumoSugestoesConciliacaoResponse> buscarSugestoes(
+            @RequestParam UUID lancamentoBancarioId,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int limite) {
+        return ResponseEntity.ok(sugestaoService.buscarSugestoes(lancamentoBancarioId, limite));
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('CONCILIACAO_BANCARIA:*', 'CONCILIACAO_BANCARIA:CRIAR')")

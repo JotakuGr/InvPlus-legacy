@@ -4,11 +4,13 @@ import br.com.invplus.modules.financeiro.dto.request.BaixaParcelaReceberRequest;
 import br.com.invplus.modules.financeiro.dto.request.RecebimentoRequest;
 import br.com.invplus.modules.financeiro.dto.response.RecebimentoResponse;
 import br.com.invplus.modules.financeiro.entity.ParcelaReceber;
+import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.entity.Recebimento;
 import br.com.invplus.modules.financeiro.enums.OrigemMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.mapper.RecebimentoMapper;
 import br.com.invplus.modules.financeiro.repository.ParcelaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.RecebimentoRepository;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.specification.RecebimentoSpecification;
 import br.com.invplus.modules.financeiro.validator.RecebimentoValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
@@ -36,6 +38,7 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
     private final MovimentoFinanceiroService movimentoFinanceiroService;
     private final RecebimentoMapper mapper;
     private final RecebimentoValidator validator;
+    private final ContaBancariaRepository contaBancariaRepository;
 
     public RecebimentoService(
             RecebimentoRepository repository,
@@ -44,7 +47,8 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
             ParcelaReceberService parcelaReceberService,
             MovimentoFinanceiroService movimentoFinanceiroService,
             RecebimentoMapper mapper,
-            RecebimentoValidator validator
+            RecebimentoValidator validator,
+            ContaBancariaRepository contaBancariaRepository
     ) {
         super(repository, mapper, "Recebimento");
         this.repository = repository;
@@ -54,6 +58,7 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
         this.movimentoFinanceiroService = movimentoFinanceiroService;
         this.mapper = mapper;
         this.validator = validator;
+        this.contaBancariaRepository = contaBancariaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -78,6 +83,7 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
     public RecebimentoResponse criar(RecebimentoRequest request) {
         ParcelaReceber parcela = buscarParcela(request.parcelaReceberId());
         FormaPagamento formaPagamento = buscarFormaPagamento(request.formaPagamentoId());
+        ContaBancaria contaBancaria = buscarContaBancaria(request.contaBancariaId(), parcela.getContaReceber().getEmpresa().getId());
         validator.validarCriacao(parcela, formaPagamento, request);
 
         Recebimento recebimento = new Recebimento();
@@ -93,7 +99,7 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
                 request.dataRecebimento(),
                 request.observacao()
         ));
-        movimentoFinanceiroService.registrarRecebimento(salvo);
+        movimentoFinanceiroService.registrarRecebimento(salvo, contaBancaria);
         return mapper.toResponse(salvo);
     }
 
@@ -125,6 +131,20 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
     private FormaPagamento buscarFormaPagamento(UUID id) {
         return formaPagamentoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Forma de pagamento nao encontrada"));
+    }
+
+    private ContaBancaria buscarContaBancaria(UUID id, UUID empresaId) {
+        ContaBancaria conta = id == null
+                ? contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId)
+                        .orElse(null)
+                : contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
+        if (conta == null) return null;
+        if (!conta.getEmpresa().getId().equals(empresaId)) {
+            throw new br.com.invplus.shared.domain.exception.InvalidOperationException(
+                    "Conta bancaria deve pertencer a mesma empresa do recebimento");
+        }
+        return conta;
     }
 
     private Specification<Recebimento> and(Specification<Recebimento> base, Specification<Recebimento> filtro) {

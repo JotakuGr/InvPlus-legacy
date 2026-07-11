@@ -114,3 +114,14 @@ graph TD
     Produto --> ProdutoCodigoBarras[ProdutoCodigoBarras]
     Produto --> ProdutoUnidade[ProdutoUnidade]
 ```
+
+## Sugestao de conciliacao
+
+```mermaid
+flowchart LR
+    L[Lancamento bancario] --> F[Filtros obrigatorios no banco]
+    F --> P[Pontuacao explicavel]
+    P --> U[Analise do usuario]
+    U --> C[Confirmacao manual]
+    C --> V[Revalidacao do dominio]
+```

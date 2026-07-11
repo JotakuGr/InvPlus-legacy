@@ -18,6 +18,13 @@ public record PagamentoRequest(
         @PositiveOrZero BigDecimal multa,
         @PositiveOrZero BigDecimal desconto,
         @NotNull LocalDate dataPagamento,
-        String observacao
+        String observacao,
+        UUID contaBancariaId
 ) {
+    public PagamentoRequest(UUID parcelaPagarId, UUID formaPagamentoId, BigDecimal valorPago,
+            BigDecimal juros, BigDecimal multa, BigDecimal desconto, LocalDate dataPagamento,
+            String observacao) {
+        this(parcelaPagarId, formaPagamentoId, valorPago, juros, multa, desconto,
+                dataPagamento, observacao, null);
+    }
 }

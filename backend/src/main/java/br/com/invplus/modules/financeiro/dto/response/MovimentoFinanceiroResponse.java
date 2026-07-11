@@ -34,6 +34,8 @@ public record MovimentoFinanceiroResponse(
         String planoContaCodigo,
         String planoContaNome,
         NaturezaPlanoConta planoContaNatureza,
+        UUID contaBancariaId,
+        String contaBancariaDescricao,
         BigDecimal valor,
         LocalDate dataMovimento,
         String descricao,

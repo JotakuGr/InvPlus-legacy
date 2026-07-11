@@ -6,6 +6,14 @@
 - ParcelaReceber representa cada vencimento da conta.
 - Baixa de parcela atualiza parcela e consolida a conta.
 - Recebimento registra o evento financeiro da entrada.
+
+## Sugestoes de conciliacao
+
+- Sugestoes sao calculadas sob demanda e nunca criam conciliacao.
+- Valor, tipo, conta bancaria, empresa, estado ativo e janela de tres dias sao filtros obrigatorios.
+- Data, documento e descricao formam uma pontuacao explicavel de 0 a 100.
+- A confirmacao manual reexecuta todas as validacoes do dominio.
+- Movimentos legados sem `conta_bancaria_id` nao participam das sugestoes.
 - Cancelamento de recebimento estorna a parcela e reconsolida a conta.
 - Recebimento cancelado permanece como histórico.
 - ContaPagar inicia `ABERTA`, com `valorPago = 0` e `valorAberto = valorTotal`.

@@ -7,6 +7,7 @@ import br.com.invplus.modules.pessoas.entity.Funcionario;
 import br.com.invplus.modules.vendas.enums.StatusPedidoVenda;
 import br.com.invplus.shared.domain.entity.SoftDeleteEntity;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -126,7 +127,7 @@ public class PedidoVenda extends SoftDeleteEntity {
 
     public void aprovar(UUID usuarioId) {
         if (status != StatusPedidoVenda.ABERTO) {
-            throw new InvalidOperationException("Somente pedido aberto pode ser aprovado");
+            throw new ConflictException("Pedido de venda ja foi processado por outra operacao");
         }
         status = StatusPedidoVenda.APROVADO;
         aprovadoPor = usuarioId;

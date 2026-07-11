@@ -11,6 +11,7 @@ import br.com.invplus.modules.financeiro.entity.CentroCusto;
 import br.com.invplus.modules.financeiro.entity.Pagamento;
 import br.com.invplus.modules.financeiro.entity.PlanoConta;
 import br.com.invplus.modules.financeiro.entity.Recebimento;
+import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.enums.OrigemMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.StatusMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
@@ -18,6 +19,7 @@ import br.com.invplus.modules.financeiro.mapper.MovimentoFinanceiroMapper;
 import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.specification.MovimentoFinanceiroSpecification;
 import br.com.invplus.modules.financeiro.validator.MovimentoFinanceiroValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
@@ -54,13 +56,14 @@ public class MovimentoFinanceiroService
     private final CentroCustoRepository centroCustoRepository;
     private final PlanoContaRepository planoContaRepository;
     private final MovimentoFinanceiroValidator validator;
+    private final ContaBancariaRepository contaBancariaRepository;
 
     public MovimentoFinanceiroService(MovimentoFinanceiroRepository repository,
             EmpresaRepository empresaRepository, FilialRepository filialRepository,
             FormaPagamentoRepository formaPagamentoRepository, ClienteRepository clienteRepository,
             FornecedorRepository fornecedorRepository, MovimentoFinanceiroMapper mapper,
             MovimentoFinanceiroValidator validator, CentroCustoRepository centroCustoRepository,
-            PlanoContaRepository planoContaRepository) {
+            PlanoContaRepository planoContaRepository, ContaBancariaRepository contaBancariaRepository) {
         super(repository, mapper, "Movimento financeiro");
         this.repository = repository;
         this.empresaRepository = empresaRepository;
@@ -72,6 +75,7 @@ public class MovimentoFinanceiroService
         this.validator = validator;
         this.centroCustoRepository = centroCustoRepository;
         this.planoContaRepository = planoContaRepository;
+        this.contaBancariaRepository = contaBancariaRepository;
     }
 
     @Override
@@ -89,24 +93,32 @@ public class MovimentoFinanceiroService
         Fornecedor fornecedor = buscarFornecedor(request.fornecedorId());
         CentroCusto centroCusto = buscarCentroCusto(request.centroCustoId());
         PlanoConta planoConta = buscarPlanoConta(request.planoContaId());
+        ContaBancaria contaBancaria = buscarContaBancaria(request.contaBancariaId());
+        validarContaBancaria(contaBancaria, empresa, filial);
         validator.validarManual(request, empresa, filial, formaPagamento, cliente, fornecedor, centroCusto, planoConta);
 
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.registrar(empresa, filial, request.tipoMovimento(), request.origem(), request.origemId(),
-                formaPagamento, cliente, fornecedor, centroCusto, planoConta, request.valor(), request.dataMovimento(),
+                formaPagamento, cliente, fornecedor, centroCusto, planoConta, contaBancaria,
+                request.valor(), request.dataMovimento(),
                 request.descricao(), request.observacao());
         return mapper.toResponse(repository.save(movimento));
     }
 
     @Transactional
     public MovimentoFinanceiro registrarRecebimento(Recebimento recebimento) {
+        return registrarRecebimento(recebimento, null);
+    }
+
+    @Transactional
+    public MovimentoFinanceiro registrarRecebimento(Recebimento recebimento, ContaBancaria contaBancaria) {
         validarOrigemUnica(OrigemMovimentoFinanceiro.RECEBIMENTO, recebimento.getId());
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.registrar(recebimento.getEmpresa(), recebimento.getFilial(), TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.RECEBIMENTO, recebimento.getId(), recebimento.getFormaPagamento(),
                 recebimento.getCliente(), null,
                 recebimento.getContaReceber() == null ? null : recebimento.getContaReceber().getCentroCusto(),
-                recebimento.getContaReceber() == null ? null : recebimento.getContaReceber().getPlanoConta(),
+                recebimento.getContaReceber() == null ? null : recebimento.getContaReceber().getPlanoConta(), contaBancaria,
                 recebimento.getValorLiquido(), recebimento.getDataRecebimento(),
                 "Recebimento " + recebimento.getId(), recebimento.getObservacao());
         return repository.save(movimento);
@@ -114,13 +126,18 @@ public class MovimentoFinanceiroService
 
     @Transactional
     public MovimentoFinanceiro registrarPagamento(Pagamento pagamento) {
+        return registrarPagamento(pagamento, null);
+    }
+
+    @Transactional
+    public MovimentoFinanceiro registrarPagamento(Pagamento pagamento, ContaBancaria contaBancaria) {
         validarOrigemUnica(OrigemMovimentoFinanceiro.PAGAMENTO, pagamento.getId());
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.registrar(pagamento.getEmpresa(), pagamento.getFilial(), TipoMovimentoFinanceiro.SAIDA,
                 OrigemMovimentoFinanceiro.PAGAMENTO, pagamento.getId(), pagamento.getFormaPagamento(),
                 null, pagamento.getFornecedor(),
                 pagamento.getContaPagar() == null ? null : pagamento.getContaPagar().getCentroCusto(),
-                pagamento.getContaPagar() == null ? null : pagamento.getContaPagar().getPlanoConta(),
+                pagamento.getContaPagar() == null ? null : pagamento.getContaPagar().getPlanoConta(), contaBancaria,
                 pagamento.getValorLiquido(), pagamento.getDataPagamento(),
                 "Pagamento " + pagamento.getId(), pagamento.getObservacao());
         return repository.save(movimento);
@@ -209,6 +226,24 @@ public class MovimentoFinanceiroService
     private PlanoConta buscarPlanoConta(UUID id) {
         return id == null ? null : planoContaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Plano de conta nao encontrado"));
+    }
+
+    private ContaBancaria buscarContaBancaria(UUID id) {
+        return id == null ? null : contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
+    }
+
+    private void validarContaBancaria(ContaBancaria conta, Empresa empresa, Filial filial) {
+        if (conta == null) return;
+        if (!conta.getEmpresa().getId().equals(empresa.getId())) {
+            throw new br.com.invplus.shared.domain.exception.InvalidOperationException(
+                    "Conta bancaria deve pertencer a mesma empresa do movimento");
+        }
+        if (conta.getFilial() != null
+                && (filial == null || !conta.getFilial().getId().equals(filial.getId()))) {
+            throw new br.com.invplus.shared.domain.exception.InvalidOperationException(
+                    "Conta bancaria deve ser compativel com a filial do movimento");
+        }
     }
 
     private Specification<MovimentoFinanceiro> and(Specification<MovimentoFinanceiro> base,

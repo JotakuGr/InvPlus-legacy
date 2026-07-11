@@ -35,6 +35,29 @@ public interface MovimentoFinanceiroRepository extends BaseRepository<MovimentoF
             UUID origemId
     );
 
+    @Query("""
+            select m from MovimentoFinanceiro m
+            where m.ativo = true and m.deletedAt is null
+              and m.status = br.com.invplus.modules.financeiro.enums.StatusMovimentoFinanceiro.ATIVO
+              and m.contaBancaria.id = :contaBancariaId
+              and m.empresa.id = :empresaId
+              and m.tipoMovimento = :tipo
+              and m.valor = :valor
+              and m.dataMovimento between :dataInicio and :dataFim
+              and not exists (
+                    select c.id from ConciliacaoBancaria c
+                    where c.movimentoFinanceiro.id = m.id
+                      and c.status = br.com.invplus.modules.financeiro.enums.StatusConciliacaoBancaria.CONCILIADA
+              )
+            """)
+    List<MovimentoFinanceiro> buscarCandidatosConciliacao(
+            @Param("contaBancariaId") UUID contaBancariaId,
+            @Param("empresaId") UUID empresaId,
+            @Param("tipo") TipoMovimentoFinanceiro tipo,
+            @Param("valor") BigDecimal valor,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim);
+
     /**
      * Soma somente movimentos ativos e nao excluidos dentro do periodo informado.
      */

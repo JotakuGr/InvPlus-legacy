@@ -49,6 +49,17 @@ public class ConciliacaoBancariaValidator {
                 movimento.getId(), StatusConciliacaoBancaria.CONCILIADA)) {
             throw new ConflictException("Movimento financeiro ja esta conciliado");
         }
+        // Movimentos legados podem permanecer sem conta durante a migracao nullable.
+        // Todo movimento novo que informa conta deve coincidir exatamente com o extrato.
+        if (movimento.getContaBancaria() != null
+                && !movimento.getContaBancaria().getId().equals(
+                        lancamento.getExtratoBancario().getContaBancaria().getId())) {
+            throw new InvalidOperationException("Movimento financeiro deve pertencer a conta bancaria do extrato");
+        }
+        if (!movimento.getEmpresa().getId().equals(
+                lancamento.getExtratoBancario().getContaBancaria().getEmpresa().getId())) {
+            throw new InvalidOperationException("Movimento financeiro deve pertencer a empresa da conta bancaria");
+        }
         validarTipo(lancamento, movimento);
         if (lancamento.getValor().compareTo(movimento.getValor()) != 0) {
             throw new InvalidOperationException("Valor do lancamento deve ser igual ao valor do movimento");

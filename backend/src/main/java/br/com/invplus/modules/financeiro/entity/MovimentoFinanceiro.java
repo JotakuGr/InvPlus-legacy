@@ -86,6 +86,10 @@ public class MovimentoFinanceiro extends SoftDeleteEntity {
     @JoinColumn(name = "plano_conta_id")
     private PlanoConta planoConta;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conta_bancaria_id")
+    private ContaBancaria contaBancaria;
+
     @NotNull
     @Positive
     @Column(name = "valor", nullable = false, precision = 15, scale = 2)
@@ -136,6 +140,16 @@ public class MovimentoFinanceiro extends SoftDeleteEntity {
             OrigemMovimentoFinanceiro origem, UUID origemId, FormaPagamento formaPagamento,
             Cliente cliente, Fornecedor fornecedor, CentroCusto centroCusto, PlanoConta planoConta,
             BigDecimal valor, LocalDate dataMovimento, String descricao, String observacao) {
+        registrar(empresa, filial, tipoMovimento, origem, origemId, formaPagamento, cliente,
+                fornecedor, centroCusto, planoConta, null, valor, dataMovimento, descricao, observacao);
+    }
+
+    /** Preenche o movimento com a conta bancaria onde a operacao ocorreu. */
+    public void registrar(Empresa empresa, Filial filial, TipoMovimentoFinanceiro tipoMovimento,
+            OrigemMovimentoFinanceiro origem, UUID origemId, FormaPagamento formaPagamento,
+            Cliente cliente, Fornecedor fornecedor, CentroCusto centroCusto, PlanoConta planoConta,
+            ContaBancaria contaBancaria, BigDecimal valor, LocalDate dataMovimento,
+            String descricao, String observacao) {
         this.empresa = empresa;
         this.filial = filial;
         this.tipoMovimento = tipoMovimento;
@@ -146,6 +160,7 @@ public class MovimentoFinanceiro extends SoftDeleteEntity {
         this.fornecedor = fornecedor;
         this.centroCusto = centroCusto;
         this.planoConta = planoConta;
+        this.contaBancaria = contaBancaria;
         this.valor = valor;
         this.dataMovimento = dataMovimento;
         this.descricao = descricao == null ? null : descricao.trim();

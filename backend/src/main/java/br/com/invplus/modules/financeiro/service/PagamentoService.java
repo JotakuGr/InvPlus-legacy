@@ -4,12 +4,14 @@ import br.com.invplus.modules.financeiro.dto.request.PagamentoRequest;
 import br.com.invplus.modules.financeiro.dto.request.ParcelaPagarBaixaRequest;
 import br.com.invplus.modules.financeiro.dto.response.PagamentoResponse;
 import br.com.invplus.modules.financeiro.entity.ParcelaPagar;
+import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.entity.Pagamento;
 import br.com.invplus.modules.financeiro.enums.OrigemMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.StatusPagamentoFinanceiro;
 import br.com.invplus.modules.financeiro.mapper.PagamentoMapper;
 import br.com.invplus.modules.financeiro.repository.ParcelaPagarRepository;
 import br.com.invplus.modules.financeiro.repository.PagamentoRepository;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.specification.PagamentoSpecification;
 import br.com.invplus.modules.financeiro.validator.PagamentoValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
@@ -37,6 +39,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     private final MovimentoFinanceiroService movimentoFinanceiroService;
     private final PagamentoMapper mapper;
     private final PagamentoValidator validator;
+    private final ContaBancariaRepository contaBancariaRepository;
 
     public PagamentoService(
             PagamentoRepository repository,
@@ -45,7 +48,8 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
             ParcelaPagarService parcelaPagarService,
             MovimentoFinanceiroService movimentoFinanceiroService,
             PagamentoMapper mapper,
-            PagamentoValidator validator
+            PagamentoValidator validator,
+            ContaBancariaRepository contaBancariaRepository
     ) {
         super(repository, mapper, "Pagamento");
         this.repository = repository;
@@ -55,6 +59,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
         this.movimentoFinanceiroService = movimentoFinanceiroService;
         this.mapper = mapper;
         this.validator = validator;
+        this.contaBancariaRepository = contaBancariaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -81,6 +86,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     public PagamentoResponse criar(PagamentoRequest request) {
         ParcelaPagar parcela = buscarParcela(request.parcelaPagarId());
         FormaPagamento formaPagamento = buscarFormaPagamento(request.formaPagamentoId());
+        ContaBancaria contaBancaria = buscarContaBancaria(request.contaBancariaId(), parcela.getContaPagar().getEmpresa().getId());
         validator.validarCriacao(parcela, formaPagamento, request);
 
         Pagamento pagamento = new Pagamento();
@@ -96,7 +102,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
                 request.dataPagamento(),
                 request.observacao()
         ));
-        movimentoFinanceiroService.registrarPagamento(salvo);
+        movimentoFinanceiroService.registrarPagamento(salvo, contaBancaria);
         return mapper.toResponse(salvo);
     }
 
@@ -128,6 +134,20 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     private FormaPagamento buscarFormaPagamento(UUID id) {
         return formaPagamentoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Forma de pagamento nao encontrada"));
+    }
+
+    private ContaBancaria buscarContaBancaria(UUID id, UUID empresaId) {
+        ContaBancaria conta = id == null
+                ? contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId)
+                        .orElse(null)
+                : contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
+        if (conta == null) return null;
+        if (!conta.getEmpresa().getId().equals(empresaId)) {
+            throw new br.com.invplus.shared.domain.exception.InvalidOperationException(
+                    "Conta bancaria deve pertencer a mesma empresa do pagamento");
+        }
+        return conta;
     }
 
     private Specification<Pagamento> and(Specification<Pagamento> base, Specification<Pagamento> filtro) {

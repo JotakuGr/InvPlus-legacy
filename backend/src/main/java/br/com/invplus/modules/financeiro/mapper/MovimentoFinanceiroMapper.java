@@ -47,6 +47,11 @@ public class MovimentoFinanceiroMapper
                 entity.getPlanoConta() == null ? null : entity.getPlanoConta().getCodigo(),
                 entity.getPlanoConta() == null ? null : entity.getPlanoConta().getNome(),
                 entity.getPlanoConta() == null ? null : entity.getPlanoConta().getNatureza(),
+                entity.getContaBancaria() == null ? null : entity.getContaBancaria().getId(),
+                entity.getContaBancaria() == null ? null
+                        : entity.getContaBancaria().getBancoNome() + " - "
+                                + entity.getContaBancaria().getAgencia() + "/"
+                                + entity.getContaBancaria().getNumeroConta(),
                 entity.getValor(),
                 entity.getDataMovimento(),
                 entity.getDescricao(),

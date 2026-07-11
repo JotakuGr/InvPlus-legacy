@@ -18,6 +18,13 @@ public record RecebimentoRequest(
         @PositiveOrZero BigDecimal multa,
         @PositiveOrZero BigDecimal desconto,
         @NotNull LocalDate dataRecebimento,
-        String observacao
+        String observacao,
+        UUID contaBancariaId
 ) {
+    public RecebimentoRequest(UUID parcelaReceberId, UUID formaPagamentoId, BigDecimal valorRecebido,
+            BigDecimal juros, BigDecimal multa, BigDecimal desconto, LocalDate dataRecebimento,
+            String observacao) {
+        this(parcelaReceberId, formaPagamentoId, valorRecebido, juros, multa, desconto,
+                dataRecebimento, observacao, null);
+    }
 }

@@ -20,6 +20,7 @@ public record MovimentoFinanceiroRequest(
         UUID fornecedorId,
         UUID centroCustoId,
         UUID planoContaId,
+        UUID contaBancariaId,
         @NotNull TipoMovimentoFinanceiro tipoMovimento,
         @NotNull OrigemMovimentoFinanceiro origem,
         UUID origemId,
@@ -35,7 +36,7 @@ public record MovimentoFinanceiroRequest(
             UUID clienteId, UUID fornecedorId, TipoMovimentoFinanceiro tipoMovimento,
             OrigemMovimentoFinanceiro origem, UUID origemId, BigDecimal valor,
             LocalDate dataMovimento, String descricao, String observacao) {
-        this(empresaId, filialId, formaPagamentoId, clienteId, fornecedorId, null, null, tipoMovimento,
+        this(empresaId, filialId, formaPagamentoId, clienteId, fornecedorId, null, null, null, tipoMovimento,
                 origem, origemId, valor, dataMovimento, descricao, observacao);
     }
 
@@ -46,7 +47,16 @@ public record MovimentoFinanceiroRequest(
             UUID clienteId, UUID fornecedorId, UUID centroCustoId, TipoMovimentoFinanceiro tipoMovimento,
             OrigemMovimentoFinanceiro origem, UUID origemId, BigDecimal valor,
             LocalDate dataMovimento, String descricao, String observacao) {
-        this(empresaId, filialId, formaPagamentoId, clienteId, fornecedorId, centroCustoId, null, tipoMovimento,
+        this(empresaId, filialId, formaPagamentoId, clienteId, fornecedorId, centroCustoId, null, null, tipoMovimento,
                 origem, origemId, valor, dataMovimento, descricao, observacao);
+    }
+
+    public MovimentoFinanceiroRequest(UUID empresaId, UUID filialId, UUID formaPagamentoId,
+            UUID clienteId, UUID fornecedorId, UUID centroCustoId, UUID planoContaId,
+            TipoMovimentoFinanceiro tipoMovimento, OrigemMovimentoFinanceiro origem, UUID origemId,
+            BigDecimal valor, LocalDate dataMovimento, String descricao, String observacao) {
+        this(empresaId, filialId, formaPagamentoId, clienteId, fornecedorId, centroCustoId,
+                planoContaId, null, tipoMovimento, origem, origemId, valor, dataMovimento,
+                descricao, observacao);
     }
 }

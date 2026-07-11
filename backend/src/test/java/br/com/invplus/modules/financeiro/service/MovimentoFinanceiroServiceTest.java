@@ -21,6 +21,7 @@ import br.com.invplus.modules.financeiro.mapper.MovimentoFinanceiroMapper;
 import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.validator.MovimentoFinanceiroValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -63,6 +64,8 @@ class MovimentoFinanceiroServiceTest {
     private CentroCustoRepository centroCustoRepository;
     @Mock
     private PlanoContaRepository planoContaRepository;
+    @Mock
+    private ContaBancariaRepository contaBancariaRepository;
 
     private MovimentoFinanceiroService service;
     private Empresa empresa;
@@ -75,7 +78,7 @@ class MovimentoFinanceiroServiceTest {
         service = new MovimentoFinanceiroService(repository, empresaRepository, filialRepository,
                 formaPagamentoRepository, clienteRepository, fornecedorRepository,
                 new MovimentoFinanceiroMapper(), new MovimentoFinanceiroValidator(), centroCustoRepository,
-                planoContaRepository);
+                planoContaRepository, contaBancariaRepository);
         empresa = empresa();
         formaPagamento = formaPagamento();
         cliente = cliente();

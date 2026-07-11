@@ -314,4 +314,10 @@ PUT    /recurso/{id}
 DELETE /recurso/{id}
 ```
 
+## Sugestoes de conciliacao bancaria
+
+- `GET /api/v1/conciliacoes-bancarias/sugestoes?lancamentoBancarioId={id}&limite=10`
+- Permissao: `CONCILIACAO_BANCARIA:SUGERIR` ou `CONCILIACAO_BANCARIA:*`.
+- A consulta nao persiste sugestoes nem reserva movimentos.
+
 Operações de fluxo usam verbos de negócio, como `/aprovar`, `/cancelar`, `/baixar`, `/faturar` e `/efetivar`.

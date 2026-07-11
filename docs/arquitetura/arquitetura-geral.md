@@ -427,3 +427,6 @@ Cada nova entidade deve seguir a ordem abaixo:
 ## Objetivo Arquitetural
 
 Criar uma aplicacao organizada, escalavel e de facil manutencao, separando responsabilidades por modulos de negocio e mantendo uma base segura para crescimento do ERP.
+
+Sugestoes de conciliacao sao calculadas sob demanda. O banco aplica os filtros eliminatorios e o Java pontua
+somente candidatos compativeis; a confirmacao continua no servico transacional de conciliacao.

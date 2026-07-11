@@ -18,6 +18,8 @@ import br.com.invplus.modules.financeiro.enums.StatusRecebimento;
 import br.com.invplus.modules.financeiro.mapper.RecebimentoMapper;
 import br.com.invplus.modules.financeiro.repository.ParcelaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.RecebimentoRepository;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
+import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.validator.RecebimentoValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -52,6 +54,8 @@ class RecebimentoServiceTest {
     private ParcelaReceberService parcelaReceberService;
     @Mock
     private MovimentoFinanceiroService movimentoFinanceiroService;
+    @Mock
+    private ContaBancariaRepository contaBancariaRepository;
 
     private RecebimentoService service;
     private ParcelaReceber parcela;
@@ -60,7 +64,8 @@ class RecebimentoServiceTest {
     @BeforeEach
     void setUp() {
         service = new RecebimentoService(repository, parcelaReceberRepository, formaPagamentoRepository,
-                parcelaReceberService, movimentoFinanceiroService, new RecebimentoMapper(), new RecebimentoValidator());
+                parcelaReceberService, movimentoFinanceiroService, new RecebimentoMapper(),
+                new RecebimentoValidator(), contaBancariaRepository);
         parcela = parcela("300.00");
         formaPagamento = formaPagamento();
     }
@@ -170,6 +175,10 @@ class RecebimentoServiceTest {
     private void prepararBuscaParcelaEForma() {
         when(parcelaReceberRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(parcela.getId())).thenReturn(Optional.of(parcela));
         when(formaPagamentoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(formaPagamento.getId())).thenReturn(Optional.of(formaPagamento));
+        ContaBancaria conta = new ContaBancaria();
+        conta.setEmpresa(parcela.getContaReceber().getEmpresa());
+        when(contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
+                parcela.getContaReceber().getEmpresa().getId())).thenReturn(Optional.of(conta));
     }
 
     private RecebimentoRequest request(String valor) {

@@ -72,4 +72,6 @@ Sugestões:
 
 ## Atualizacao Recente
 
+- Sugestoes explicaveis de conciliacao concluidas com migrations V120/V121 e filtro no banco.
+
 - ImportacaoExtratoBancario concluida com upload em `/api/v1/extratos-bancarios/importar/ofx`, consultas em `/api/v1/importacoes-extratos`, permissões `IMPORTACAO_EXTRATO:*`, migrations V118/V119, parser OFX extensível, hash idempotente e integração com conciliação.

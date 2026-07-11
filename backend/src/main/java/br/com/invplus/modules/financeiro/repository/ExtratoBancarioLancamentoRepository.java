@@ -11,6 +11,8 @@ import java.util.UUID;
  */
 public interface ExtratoBancarioLancamentoRepository extends BaseRepository<ExtratoBancarioLancamento> {
 
+    Optional<ExtratoBancarioLancamento> findByIdAndAtivoTrueAndDeletedAtIsNull(UUID id);
+
     Optional<ExtratoBancarioLancamento> findByExtratoBancarioIdAndIdentificadorBancarioIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
             UUID extratoBancarioId, String identificadorBancario);
 

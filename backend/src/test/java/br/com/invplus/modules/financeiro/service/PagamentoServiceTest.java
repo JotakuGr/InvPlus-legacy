@@ -18,6 +18,8 @@ import br.com.invplus.modules.financeiro.enums.StatusPagamentoFinanceiro;
 import br.com.invplus.modules.financeiro.mapper.PagamentoMapper;
 import br.com.invplus.modules.financeiro.repository.ParcelaPagarRepository;
 import br.com.invplus.modules.financeiro.repository.PagamentoRepository;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
+import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.validator.PagamentoValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -52,6 +54,8 @@ class PagamentoServiceTest {
     private ParcelaPagarService parcelaPagarService;
     @Mock
     private MovimentoFinanceiroService movimentoFinanceiroService;
+    @Mock
+    private ContaBancariaRepository contaBancariaRepository;
 
     private PagamentoService service;
     private ParcelaPagar parcela;
@@ -60,7 +64,8 @@ class PagamentoServiceTest {
     @BeforeEach
     void setUp() {
         service = new PagamentoService(repository, parcelaPagarRepository, formaPagamentoRepository,
-                parcelaPagarService, movimentoFinanceiroService, new PagamentoMapper(), new PagamentoValidator());
+                parcelaPagarService, movimentoFinanceiroService, new PagamentoMapper(),
+                new PagamentoValidator(), contaBancariaRepository);
         parcela = parcela("300.00");
         formaPagamento = formaPagamento();
     }
@@ -170,6 +175,10 @@ class PagamentoServiceTest {
     private void prepararBuscaParcelaEForma() {
         when(parcelaPagarRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(parcela.getId())).thenReturn(Optional.of(parcela));
         when(formaPagamentoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(formaPagamento.getId())).thenReturn(Optional.of(formaPagamento));
+        ContaBancaria conta = new ContaBancaria();
+        conta.setEmpresa(parcela.getContaPagar().getEmpresa());
+        when(contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
+                parcela.getContaPagar().getEmpresa().getId())).thenReturn(Optional.of(conta));
     }
 
     private PagamentoRequest request(String valor) {
