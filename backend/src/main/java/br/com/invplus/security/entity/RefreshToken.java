@@ -18,6 +18,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import br.com.invplus.shared.domain.entity.BaseEntity;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.modules.cadastros.entity.Filial;
 
 import java.time.OffsetDateTime;
 
@@ -41,6 +43,11 @@ public class RefreshToken extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
+
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "empresa_id")
+    private Empresa empresa;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "filial_id")
+    private Filial filial;
 
     @NotBlank
     @Size(max = 64)
@@ -67,7 +74,14 @@ public class RefreshToken extends BaseEntity {
     private String userAgent;
 
     public RefreshToken(Usuario usuario, String tokenHash, OffsetDateTime expiraEm, String ip, String userAgent) {
+        this(usuario, null, null, tokenHash, expiraEm, ip, userAgent);
+    }
+
+    public RefreshToken(Usuario usuario, Empresa empresa, Filial filial, String tokenHash,
+            OffsetDateTime expiraEm, String ip, String userAgent) {
         this.usuario = usuario;
+        this.empresa = empresa;
+        this.filial = filial;
         this.tokenHash = tokenHash;
         this.expiraEm = expiraEm;
         this.ip = ip;

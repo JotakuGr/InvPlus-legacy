@@ -319,5 +319,16 @@ DELETE /recurso/{id}
 - `GET /api/v1/conciliacoes-bancarias/sugestoes?lancamentoBancarioId={id}&limite=10`
 - Permissao: `CONCILIACAO_BANCARIA:SUGERIR` ou `CONCILIACAO_BANCARIA:*`.
 - A consulta nao persiste sugestoes nem reserva movimentos.
+- `GET /api/v1/conciliacoes-bancarias/painel?empresaId={id}` - indicadores e extratos recentes.
+- `GET /api/v1/conciliacoes-bancarias/extratos-pendentes?empresaId={id}` - extratos paginados.
+- `GET /api/v1/conciliacoes-bancarias/pendencias?empresaId={id}` - lancamentos pendentes com melhor sugestao.
+- `POST /api/v1/conciliacoes-bancarias/confirmar-lote?empresaId={id}` - confirmacao parcial de ate 100 pares.
+
+## Contexto empresarial
+
+- `POST /api/v1/auth/contexto/selecionar` - troca selection token por tokens contextualizados.
+- `POST /api/v1/auth/contexto/trocar` - emite tokens para outra empresa/filial permitida.
+- `GET /api/v1/auth/contexto` - retorna o contexto atual.
+- `GET /api/v1/auth/contexto/empresas` - lista vinculos empresariais ativos.
 
 Operações de fluxo usam verbos de negócio, como `/aprovar`, `/cancelar`, `/baixar`, `/faturar` e `/efetivar`.

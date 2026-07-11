@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface UsuarioRepository extends BaseRepository<Usuario> {
 
@@ -17,4 +18,8 @@ public interface UsuarioRepository extends BaseRepository<Usuario> {
     Optional<Usuario> findByEmailWithPerfisAndPermissoes(@Param("email") String email);
 
     boolean existsByEmailAndAtivoTrueAndDeletedAtIsNull(String email);
+
+    @EntityGraph(attributePaths = {"perfis", "perfis.permissoes"})
+    @Query("select u from Usuario u where u.id=:id and u.ativo=true and u.deletedAt is null")
+    Optional<Usuario> findByIdWithPerfisAndPermissoes(@Param("id") UUID id);
 }

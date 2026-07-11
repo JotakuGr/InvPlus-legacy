@@ -430,3 +430,9 @@ Criar uma aplicacao organizada, escalavel e de facil manutencao, separando respo
 
 Sugestoes de conciliacao sao calculadas sob demanda. O banco aplica os filtros eliminatorios e o Java pontua
 somente candidatos compativeis; a confirmacao continua no servico transacional de conciliacao.
+
+A central de conciliacao usa projecoes agregadas e paginas de pendencias. A confirmacao em lote delega cada par
+a um bean transacional independente, preservando sucessos quando outro item e rejeitado.
+
+O contexto empresarial liga Usuario a Empresa e Filial por entidades auditadas. O JWT carrega apenas UUIDs e o
+filtro revalida os vinculos antes de montar o principal autenticado.

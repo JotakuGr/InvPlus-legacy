@@ -14,6 +14,14 @@
 - Data, documento e descricao formam uma pontuacao explicavel de 0 a 100.
 - A confirmacao manual reexecuta todas as validacoes do dominio.
 - Movimentos legados sem `conta_bancaria_id` nao participam das sugestoes.
+
+## Central de conciliacao
+
+- O painel e uma composicao de consultas e nao possui entidade propria.
+- Pendencias sao paginadas e sugestoes nao sao persistidas.
+- A confirmacao em lote permite sucesso parcial e cada item usa uma transacao independente.
+- Pares repetidos no request sao erros estruturais; conflitos de dominio rejeitam somente o item.
+- O servico individual revalida conta, empresa, tipo, valor e estados antes de confirmar.
 - Cancelamento de recebimento estorna a parcela e reconsolida a conta.
 - Recebimento cancelado permanece como histórico.
 - ContaPagar inicia `ABERTA`, com `valorPago = 0` e `valorAberto = valorTotal`.

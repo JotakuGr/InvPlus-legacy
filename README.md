@@ -147,7 +147,7 @@ Toda a estrutura foi desenvolvida utilizando **Spring Boot**, separando claramen
 | Spring Boot | **3.x** |
 | Angular | **20** |
 | Migrations Flyway | **119+** |
-| Testes Automatizados | **657** |
+| Testes Automatizados | **669** |
 | Controllers REST | **60+** |
 | Entidades | **70+** |
 | DTOs | **200+** |
@@ -357,6 +357,12 @@ Movimento Financeiro
 
 As sugestoes de conciliacao sao calculadas sob demanda, com filtros por conta, empresa, tipo, valor e data.
 A confirmacao permanece manual e revalida todas as regras financeiras.
+
+A central bancaria apresenta indicadores, extratos e pendencias paginadas e permite confirmar pares em lote
+com resultado parcial, sem criar uma entidade de painel.
+
+O contexto empresarial permite que um usuario selecione uma empresa e filial ativa; o JWT contextualizado e
+revalidado contra os vinculos de acesso em cada requisicao.
 
 ---
 
@@ -652,7 +658,7 @@ O projeto utiliza práticas modernas de desenvolvimento para garantir qualidade,
 | Java | 25 |
 | Spring Boot | 3.x |
 | Migrations Flyway | 119+ |
-| Testes Automatizados | 657 |
+| Testes Automatizados | 669 |
 | Controllers REST | 60+ |
 | Entidades | 70+ |
 | DTOs | 200+ |

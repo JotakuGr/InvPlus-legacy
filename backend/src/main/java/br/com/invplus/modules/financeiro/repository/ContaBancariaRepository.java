@@ -13,6 +13,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface ContaBancariaRepository extends BaseRepository<ContaBancaria> {
 
+    Optional<ContaBancaria> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     Optional<ContaBancaria> findByEmpresaIdAndBancoCodigoIgnoreCaseAndAgenciaIgnoreCaseAndNumeroContaIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
             UUID empresaId, String bancoCodigo, String agencia, String numeroConta);
 
@@ -21,9 +23,11 @@ public interface ContaBancariaRepository extends BaseRepository<ContaBancaria> {
     @Query(value = """
             SELECT * FROM conta_bancaria
             WHERE ativo = TRUE AND deleted_at IS NULL
+              AND empresa_id = :empresaId
               AND regexp_replace(banco_codigo, '[^0-9]', '', 'g') = :banco
               AND regexp_replace(agencia, '[^0-9]', '', 'g') = :agencia
             """, nativeQuery = true)
     List<ContaBancaria> localizarAtivasPorBancoEAgenciaNormalizados(
-            @Param("banco") String banco, @Param("agencia") String agencia);
+            @Param("empresaId") UUID empresaId, @Param("banco") String banco,
+            @Param("agencia") String agencia);
 }

@@ -73,5 +73,7 @@ Sugestões:
 ## Atualizacao Recente
 
 - Sugestoes explicaveis de conciliacao concluidas com migrations V120/V121 e filtro no banco.
+- Central operacional e confirmacao parcial em lote concluidas com migrations V122/V123.
+- Contexto empresarial no JWT iniciado com migrations V124/V125/V126 e migracao bancaria compativel.
 
 - ImportacaoExtratoBancario concluida com upload em `/api/v1/extratos-bancarios/importar/ofx`, consultas em `/api/v1/importacoes-extratos`, permissões `IMPORTACAO_EXTRATO:*`, migrations V118/V119, parser OFX extensível, hash idempotente e integração com conciliação.

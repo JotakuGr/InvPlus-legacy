@@ -14,6 +14,8 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.modules.cadastros.entity.Filial;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +31,17 @@ public class RefreshTokenService {
 
     @Transactional
     public String criar(Usuario usuario, String ip, String userAgent) {
+        return criar(usuario, null, null, ip, userAgent);
+    }
+
+    @Transactional
+    public String criar(Usuario usuario, Empresa empresa, Filial filial, String ip, String userAgent) {
         byte[] randomBytes = new byte[64];
         SECURE_RANDOM.nextBytes(randomBytes);
 
         String token = TOKEN_ENCODER.encodeToString(randomBytes);
         RefreshToken refreshToken = new RefreshToken(
-                usuario,
+                usuario, empresa, filial,
                 hash(token),
                 OffsetDateTime.now().plusDays(refreshExpirationDays),
                 ip,
@@ -47,6 +54,11 @@ public class RefreshTokenService {
 
     @Transactional(readOnly = true)
     public Usuario validarEObterUsuario(String token) {
+        return validar(token).getUsuario();
+    }
+
+    @Transactional(readOnly = true)
+    public RefreshToken validar(String token) {
         RefreshToken refreshToken = refreshTokenRepository.findByTokenHashAndRevogadoFalse(hash(token))
                 .orElseThrow(() -> new BusinessException("Refresh token invalido"));
 
@@ -59,7 +71,7 @@ public class RefreshTokenService {
             throw new BusinessException("Usuario inativo");
         }
 
-        return usuario;
+        return refreshToken;
     }
 
     @Transactional

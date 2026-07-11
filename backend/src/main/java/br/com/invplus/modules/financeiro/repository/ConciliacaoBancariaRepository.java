@@ -17,5 +17,10 @@ public interface ConciliacaoBancariaRepository extends JpaRepository<Conciliacao
 
     Optional<ConciliacaoBancaria> findByIdAndStatus(UUID id, StatusConciliacaoBancaria status);
 
+    Optional<ConciliacaoBancaria> findByIdAndContaBancariaEmpresaId(UUID id, UUID empresaId);
+
+    Optional<ConciliacaoBancaria> findByIdAndStatusAndContaBancariaEmpresaId(
+            UUID id, StatusConciliacaoBancaria status, UUID empresaId);
+
     long countByExtratoBancarioLancamentoIdAndStatus(UUID lancamentoId, StatusConciliacaoBancaria status);
 }

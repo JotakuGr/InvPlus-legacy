@@ -8,6 +8,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,6 +39,10 @@ public class JwtService {
     private long expirationMinutes;
 
     public String gerarToken(UserDetails userDetails) {
+        return gerarAccessToken(userDetails, null, null);
+    }
+
+    public String gerarAccessToken(UserDetails userDetails, UUID empresaId, UUID filialId) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(expirationMinutes * 60);
 
@@ -48,12 +53,29 @@ public class JwtService {
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", userDetails.getUsername());
+        if (userDetails instanceof AuthenticatedUserDetails principal) {
+            payload.put("usuario_id", principal.getId().toString());
+        }
+        if (empresaId != null) payload.put("empresa_id", empresaId.toString());
+        if (filialId != null) payload.put("filial_id", filialId.toString());
+        payload.put("token_use", "ACCESS");
+        payload.put("jti", UUID.randomUUID().toString());
         payload.put("authorities", authorities(userDetails));
         payload.put("iat", now.getEpochSecond());
         payload.put("exp", expiresAt.getEpochSecond());
 
         String headerPayload = encode(header) + "." + encode(payload);
         return headerPayload + "." + assinar(headerPayload);
+    }
+
+    public String gerarSelectionToken(UUID usuarioId) {
+        Instant now=Instant.now();
+        Map<String,Object> payload=new LinkedHashMap<>();
+        payload.put("sub", usuarioId.toString()); payload.put("usuario_id", usuarioId.toString());
+        payload.put("token_use","COMPANY_SELECTION"); payload.put("jti",UUID.randomUUID().toString());
+        payload.put("iat",now.getEpochSecond()); payload.put("exp",now.plusSeconds(300).getEpochSecond());
+        Map<String,Object> header=Map.of("alg","HS256","typ","JWT");
+        String hp=encode(header)+"."+encode(payload); return hp+"."+assinar(hp);
     }
 
     public String extrairUsername(String token) {
@@ -64,6 +86,20 @@ public class JwtService {
         Object authorities = claims(token).get("authorities");
         return objectMapper.convertValue(authorities, new TypeReference<>() {
         });
+    }
+
+    public String extrairTokenUse(String token) { return String.valueOf(claims(token).get("token_use")); }
+    public UUID extrairUsuarioId(String token) { return extrairUuidClaim(token,"usuario_id"); }
+    public UUID extrairUuidClaim(String token,String nome) {
+        Object valor=claims(token).get(nome);
+        if(valor==null) throw new IllegalArgumentException("Claim obrigatorio ausente: "+nome);
+        try { return UUID.fromString(valor.toString()); } catch(Exception ex) { throw new IllegalArgumentException("Claim UUID invalido: "+nome,ex); }
+    }
+    public UUID extrairUuidClaimOpcional(String token,String nome) {
+        Object valor=claims(token).get(nome); return valor==null?null:extrairUuidClaim(token,nome);
+    }
+    public boolean tokenDoTipo(String token,String tipo) {
+        return tokenValido(token) && tipo.equals(extrairTokenUse(token));
     }
 
     public boolean tokenValido(String token) {

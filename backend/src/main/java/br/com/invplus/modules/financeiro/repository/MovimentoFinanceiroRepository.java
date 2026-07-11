@@ -18,6 +18,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface MovimentoFinanceiroRepository extends BaseRepository<MovimentoFinanceiro> {
 
+    Optional<MovimentoFinanceiro> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     Optional<MovimentoFinanceiro> findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
             OrigemMovimentoFinanceiro origem,
             UUID origemId,

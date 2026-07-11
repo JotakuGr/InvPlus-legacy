@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.security.service.AuthenticatedUserDetails;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     @Override
     protected void doFilterInternal(
@@ -43,10 +46,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authorizationHeader.substring(BEARER_PREFIX.length());
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null && jwtService.tokenValido(token)) {
+        if (SecurityContextHolder.getContext().getAuthentication() == null
+                && jwtService.tokenDoTipo(token, "ACCESS")) {
             try {
                 String username = jwtService.extrairUsername(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                AuthenticatedUserDetails base = (AuthenticatedUserDetails) userDetailsService.loadUserByUsername(username);
+                java.util.UUID empresaId = jwtService.extrairUuidClaimOpcional(token, "empresa_id");
+                java.util.UUID filialId = jwtService.extrairUuidClaimOpcional(token, "filial_id");
+                if (empresaId != null) accessValidator.validarContexto(base.getId(), empresaId, filialId);
+                UserDetails userDetails = new AuthenticatedUserDetails(base.getId(), base.getUsername(),
+                        base.getPassword(), base.getAuthorities(), base.isEnabled(), empresaId, filialId);
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails,

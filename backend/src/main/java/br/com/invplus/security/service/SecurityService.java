@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ public class SecurityService {
     private final UsuarioRepository usuarioRepository;
     private final UsuarioDetailsService usuarioDetailsService;
     private final RefreshTokenService refreshTokenService;
+    private final ContextoEmpresarialService contextoService;
 
     @Transactional
     public LoginResponse login(LoginRequest request, String ip, String userAgent) {
@@ -37,28 +39,37 @@ public class SecurityService {
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtService.gerarToken(userDetails);
-        OffsetDateTime expiresAt = jwtService.calcularExpiracao();
-
         Usuario usuario = usuarioRepository.findByEmailWithPerfisAndPermissoes(email).orElseThrow();
         usuario.setUltimoLogin(OffsetDateTime.now());
-        String refreshToken = refreshTokenService.criar(usuario, ip, userAgent);
-
-        return montarLoginResponse(token, refreshToken, expiresAt, usuario);
+        var empresas=contextoService.empresas(usuario.getId());
+        if(empresas.size()>1) {
+            return new LoginResponse(null,null,null,null,usuarioResponse(usuario),
+                    "SELECAO_EMPRESA_NECESSARIA",jwtService.gerarSelectionToken(usuario.getId()),null,empresas);
+        }
+        if(empresas.size()==1) {
+            var empresa=empresas.getFirst();
+            UUID filialId=!empresa.acessoTodasFiliais() && empresa.filiais().size()==1
+                    ? empresa.filiais().getFirst().filialId():null;
+            var tokens=contextoService.emitir(usuario.getId(),empresa.empresaId(),filialId,ip,userAgent);
+            return new LoginResponse("Bearer",tokens.accessToken(),tokens.refreshToken(),jwtService.calcularExpiracao(),
+                    usuarioResponse(usuario),"AUTENTICADO",null,tokens.contexto(),empresas);
+        }
+        // Compatibilidade temporaria para usuarios pendentes de saneamento da V126.
+        String token=jwtService.gerarToken(userDetails);
+        return montarLoginResponse(token,refreshTokenService.criar(usuario,ip,userAgent),jwtService.calcularExpiracao(),usuario);
     }
 
     @Transactional
     public LoginResponse refresh(String refreshToken, String ip, String userAgent) {
-        Usuario usuario = refreshTokenService.validarEObterUsuario(refreshToken);
-        UserDetails userDetails = User.builder()
-                .username(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities(usuarioDetailsService.toAuthorities(usuario))
-                .disabled(!Boolean.TRUE.equals(usuario.getAtivo()) || usuario.getDeletedAt() != null)
-                .build();
-
-        String accessToken = jwtService.gerarToken(userDetails);
-        String novoRefreshToken = refreshTokenService.criar(usuario, ip, userAgent);
+        var refresh = refreshTokenService.validar(refreshToken);
+        Usuario usuario = usuarioRepository.findByIdWithPerfisAndPermissoes(refresh.getUsuario().getId()).orElseThrow();
+        UUID empresaId=refresh.getEmpresa()==null?null:refresh.getEmpresa().getId();
+        UUID filialId=refresh.getFilial()==null?null:refresh.getFilial().getId();
+        if(empresaId!=null) contextoService.validarAcesso(usuario.getId(),empresaId,filialId);
+        UserDetails userDetails = new AuthenticatedUserDetails(usuario.getId(),usuario.getEmail(),usuario.getSenhaHash(),
+                usuarioDetailsService.toAuthorities(usuario),true,empresaId,filialId);
+        String accessToken = jwtService.gerarAccessToken(userDetails,empresaId,filialId);
+        String novoRefreshToken = refreshTokenService.criar(usuario,refresh.getEmpresa(),refresh.getFilial(),ip,userAgent);
         refreshTokenService.revogar(refreshToken);
 
         return montarLoginResponse(accessToken, novoRefreshToken, jwtService.calcularExpiracao(), usuario);
@@ -80,14 +91,18 @@ public class SecurityService {
                 accessToken,
                 refreshToken,
                 expiresAt,
-                new LoginResponse.UsuarioAutenticadoResponse(
+                usuarioResponse(usuario)
+        );
+    }
+
+    private LoginResponse.UsuarioAutenticadoResponse usuarioResponse(Usuario usuario) {
+        return new LoginResponse.UsuarioAutenticadoResponse(
                         usuario.getId().toString(),
                         usuario.getNome(),
                         usuario.getEmail(),
                         perfis(usuario),
                         permissoes(usuario)
-                )
-        );
+                );
     }
 
     private List<String> perfis(Usuario usuario) {
