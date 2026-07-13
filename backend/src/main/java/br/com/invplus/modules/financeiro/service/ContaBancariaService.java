@@ -20,9 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import br.com.invplus.security.context.EmpresaContext;
-import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /**
  * Orquestra o cadastro de contas bancarias e caixas internos por empresa.

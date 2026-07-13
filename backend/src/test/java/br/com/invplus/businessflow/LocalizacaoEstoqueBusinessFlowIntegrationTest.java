@@ -11,7 +11,6 @@ import br.com.invplus.support.security.EmpresaTestFactory;
 import br.com.invplus.support.security.JwtTestFactory;
 import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
 import br.com.invplus.support.security.UsuarioTestFactory;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

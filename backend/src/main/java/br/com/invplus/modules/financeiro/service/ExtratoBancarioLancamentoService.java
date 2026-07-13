@@ -20,7 +20,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import br.com.invplus.security.context.EmpresaContext;
 
 /**
@@ -34,9 +33,7 @@ public class ExtratoBancarioLancamentoService {
     private final ExtratoBancarioService extratoBancarioService;
     private final ExtratoBancarioLancamentoMapper mapper;
     private final ExtratoBancarioLancamentoValidator validator;
-
-    @Autowired(required = false)
-    private EmpresaContext empresaContext;
+    private final EmpresaContext empresaContext;
 
     @Transactional
     public ExtratoBancarioLancamentoResponse criar(ExtratoBancarioLancamentoRequest request) {

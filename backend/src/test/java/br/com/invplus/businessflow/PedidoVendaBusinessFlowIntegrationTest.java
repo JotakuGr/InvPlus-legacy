@@ -1,6 +1,6 @@
 package br.com.invplus.businessflow;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -100,8 +100,8 @@ class PedidoVendaBusinessFlowIntegrationTest {
         tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioA));
 
         usuarioB.setObservacao("Alteracao concorrente B");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioB)));
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioB)))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 
     private JsonNode criarCliente(String token) throws Exception {

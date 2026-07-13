@@ -25,7 +25,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -186,14 +185,6 @@ class ContaBancariaControllerTests {
         String sufixo = sufixo();
         return empresaRepository.saveAndFlush(new Empresa("Empresa CB " + sufixo,
                 "Empresa CB " + sufixo, documento(sufixo), null, null, null));
-    }
-
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
     }
 
     private String tokenAdmin(Empresa empresa) throws Exception {

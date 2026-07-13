@@ -19,6 +19,7 @@ import br.com.invplus.modules.financeiro.validator.ExtratoBancarioValidator;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -44,6 +45,8 @@ class ExtratoBancarioServiceTest {
     private ExtratoBancarioLancamentoRepository lancamentoRepository;
     @Mock
     private ContaBancariaService contaBancariaService;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ExtratoBancarioService service;
     private ContaBancaria contaBancaria;
@@ -51,7 +54,7 @@ class ExtratoBancarioServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExtratoBancarioService(repository, lancamentoRepository, contaBancariaService,
-                new ExtratoBancarioMapper(), new ExtratoBancarioValidator(repository));
+                new ExtratoBancarioMapper(), new ExtratoBancarioValidator(repository), empresaContext);
         contaBancaria = contaBancaria();
     }
 

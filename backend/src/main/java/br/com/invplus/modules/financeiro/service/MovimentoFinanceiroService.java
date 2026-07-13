@@ -38,9 +38,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import br.com.invplus.security.context.EmpresaContext;
-import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /**
  * Centraliza a criacao e o cancelamento dos registros do fluxo financeiro.
@@ -255,14 +253,6 @@ public class MovimentoFinanceiroService
     public MovimentoFinanceiro buscarEntidade(UUID id, UUID empresaId) {
         return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Movimento financeiro nao encontrado"));
-    }
-
-    private UUID resolverEmpresa(UUID recebida) {
-        if (empresaContext == null) return recebida;
-        UUID contexto = empresaAtualOuNull();
-        if (contexto == null) return recebida;
-        if (recebida != null && !contexto.equals(recebida)) throw new AcessoEmpresaNegadoException();
-        return contexto;
     }
 
     private UUID empresaAtualOuNull() {

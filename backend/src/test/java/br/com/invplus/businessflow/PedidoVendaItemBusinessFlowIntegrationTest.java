@@ -1,6 +1,6 @@
 package br.com.invplus.businessflow;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -98,8 +98,8 @@ class PedidoVendaItemBusinessFlowIntegrationTest {
         tx.executeWithoutResult(status -> pedidoVendaItemRepository.saveAndFlush(usuarioA));
 
         usuarioB.setObservacao("Alteracao concorrente B");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> tx.executeWithoutResult(status -> pedidoVendaItemRepository.saveAndFlush(usuarioB)));
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> pedidoVendaItemRepository.saveAndFlush(usuarioB)))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 
     private Fixture criarFixture(String token) throws Exception {

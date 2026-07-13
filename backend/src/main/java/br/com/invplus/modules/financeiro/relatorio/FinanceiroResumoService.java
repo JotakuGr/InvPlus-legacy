@@ -18,7 +18,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
@@ -32,9 +31,7 @@ public class FinanceiroResumoService {
     private final MovimentoFinanceiroRepository movimentoRepository;
     private final ContaReceberRepository contaReceberRepository;
     private final ContaPagarRepository contaPagarRepository;
-
-    @Autowired(required = false)
-    private EmpresaContext empresaContext;
+    private final EmpresaContext empresaContext;
 
     /**
      * Calcula entradas, saidas e saldo para um intervalo inclusivo.

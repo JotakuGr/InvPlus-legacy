@@ -25,7 +25,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
@@ -43,9 +42,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     private final PagamentoMapper mapper;
     private final PagamentoValidator validator;
     private final ContaBancariaRepository contaBancariaRepository;
-
-    @Autowired(required = false)
-    private EmpresaContext empresaContext;
+    private final EmpresaContext empresaContext;
 
     public PagamentoService(
             PagamentoRepository repository,
@@ -55,7 +52,8 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
             MovimentoFinanceiroService movimentoFinanceiroService,
             PagamentoMapper mapper,
             PagamentoValidator validator,
-            ContaBancariaRepository contaBancariaRepository
+            ContaBancariaRepository contaBancariaRepository,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Pagamento");
         this.repository = repository;
@@ -66,6 +64,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
         this.mapper = mapper;
         this.validator = validator;
         this.contaBancariaRepository = contaBancariaRepository;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)

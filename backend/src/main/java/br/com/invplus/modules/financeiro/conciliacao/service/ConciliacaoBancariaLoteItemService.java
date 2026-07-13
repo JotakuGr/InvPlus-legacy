@@ -22,7 +22,7 @@ public class ConciliacaoBancariaLoteItemService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ConciliacaoBancariaLoteItemResponse processar(UUID empresaId,
             ConciliacaoBancariaLoteItemRequest item) {
-        var lancamento = lancamentoRepository
+        lancamentoRepository
                 .findByIdAndExtratoBancarioContaBancariaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
                         item.lancamentoBancarioId(), empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lancamento bancario nao encontrado"));

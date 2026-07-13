@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
 import br.com.invplus.support.security.EmpresaTestFactory;
 import br.com.invplus.support.security.JwtTestFactory;
 import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
@@ -16,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,8 +37,6 @@ class FinanceiroResumoControllerTests {
     private UsuarioRepository usuarioRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
-    @Autowired
-    private JwtService jwtService;
     @Autowired
     private EmpresaTestFactory empresaTestFactory;
     @Autowired

@@ -10,8 +10,6 @@ import br.com.invplus.security.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +25,6 @@ public class SecurityService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
-    private final UsuarioDetailsService usuarioDetailsService;
     private final RefreshTokenService refreshTokenService;
     private final ContextoEmpresarialService contextoService;
 
@@ -35,11 +32,10 @@ public class SecurityService {
     public LoginResponse login(LoginRequest request, String ip, String userAgent) {
         String email = normalizarEmail(request.email());
 
-        var authentication = authenticationManager.authenticate(
+        authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, request.senha())
         );
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         Usuario usuario = usuarioRepository.findByEmailWithPerfisAndPermissoes(email).orElseThrow();
         usuario.setUltimoLogin(OffsetDateTime.now());
         var empresas=contextoService.empresas(usuario.getId());
@@ -84,21 +80,6 @@ public class SecurityService {
     @Transactional
     public void logout(String refreshToken) {
         refreshTokenService.revogar(refreshToken);
-    }
-
-    private LoginResponse montarLoginResponse(
-            String accessToken,
-            String refreshToken,
-            OffsetDateTime expiresAt,
-            Usuario usuario
-    ) {
-        return new LoginResponse(
-                "Bearer",
-                accessToken,
-                refreshToken,
-                expiresAt,
-                usuarioResponse(usuario)
-        );
     }
 
     private LoginResponse.UsuarioAutenticadoResponse usuarioResponse(Usuario usuario) {

@@ -28,6 +28,7 @@ import br.com.invplus.modules.pessoas.entity.Cliente;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -56,6 +57,8 @@ class RecebimentoServiceTest {
     private MovimentoFinanceiroService movimentoFinanceiroService;
     @Mock
     private ContaBancariaRepository contaBancariaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private RecebimentoService service;
     private ParcelaReceber parcela;
@@ -65,7 +68,7 @@ class RecebimentoServiceTest {
     void setUp() {
         service = new RecebimentoService(repository, parcelaReceberRepository, formaPagamentoRepository,
                 parcelaReceberService, movimentoFinanceiroService, new RecebimentoMapper(),
-                new RecebimentoValidator(), contaBancariaRepository);
+                new RecebimentoValidator(), contaBancariaRepository, empresaContext);
         parcela = parcela("300.00");
         formaPagamento = formaPagamento();
     }

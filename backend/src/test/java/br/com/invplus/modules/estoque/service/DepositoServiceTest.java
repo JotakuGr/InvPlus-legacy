@@ -18,7 +18,6 @@ import br.com.invplus.modules.estoque.enums.TipoDeposito;
 import br.com.invplus.modules.estoque.mapper.DepositoMapper;
 import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.modules.estoque.validator.DepositoValidator;
-import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.security.context.EmpresaContext;

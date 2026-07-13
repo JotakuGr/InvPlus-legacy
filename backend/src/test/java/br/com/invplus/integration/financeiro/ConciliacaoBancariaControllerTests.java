@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
-import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
 import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
 import br.com.invplus.modules.financeiro.dto.request.ExtratoBancarioLancamentoRequest;
 import br.com.invplus.modules.financeiro.dto.request.ExtratoBancarioRequest;
@@ -25,8 +24,6 @@ import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
 import br.com.invplus.support.context.TestEmpresaContext;
 import br.com.invplus.support.security.EmpresaTestFactory;
 import br.com.invplus.support.security.JwtTestFactory;
@@ -41,11 +38,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Testes REST e de seguranca da conciliacao bancaria. */
@@ -56,15 +50,11 @@ class ConciliacaoBancariaControllerTests {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Autowired private EmpresaRepository empresaRepository;
     @Autowired private FormaPagamentoRepository formaPagamentoRepository;
     @Autowired private ContaBancariaService contaBancariaService;
     @Autowired private ExtratoBancarioService extratoService;
     @Autowired private ExtratoBancarioLancamentoService lancamentoService;
     @Autowired private MovimentoFinanceiroService movimentoService;
-    @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private JwtService jwtService;
     @Autowired private TestEmpresaContext testEmpresaContext;
     @Autowired private EmpresaTestFactory empresaTestFactory;
     @Autowired private UsuarioTestFactory usuarioTestFactory;
@@ -180,11 +170,6 @@ class ConciliacaoBancariaControllerTests {
     private String hash(String valor) {
         return (valor.replaceAll("[^A-Fa-f0-9]", "a")
                 + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").substring(0, 64);
-    }
-
-    private String documento(String valor) {
-        String numeros = valor.replaceAll("\\D", "");
-        return ("12345678000199" + numeros).substring(numeros.length());
     }
 
     private String sufixo() {

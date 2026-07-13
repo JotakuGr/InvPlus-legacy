@@ -293,30 +293,6 @@ class CadastrosControllerTests {
         return "77" + "%012d".formatted(parte);
     }
 
-    private String criarEmpresa(String accessToken, String cnpj) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Base LTDA",
-                                  "nomeFantasia": "Empresa Base",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "regimeTributario": "SIMPLES_NACIONAL",
-                                  "crt": 1,
-                                  "telefone": "71999990000",
-                                  "email": "base%s@empresa.com"
-                                }
-                                """.formatted(cnpj, cnpj.substring(2, 8))))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return objectMapper.readTree(response).get("id").asString();
-    }
-
     private String codigoIso2Unico() {
         long valor = Long.remainderUnsigned(UUID.randomUUID().getLeastSignificantBits(), 1296);
         return "%2s".formatted(Long.toString(valor, 36).toUpperCase()).replace(' ', '0');

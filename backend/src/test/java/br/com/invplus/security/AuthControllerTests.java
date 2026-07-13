@@ -9,7 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,7 +21,6 @@ import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.entity.UsuarioEmpresa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.security.repository.UsuarioEmpresaRepository;
-import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.service.JwtService;
 import br.com.invplus.support.security.EmpresaTestFactory;
 import br.com.invplus.support.security.JwtTestFactory;
@@ -46,13 +44,7 @@ class AuthControllerTests {
     private JwtService jwtService;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
     private UsuarioEmpresaRepository usuarioEmpresaRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private UsuarioTestFactory usuarioTestFactory;

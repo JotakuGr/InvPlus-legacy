@@ -336,10 +336,6 @@ class EstoqueControllerTests {
         return produto;
     }
 
-    private String cnpjUnico() {
-        return "17" + "%012d".formatted(Math.abs(System.nanoTime() % 1_000_000_000_000L));
-    }
-
     private String codigoCurto() {
         return Long.toString(Math.abs(System.nanoTime()), 36).toUpperCase();
     }
