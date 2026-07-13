@@ -1,6 +1,5 @@
 package br.com.invplus.modules.estoque.validator;
 
-import br.com.invplus.modules.cadastros.entity.Filial;
 import br.com.invplus.modules.estoque.dto.request.DepositoRequest;
 import br.com.invplus.modules.estoque.entity.Deposito;
 import br.com.invplus.modules.estoque.repository.DepositoRepository;
@@ -21,28 +20,19 @@ public class DepositoValidator {
         this.repository = repository;
     }
 
-    public void validarCriacao(DepositoRequest request) {
+    public void validarCriacao(UUID empresaId, DepositoRequest request) {
         validarCampos(request);
-        validarCodigoUnico(request, null);
-        validarPrincipalUnico(request, null);
+        validarCodigoUnico(empresaId, request, null);
+        validarPrincipalUnico(empresaId, request, null);
     }
 
-    public void validarAtualizacao(Deposito atual, DepositoRequest request) {
+    public void validarAtualizacao(UUID empresaId, Deposito atual, DepositoRequest request) {
         validarCampos(request);
-        validarCodigoUnico(request, atual.getId());
-        validarPrincipalUnico(request, atual.getId());
-    }
-
-    public void validarFilialDaEmpresa(Filial filial, UUID empresaId) {
-        if (filial != null && !filial.getEmpresa().getId().equals(empresaId)) {
-            throw new BusinessException("Filial nao pertence a empresa informada");
-        }
+        validarCodigoUnico(empresaId, request, atual.getId());
+        validarPrincipalUnico(empresaId, request, atual.getId());
     }
 
     private void validarCampos(DepositoRequest request) {
-        if (request.empresaId() == null) {
-            throw new BusinessException("Empresa e obrigatoria");
-        }
         if (textoVazio(request.codigo())) {
             throw new BusinessException("Codigo e obrigatorio");
         }
@@ -54,8 +44,8 @@ public class DepositoValidator {
         }
     }
 
-    private void validarCodigoUnico(DepositoRequest request, UUID idAtual) {
-        repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.empresaId(), normalizarCodigo(request.codigo()))
+    private void validarCodigoUnico(UUID empresaId, DepositoRequest request, UUID idAtual) {
+        repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresaId, normalizarCodigo(request.codigo()))
                 .map(Deposito::getId)
                 .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
                 .ifPresent(idEncontrado -> {
@@ -63,11 +53,11 @@ public class DepositoValidator {
                 });
     }
 
-    private void validarPrincipalUnico(DepositoRequest request, UUID idAtual) {
+    private void validarPrincipalUnico(UUID empresaId, DepositoRequest request, UUID idAtual) {
         if (!Boolean.TRUE.equals(request.principal())) {
             return;
         }
-        repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.empresaId())
+        repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId)
                 .map(Deposito::getId)
                 .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
                 .ifPresent(idEncontrado -> {

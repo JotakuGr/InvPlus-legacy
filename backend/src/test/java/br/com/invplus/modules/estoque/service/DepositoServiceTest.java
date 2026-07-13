@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.entity.Filial;
@@ -20,6 +21,8 @@ import br.com.invplus.modules.estoque.validator.DepositoValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,13 +49,26 @@ class DepositoServiceTest {
     @Mock
     private FilialRepository filialRepository;
 
+    @Mock
+    private EmpresaContext empresaContext;
+
+    @Mock
+    private UsuarioEmpresaAccessValidator accessValidator;
+
     private DepositoService service;
+    private UUID empresaId;
+    private UUID usuarioId;
 
     @BeforeEach
     void setUp() {
         DepositoMapper mapper = new DepositoMapper();
         DepositoValidator validator = new DepositoValidator(repository);
-        service = new DepositoService(repository, mapper, validator, empresaRepository, filialRepository);
+        empresaId = UUID.randomUUID();
+        usuarioId = UUID.randomUUID();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresaId);
+        lenient().when(empresaContext.getUsuarioId()).thenReturn(usuarioId);
+        service = new DepositoService(repository, mapper, validator, empresaRepository, filialRepository,
+                empresaContext, accessValidator);
     }
 
     /**
@@ -61,14 +77,16 @@ class DepositoServiceTest {
     @Test
     void deveCriarDepositoComSucesso() {
         Empresa empresa = empresaAtiva();
+        empresa.setId(empresaId);
         Filial filial = filialAtiva(empresa);
-        DepositoRequest request = request(empresa.getId(), filial.getId(), "DEP-01", true);
+        DepositoRequest request = request(filial.getId(), "DEP-01", true);
         when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresa.getId(), "DEP-01"))
                 .thenReturn(Optional.empty());
         when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresa.getId()))
                 .thenReturn(Optional.empty());
         when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresa.getId())).thenReturn(Optional.of(empresa));
-        when(filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(filial.getId())).thenReturn(Optional.of(filial));
+        when(filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(filial.getId(), empresaId))
+                .thenReturn(Optional.of(filial));
         when(repository.save(any(Deposito.class))).thenAnswer(invocation -> {
             Deposito entity = invocation.getArgument(0);
             entity.setId(UUID.randomUUID());
@@ -91,7 +109,8 @@ class DepositoServiceTest {
     @Test
     void deveBloquearEmpresaInexistente() {
         UUID empresaId = UUID.randomUUID();
-        DepositoRequest request = request(empresaId, null, "DEP-01", false);
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
+        DepositoRequest request = request(null, "DEP-01", false);
         when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresaId, "DEP-01"))
                 .thenReturn(Optional.empty());
         when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresaId)).thenReturn(Optional.empty());
@@ -107,12 +126,14 @@ class DepositoServiceTest {
     @Test
     void deveBloquearFilialInexistente() {
         Empresa empresa = empresaAtiva();
+        empresa.setId(empresaId);
         UUID filialId = UUID.randomUUID();
-        DepositoRequest request = request(empresa.getId(), filialId, "DEP-01", false);
+        DepositoRequest request = request(filialId, "DEP-01", false);
         when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresa.getId(), "DEP-01"))
                 .thenReturn(Optional.empty());
         when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresa.getId())).thenReturn(Optional.of(empresa));
-        when(filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(filialId)).thenReturn(Optional.empty());
+        when(filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(filialId, empresaId))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.criar(request))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -125,8 +146,9 @@ class DepositoServiceTest {
     @Test
     void deveBloquearCodigoDuplicadoPorEmpresa() {
         Deposito existente = depositoAtivo();
-        DepositoRequest request = request(existente.getEmpresa().getId(), null, existente.getCodigo(), false);
-        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.empresaId(), request.codigo()))
+        existente.getEmpresa().setId(empresaId);
+        DepositoRequest request = request(null, existente.getCodigo(), false);
+        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresaId, request.codigo()))
                 .thenReturn(Optional.of(existente));
 
         assertThatThrownBy(() -> service.criar(request))
@@ -140,10 +162,11 @@ class DepositoServiceTest {
     @Test
     void deveBloquearSegundoDepositoPrincipal() {
         Deposito existente = depositoAtivo();
-        DepositoRequest request = request(existente.getEmpresa().getId(), null, "DEP-02", true);
-        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.empresaId(), request.codigo()))
+        existente.getEmpresa().setId(empresaId);
+        DepositoRequest request = request(null, "DEP-02", true);
+        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresaId, request.codigo()))
                 .thenReturn(Optional.empty());
-        when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.empresaId()))
+        when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId))
                 .thenReturn(Optional.of(existente));
 
         assertThatThrownBy(() -> service.criar(request))
@@ -157,17 +180,19 @@ class DepositoServiceTest {
     @Test
     void deveBloquearFilialDeOutraEmpresa() {
         Empresa empresa = empresaAtiva();
+        empresa.setId(empresaId);
         Empresa outraEmpresa = empresaAtiva();
         Filial filial = filialAtiva(outraEmpresa);
-        DepositoRequest request = request(empresa.getId(), filial.getId(), "DEP-01", false);
-        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresa.getId(), "DEP-01"))
+        DepositoRequest request = request(filial.getId(), "DEP-01", false);
+        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresaId, "DEP-01"))
                 .thenReturn(Optional.empty());
-        when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresa.getId())).thenReturn(Optional.of(empresa));
-        when(filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(filial.getId())).thenReturn(Optional.of(filial));
+        when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresaId)).thenReturn(Optional.of(empresa));
+        when(filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(filial.getId(), empresaId))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.criar(request))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Filial nao pertence");
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Filial nao encontrada");
     }
 
     /**
@@ -179,7 +204,7 @@ class DepositoServiceTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), "DEP", "Central",
+        service.listarComFiltros(UUID.randomUUID(), "DEP", "Central",
                 TipoDeposito.CENTRAL, true, true, false, true, PageRequest.of(0, 20));
 
         verify(repository).findAll(any(Specification.class), any(Pageable.class));
@@ -191,13 +216,16 @@ class DepositoServiceTest {
     @Test
     void deveAtualizarMantendoProprioCodigoEPrincipal() {
         Deposito entity = depositoAtivo();
-        DepositoRequest request = request(entity.getEmpresa().getId(), null, entity.getCodigo(), true);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
-        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.empresaId(), request.codigo()))
+        entity.getEmpresa().setId(empresaId);
+        DepositoRequest request = request(null, entity.getCodigo(), true);
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresaId))
                 .thenReturn(Optional.of(entity));
-        when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.empresaId()))
+        when(repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(empresaId, request.codigo()))
                 .thenReturn(Optional.of(entity));
-        when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(request.empresaId())).thenReturn(Optional.of(entity.getEmpresa()));
+        when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId))
+                .thenReturn(Optional.of(entity));
+        when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresaId))
+                .thenReturn(Optional.of(entity.getEmpresa()));
 
         DepositoResponse response = service.atualizar(entity.getId(), request);
 
@@ -211,7 +239,9 @@ class DepositoServiceTest {
     @Test
     void deveExcluirLogicamente() {
         Deposito entity = depositoAtivo();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
+        entity.getEmpresa().setId(empresaId);
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresaId))
+                .thenReturn(Optional.of(entity));
 
         service.excluir(entity.getId());
 
@@ -219,8 +249,8 @@ class DepositoServiceTest {
         assertThat(entity.getDeletedAt()).isNotNull();
     }
 
-    private DepositoRequest request(UUID empresaId, UUID filialId, String codigo, Boolean principal) {
-        return new DepositoRequest(empresaId, filialId, codigo, "Deposito Central", "Deposito de teste",
+    private DepositoRequest request(UUID filialId, String codigo, Boolean principal) {
+        return new DepositoRequest(filialId, codigo, "Deposito Central", "Deposito de teste",
                 TipoDeposito.CENTRAL, principal, true, true, true, true, false);
     }
 

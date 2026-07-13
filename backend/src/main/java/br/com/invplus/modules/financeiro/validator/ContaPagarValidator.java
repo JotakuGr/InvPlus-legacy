@@ -25,14 +25,14 @@ public class ContaPagarValidator {
 
     private final ContaPagarRepository repository;
 
-    public void validarCriacao(ContaPagarRequest request) {
-        validarNumeroUnico(null, request.empresaId(), request.numero());
+    public void validarCriacao(ContaPagarRequest request, UUID empresaId) {
+        validarNumeroUnico(null, empresaId, request.numero());
         validarValores(request);
     }
 
-    public void validarAtualizacao(UUID id, ContaPagar conta, ContaPagarRequest request) {
+    public void validarAtualizacao(UUID id, ContaPagar conta, ContaPagarRequest request, UUID empresaId) {
         conta.validarEditavel();
-        validarNumeroUnico(id, request.empresaId(), request.numero());
+        validarNumeroUnico(id, empresaId, request.numero());
         validarValores(request);
     }
 

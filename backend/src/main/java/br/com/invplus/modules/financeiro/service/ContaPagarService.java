@@ -23,6 +23,7 @@ import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
+import br.com.invplus.security.context.EmpresaContext;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,7 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
     private final PlanoContaRepository planoContaRepository;
     private final ContaPagarMapper mapper;
     private final ContaPagarValidator validator;
+    private final EmpresaContext empresaContext;
 
     public ContaPagarService(
             ContaPagarRepository repository,
@@ -56,7 +58,8 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
             CentroCustoRepository centroCustoRepository,
             PlanoContaRepository planoContaRepository,
             ContaPagarMapper mapper,
-            ContaPagarValidator validator
+            ContaPagarValidator validator,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Conta a pagar");
         this.repository = repository;
@@ -68,15 +71,17 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
         this.planoContaRepository = planoContaRepository;
         this.mapper = mapper;
         this.validator = validator;
+        this.empresaContext = empresaContext;
     }
 
     /**
      * Lista contas nao excluidas aplicando somente os filtros informados.
      */
     @Transactional(readOnly = true)
-    public Page<ContaPagarResponse> listarComFiltros(UUID empresaId, UUID filialId, UUID fornecedorId,
+    public Page<ContaPagarResponse> listarComFiltros(UUID filialId, UUID fornecedorId,
             UUID entradaMercadoriaId, UUID centroCustoId, UUID planoContaId, String numero, StatusContaPagar status, LocalDate dataEmissaoDe,
             LocalDate dataEmissaoAte, Boolean ativo, Pageable pageable) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Specification<ContaPagar> specification = ContaPagarSpecification.naoDeletado();
         specification = and(specification, ContaPagarSpecification.ativo(ativo));
         specification = and(specification, ContaPagarSpecification.empresaIgual(empresaId));
@@ -95,7 +100,7 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
     @Override
     @Transactional
     public ContaPagarResponse criar(ContaPagarRequest request) {
-        validator.validarCriacao(request);
+        validator.validarCriacao(request, empresaContext.getEmpresaId());
         Relacionamentos relacionamentos = buscarRelacionamentos(request);
         validarEntradaMercadoria(relacionamentos);
         validator.validarCentroCusto(relacionamentos.empresa(), relacionamentos.centroCusto());
@@ -113,7 +118,7 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
     @Transactional
     public ContaPagarResponse atualizar(UUID id, ContaPagarRequest request) {
         ContaPagar conta = buscarEntidade(id);
-        validator.validarAtualizacao(id, conta, request);
+        validator.validarAtualizacao(id, conta, request, empresaContext.getEmpresaId());
         Relacionamentos relacionamentos = buscarRelacionamentos(request);
         validarEntradaMercadoria(relacionamentos);
         validator.validarCentroCusto(relacionamentos.empresa(), relacionamentos.centroCusto());
@@ -138,7 +143,7 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
     }
 
     private Relacionamentos buscarRelacionamentos(ContaPagarRequest request) {
-        Empresa empresa = empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(request.empresaId())
+        Empresa empresa = empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
         Filial filial = buscarFilial(request.filialId(), empresa);
         Fornecedor fornecedor = fornecedorRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(request.fornecedorId())
@@ -161,11 +166,19 @@ public class ContaPagarService extends BaseCrudService<ContaPagar, ContaPagarReq
         return filial;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ContaPagar buscarEntidade(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Conta a pagar nao encontrada"));
+    }
+
     private EntradaMercadoria buscarEntradaMercadoria(UUID id) {
         if (id == null) {
             return null;
         }
-        return entradaMercadoriaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return entradaMercadoriaRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Entrada de mercadoria nao encontrada"));
     }
 

@@ -39,14 +39,13 @@ public class EntradaMercadoriaController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('ENTRADA_MERCADORIA:VISUALIZAR') or hasAuthority('ENTRADA_MERCADORIA:*') or hasAuthority('COMPRAS:*')")
     public ResponseEntity<Page<EntradaMercadoriaResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID fornecedorId,
             @RequestParam(required = false) UUID pedidoCompraId,
             @RequestParam(required = false) StatusEntradaMercadoria status,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(empresaId, fornecedorId, pedidoCompraId, status, ativo, pageable));
+        return ResponseEntity.ok(service.listarComFiltros(fornecedorId, pedidoCompraId, status, ativo, pageable));
     }
 
     @GetMapping("/{id}")

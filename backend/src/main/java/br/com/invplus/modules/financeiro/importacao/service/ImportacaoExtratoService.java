@@ -15,7 +15,6 @@ import br.com.invplus.modules.financeiro.importacao.repository.ImportacaoExtrato
 import br.com.invplus.modules.financeiro.importacao.specification.ImportacaoExtratoSpecification;
 import br.com.invplus.modules.financeiro.importacao.validator.ImportacaoExtratoValidator;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
-import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioLancamentoService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioService;
 import br.com.invplus.shared.domain.exception.BusinessException;
@@ -41,6 +40,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import br.com.invplus.security.context.EmpresaContext;
 
 /** Coordena parser, rastreamento e criacao atomica do dominio bancario. */
 @Slf4j
@@ -50,13 +50,13 @@ public class ImportacaoExtratoService {
 
     private final ImportacaoExtratoRepository repository;
     private final ContaBancariaRepository contaBancariaRepository;
-    private final ContaBancariaService contaBancariaService;
     private final ExtratoBancarioService extratoService;
     private final ExtratoBancarioLancamentoService lancamentoService;
     private final OfxParser ofxParser;
     private final ImportacaoExtratoValidator validator;
     private final ImportacaoExtratoMapper mapper;
     private final PlatformTransactionManager transactionManager;
+    private final EmpresaContext empresaContext;
 
     public ImportacaoExtratoResponse importarOfx(MultipartFile arquivo, UUID contaBancariaId, String observacao) {
         OffsetDateTime inicio = OffsetDateTime.now();
@@ -100,7 +100,8 @@ public class ImportacaoExtratoService {
 
     @Transactional(readOnly = true)
     public ImportacaoExtratoResumoResponse buscar(UUID id) {
-        return mapper.toResumo(repository.findById(id)
+        UUID empresaId = empresaContext.getEmpresaId();
+        return mapper.toResumo(repository.findByIdAndContaBancariaEmpresaId(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Importacao de extrato nao encontrada")));
     }
 
@@ -108,7 +109,9 @@ public class ImportacaoExtratoService {
     public Page<ImportacaoExtratoResumoResponse> listar(UUID contaBancariaId, FormatoArquivoExtrato formato,
             StatusImportacaoExtrato status, String arquivoHash, OffsetDateTime iniciadaEmDe,
             OffsetDateTime iniciadaEmAte, Pageable pageable) {
-        Specification<ImportacaoExtratoBancario> spec = (root, query, cb) -> cb.conjunction();
+        UUID empresaId = empresaContext.getEmpresaId();
+        Specification<ImportacaoExtratoBancario> spec =
+                ImportacaoExtratoSpecification.pertenceEmpresa(empresaId);
         spec = and(spec, ImportacaoExtratoSpecification.contaIgual(contaBancariaId));
         spec = and(spec, ImportacaoExtratoSpecification.formatoIgual(formato));
         spec = and(spec, ImportacaoExtratoSpecification.statusIgual(status));
@@ -143,14 +146,17 @@ public class ImportacaoExtratoService {
     }
 
     private ContaBancaria identificarConta(UUID contaBancariaId, ExtratoImportado dados) {
+        UUID empresaId = empresaContext.getEmpresaId();
         if (contaBancariaId != null) {
-            return contaBancariaService.buscarEntidade(contaBancariaId);
+            return contaBancariaRepository
+                    .findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(contaBancariaId, empresaId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
         }
         String banco = validator.normalizar(dados.bancoCodigo());
         String agencia = validator.normalizar(dados.agencia());
         String contaOfx = validator.normalizar(dados.numeroConta());
         List<ContaBancaria> candidatas = contaBancariaRepository
-                .localizarAtivasPorBancoEAgenciaNormalizados(banco, agencia).stream()
+                .localizarAtivasPorBancoEAgenciaNormalizados(empresaId, banco, agencia).stream()
                 .filter(conta -> contaCompativel(conta, contaOfx))
                 .toList();
         if (candidatas.isEmpty()) {

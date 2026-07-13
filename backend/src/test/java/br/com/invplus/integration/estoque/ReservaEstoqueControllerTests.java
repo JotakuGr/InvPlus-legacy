@@ -25,8 +25,9 @@ import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
@@ -68,16 +67,16 @@ class ReservaEstoqueControllerTests {
     @Autowired
     private EstoqueRepository estoqueRepository;
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioTestFactory usuarioTestFactory;
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
     @Autowired
-    private JwtService jwtService;
+    private JwtTestFactory jwtTestFactory;
 
     @Test
     void deveCriarCancelarEBaixarReservasAtualizandoSaldo() throws Exception {
-        String token = login().get("accessToken").asString();
         Estoque estoque = criarContextoEstoque();
+        String token = token(estoque.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
 
         String reservaCancelada = criarReserva(token, estoque.getId(), "20.000", UUID.randomUUID())
                 .andExpect(status().isCreated())
@@ -116,8 +115,8 @@ class ReservaEstoqueControllerTests {
 
     @Test
     void deveBloquearReservaAcimaDoDisponivelEQuantidadeInvalida() throws Exception {
-        String token = login().get("accessToken").asString();
         Estoque estoque = criarContextoEstoque();
+        String token = token(estoque.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
 
         criarReserva(token, estoque.getId(), "120.000", UUID.randomUUID())
                 .andExpect(status().isBadRequest())
@@ -129,8 +128,8 @@ class ReservaEstoqueControllerTests {
 
     @Test
     void deveBloquearReservaDuplicadaParaMesmaOrigemAtiva() throws Exception {
-        String token = login().get("accessToken").asString();
         Estoque estoque = criarContextoEstoque();
+        String token = token(estoque.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
         UUID origemId = UUID.randomUUID();
         criarReserva(token, estoque.getId(), "5.000", origemId).andExpect(status().isCreated());
 
@@ -141,8 +140,8 @@ class ReservaEstoqueControllerTests {
 
     @Test
     void deveBloquearTransicoesInvalidas() throws Exception {
-        String token = login().get("accessToken").asString();
         Estoque estoque = criarContextoEstoque();
+        String token = token(estoque.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
         String cancelada = criarReserva(token, estoque.getId(), "5.000", UUID.randomUUID())
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -176,8 +175,8 @@ class ReservaEstoqueControllerTests {
 
     @Test
     void deveListarComFiltros() throws Exception {
-        String token = login().get("accessToken").asString();
         Estoque estoque = criarContextoEstoque();
+        String token = token(estoque.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
         UUID origemId = UUID.randomUUID();
         String response = criarReserva(token, estoque.getId(), "5.000", origemId)
                 .andExpect(status().isCreated())
@@ -188,7 +187,6 @@ class ReservaEstoqueControllerTests {
 
         mockMvc.perform(get("/api/v1/reservas-estoque?estoqueId=" + estoque.getId()
                         + "&produtoId=" + estoque.getProduto().getId()
-                        + "&empresaId=" + estoque.getEmpresa().getId()
                         + "&depositoId=" + estoque.getDeposito().getId()
                         + "&localizacaoId=" + estoque.getLocalizacao().getId()
                         + "&status=ATIVA&origem=VENDA&origemId=" + origemId
@@ -205,15 +203,34 @@ class ReservaEstoqueControllerTests {
 
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario("Sem Reserva",
-                "sem-reserva-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123"));
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("SEGURANCA:*").build());
+        Empresa empresa = new Empresa();
+        empresa.atualizar("Empresa Sem Reserva " + UUID.randomUUID(), "Empresa", cnpjUnico(), "ISENTO", null,
+                "NORMAL", 3, "71999990000", "sem-reserva-" + UUID.randomUUID() + "@teste.com");
+        empresa = empresaRepository.saveAndFlush(empresa);
+        String token = token(empresa, java.util.Set.of("SEGURANCA:*"));
 
         mockMvc.perform(get("/api/v1/reservas-estoque").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deveIsolarReservaPorEmpresaDoToken() throws Exception {
+        Estoque estoqueA = criarContextoEstoque();
+        Estoque estoqueB = criarContextoEstoque();
+        String tokenA = token(estoqueA.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
+        String tokenB = token(estoqueB.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
+        String response = criarReserva(tokenA, estoqueA.getId(), "5.000", UUID.randomUUID())
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String reservaId = objectMapper.readTree(response).get("id").asString();
+
+        mockMvc.perform(get("/api/v1/reservas-estoque/" + reservaId)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+
+        String listagem = mockMvc.perform(get("/api/v1/reservas-estoque?page=0&size=50")
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(listagem).doesNotContain(reservaId);
     }
 
     private org.springframework.test.web.servlet.ResultActions criarReserva(
@@ -241,16 +258,6 @@ class ReservaEstoqueControllerTests {
         assertThat(estoque.getQuantidade()).isEqualByComparingTo(quantidade);
         assertThat(estoque.getQuantidadeReservada()).isEqualByComparingTo(reservada);
         assertThat(estoque.getQuantidadeDisponivel()).isEqualByComparingTo(disponivel);
-    }
-
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
     }
 
     private Estoque criarContextoEstoque() {
@@ -312,5 +319,13 @@ class ReservaEstoqueControllerTests {
 
     private BigDecimal bd(String valor) {
         return new BigDecimal(valor);
+    }
+
+    private String token(Empresa empresa, java.util.Set<String> permissoes) {
+        Usuario usuario = permissoes.contains("ESTOQUE:*")
+                ? usuarioTestFactory.criarAtivoComPerfilAdmin()
+                : usuarioTestFactory.criarAtivoSemPerfil();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        return jwtTestFactory.accessToken(usuario.getId(), usuario.getEmail(), empresa.getId(), null, permissoes);
     }
 }

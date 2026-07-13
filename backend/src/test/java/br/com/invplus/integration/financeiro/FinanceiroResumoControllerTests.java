@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,12 @@ class FinanceiroResumoControllerTests {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private EmpresaTestFactory empresaTestFactory;
+    @Autowired
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
 
     @Test
     void deveConsultarFluxoCaixaEDashboard() throws Exception {
@@ -95,11 +104,12 @@ class FinanceiroResumoControllerTests {
     void deveRetornar403SemPermissao() throws Exception {
         Usuario usuario = new Usuario("Sem Relatorio", "sem-relatorio-" + UUID.randomUUID() + "@invplus.com",
                 passwordEncoder.encode("admin123"));
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PAGAMENTO:VISUALIZAR")
-                .build());
+        usuario = usuarioRepository.saveAndFlush(usuario);
+        var empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null,
+                java.util.Set.of("PAGAMENTO:VISUALIZAR"));
 
         mockMvc.perform(get("/api/v1/financeiro/relatorios/dashboard")
                         .queryParam("dataInicio", "2026-07-01")

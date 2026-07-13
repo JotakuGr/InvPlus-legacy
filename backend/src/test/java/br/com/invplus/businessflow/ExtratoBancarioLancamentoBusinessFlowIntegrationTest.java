@@ -17,9 +17,11 @@ import br.com.invplus.modules.financeiro.service.ExtratoBancarioLancamentoServic
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioService;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-class ExtratoBancarioLancamentoBusinessFlowIntegrationTest {
+class ExtratoBancarioLancamentoBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired
     private ExtratoBancarioLancamentoService lancamentoService;
@@ -43,11 +45,20 @@ class ExtratoBancarioLancamentoBusinessFlowIntegrationTest {
     @Autowired
     private EmpresaRepository empresaRepository;
 
+    @AfterEach
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
+
     @Test
     @Transactional
     void deveCriarFiltrarEditarConciliarEValidarRegrasDoLancamento() {
-        UUID extratoId = prepararExtrato(sufixo());
-        UUID outroExtratoId = prepararExtrato(sufixo());
+        String sufixoEmpresa = sufixo();
+        Empresa empresa = empresaRepository.save(new Empresa("Empresa Lanc " + sufixoEmpresa,
+                "Empresa Lanc " + sufixoEmpresa, documento(sufixoEmpresa), null, null, null));
+        ativarEmpresa(empresa.getId());
+        UUID extratoId = prepararExtrato(empresa, sufixo());
+        UUID outroExtratoId = prepararExtrato(empresa, sufixo());
         String identificador = "BANK-" + sufixo();
 
         var credito = lancamentoService.criar(request(extratoId, TipoLancamentoBancario.CREDITO,
@@ -88,14 +99,12 @@ class ExtratoBancarioLancamentoBusinessFlowIntegrationTest {
                 .isInstanceOf(Exception.class);
     }
 
-    private UUID prepararExtrato(String sufixo) {
-        Empresa empresa = empresaRepository.save(new Empresa("Empresa Lanc " + sufixo,
-                "Empresa Lanc " + sufixo, documento(sufixo), null, null, null));
-        var conta = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null,
+    private UUID prepararExtrato(Empresa empresa, String sufixo) {
+        var conta = contaBancariaService.criar(new ContaBancariaRequest(null,
                 "001", "Banco Lanc", "12" + sufixo.substring(0, 4), "1",
                 "98" + sufixo.substring(4), "0", TipoContaBancaria.CORRENTE,
                 "Titular Lanc", "12345678901", "pix-" + sufixo + "@teste.com",
-                BigDecimal.ZERO, LocalDate.of(2026, 7, 9), true));
+                BigDecimal.ZERO, LocalDate.of(2026, 7, 9), false));
         return extratoService.importar(new ExtratoBancarioRequest(conta.id(), LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 7, 31), BigDecimal.ZERO, new BigDecimal("1000.00"),
                 OrigemExtratoBancario.OFX, "extrato.ofx", hash(sufixo), null)).id();

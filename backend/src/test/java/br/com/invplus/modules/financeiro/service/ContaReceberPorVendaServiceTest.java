@@ -25,6 +25,7 @@ import br.com.invplus.modules.vendas.entity.PedidoVenda;
 import br.com.invplus.modules.vendas.entity.VendaFaturamento;
 import br.com.invplus.modules.vendas.repository.VendaFaturamentoRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -57,6 +58,8 @@ class ContaReceberPorVendaServiceTest {
     private CentroCustoRepository centroCustoRepository;
     @Mock
     private PlanoContaRepository planoContaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ContaReceberService service;
 
@@ -72,7 +75,8 @@ class ContaReceberPorVendaServiceTest {
                 centroCustoRepository,
                 planoContaRepository,
                 new ContaReceberMapper(),
-                new ContaReceberValidator(repository)
+                new ContaReceberValidator(repository),
+                empresaContext
         );
     }
 

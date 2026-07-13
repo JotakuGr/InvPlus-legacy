@@ -19,13 +19,13 @@ public class EntradaMercadoriaValidator {
         this.repository = repository;
     }
 
-    public void validarCriacao(EntradaMercadoriaRequest request) {
-        validarNumeroUnico(request.empresaId(), request.numero(), null);
+    public void validarCriacao(EntradaMercadoriaRequest request, UUID empresaId) {
+        validarNumeroUnico(empresaId, request.numero(), null);
     }
 
-    public void validarAtualizacao(EntradaMercadoria entity, EntradaMercadoriaRequest request) {
+    public void validarAtualizacao(EntradaMercadoria entity, EntradaMercadoriaRequest request, UUID empresaId) {
         entity.validarEditavel();
-        validarNumeroUnico(request.empresaId(), request.numero(), entity.getId());
+        validarNumeroUnico(empresaId, request.numero(), entity.getId());
     }
 
     private void validarNumeroUnico(UUID empresaId, String numero, UUID idAtual) {

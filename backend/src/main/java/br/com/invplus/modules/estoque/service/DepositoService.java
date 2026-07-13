@@ -12,6 +12,8 @@ import br.com.invplus.modules.estoque.mapper.DepositoMapper;
 import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.modules.estoque.specification.DepositoSpecification;
 import br.com.invplus.modules.estoque.validator.DepositoValidator;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.util.UUID;
@@ -32,13 +34,17 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
     private final DepositoValidator validator;
     private final EmpresaRepository empresaRepository;
     private final FilialRepository filialRepository;
+    private final EmpresaContext empresaContext;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     public DepositoService(
             DepositoRepository repository,
             DepositoMapper mapper,
             DepositoValidator validator,
             EmpresaRepository empresaRepository,
-            FilialRepository filialRepository
+            FilialRepository filialRepository,
+            EmpresaContext empresaContext,
+            UsuarioEmpresaAccessValidator accessValidator
     ) {
         super(repository, mapper, "Deposito");
         this.repository = repository;
@@ -46,12 +52,14 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
         this.validator = validator;
         this.empresaRepository = empresaRepository;
         this.filialRepository = filialRepository;
+        this.empresaContext = empresaContext;
+        this.accessValidator = accessValidator;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<DepositoResponse> listar(Pageable pageable) {
-        return super.listar(pageable);
+        return listarComFiltros(null, null, null, null, null, null, null, null, pageable);
     }
 
     /**
@@ -59,7 +67,6 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
      */
     @Transactional(readOnly = true)
     public Page<DepositoResponse> listarComFiltros(
-            UUID empresaId,
             UUID filialId,
             String codigo,
             String nome,
@@ -70,9 +77,11 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
             Boolean ativo,
             Pageable pageable
     ) {
-        Specification<Deposito> specification = DepositoSpecification.naoDeletado()
+        UUID empresaId = empresaContext.getEmpresaId();
+        validarAcessoFilial(filialId, empresaId);
+        Specification<Deposito> specification = DepositoSpecification.pertenceEmpresa(empresaId)
+                .and(DepositoSpecification.naoDeletado())
                 .and(DepositoSpecification.ativo(ativo))
-                .and(DepositoSpecification.empresaIgual(empresaId))
                 .and(DepositoSpecification.filialIgual(filialId))
                 .and(DepositoSpecification.codigoContem(codigo))
                 .and(DepositoSpecification.nomeContem(nome))
@@ -86,7 +95,7 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
     @Override
     @Transactional(readOnly = true)
     public DepositoResponse buscar(UUID id) {
-        return super.buscar(id);
+        return mapper.toResponse(buscarNoContexto(id));
     }
 
     /**
@@ -95,10 +104,11 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
     @Override
     @Transactional
     public DepositoResponse criar(DepositoRequest request) {
-        validator.validarCriacao(request);
-        Empresa empresa = buscarEmpresaAtiva(request.empresaId());
-        Filial filial = buscarFilialAtiva(request.filialId());
-        validator.validarFilialDaEmpresa(filial, empresa.getId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarCriacao(empresaId, request);
+        Empresa empresa = buscarEmpresaAtiva(empresaId);
+        Filial filial = buscarFilialAtiva(request.filialId(), empresaId);
+        validarAcessoFilial(request.filialId(), empresaId);
 
         Deposito deposito = mapper.toEntity(request);
         deposito.setEmpresa(empresa);
@@ -112,11 +122,12 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
     @Override
     @Transactional
     public DepositoResponse atualizar(UUID id, DepositoRequest request) {
-        Deposito deposito = buscarEntidade(id);
-        validator.validarAtualizacao(deposito, request);
-        Empresa empresa = buscarEmpresaAtiva(request.empresaId());
-        Filial filial = buscarFilialAtiva(request.filialId());
-        validator.validarFilialDaEmpresa(filial, empresa.getId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        Deposito deposito = buscarNoContexto(id);
+        validator.validarAtualizacao(empresaId, deposito, request);
+        Empresa empresa = buscarEmpresaAtiva(empresaId);
+        Filial filial = buscarFilialAtiva(request.filialId(), empresaId);
+        validarAcessoFilial(request.filialId(), empresaId);
 
         deposito.setEmpresa(empresa);
         deposito.setFilial(filial);
@@ -127,7 +138,7 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
     @Override
     @Transactional
     public void excluir(UUID id) {
-        super.excluir(id);
+        buscarNoContexto(id).excluirLogicamente();
     }
 
     private Empresa buscarEmpresaAtiva(UUID id) {
@@ -135,11 +146,22 @@ public class DepositoService extends BaseCrudService<Deposito, DepositoRequest, 
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
     }
 
-    private Filial buscarFilialAtiva(UUID id) {
+    private Filial buscarFilialAtiva(UUID id, UUID empresaId) {
         if (id == null) {
             return null;
         }
-        return filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filial nao encontrada"));
+    }
+
+    private Deposito buscarNoContexto(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Deposito nao encontrado"));
+    }
+
+    private void validarAcessoFilial(UUID filialId, UUID empresaId) {
+        if (filialId != null) {
+            accessValidator.validarContexto(empresaContext.getUsuarioId(), empresaId, filialId);
+        }
     }
 }

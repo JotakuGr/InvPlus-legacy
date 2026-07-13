@@ -39,18 +39,19 @@ import br.com.invplus.modules.vendas.entity.PedidoVenda;
 import br.com.invplus.modules.vendas.enums.StatusPedidoVenda;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.context.TestEmpresaContext;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
@@ -69,11 +70,13 @@ class VendaFaturamentoControllerTests {
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioTestFactory usuarioTestFactory;
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
     @Autowired
-    private JwtService jwtService;
+    private JwtTestFactory jwtTestFactory;
+    @Autowired
+    private TestEmpresaContext testEmpresaContext;
     @Autowired
     private EmpresaRepository empresaRepository;
     @Autowired
@@ -101,8 +104,9 @@ class VendaFaturamentoControllerTests {
 
     @Test
     void deveFaturarBuscarListarECancelarFaturamento() throws Exception {
-        String token = login().get("accessToken").asString();
-        Fixture fixture = criarFixtureComReserva();
+        ContextoTeste contexto = criarContexto(true);
+        String token = contexto.token();
+        Fixture fixture = criarFixtureComReserva(contexto.empresa());
         String numero = "VF-" + codigoCurto();
         UUID condicaoPagamentoId = condicaoPagamento().getId();
 
@@ -127,7 +131,6 @@ class VendaFaturamentoControllerTests {
                 .andExpect(jsonPath("$.id").value(faturamentoId));
 
         mockMvc.perform(get("/api/v1/vendas-faturamentos?pedidoVendaId=" + fixture.pedidoId()
-                        + "&empresaId=" + fixture.empresaId()
                         + "&clienteId=" + fixture.clienteId()
                         + "&numero=" + numero
                         + "&status=FATURADO&page=0&size=20")
@@ -143,8 +146,9 @@ class VendaFaturamentoControllerTests {
 
     @Test
     void deveBloquearPedidoNaoAprovado() throws Exception {
-        String token = login().get("accessToken").asString();
-        PedidoVenda pedido = criarPedido(StatusPedidoVenda.ABERTO);
+        ContextoTeste contexto = criarContexto(true);
+        String token = contexto.token();
+        PedidoVenda pedido = criarPedido(StatusPedidoVenda.ABERTO, contexto.empresa());
         UUID condicaoPagamentoId = condicaoPagamento().getId();
 
         mockMvc.perform(post("/api/v1/vendas-faturamentos/faturar")
@@ -165,32 +169,16 @@ class VendaFaturamentoControllerTests {
 
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario(
-                "Sem Faturamento",
-                "sem-faturamento-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123")
-        );
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PEDIDO_VENDA:*")
-                .build());
+        ContextoTeste contexto = criarContexto(false);
+        String token = contexto.token();
 
         mockMvc.perform(get("/api/v1/vendas-faturamentos")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private Fixture criarFixtureComReserva() {
-        PedidoVenda pedido = criarPedido(StatusPedidoVenda.APROVADO);
+    private Fixture criarFixtureComReserva(Empresa empresa) {
+        PedidoVenda pedido = criarPedido(StatusPedidoVenda.APROVADO, empresa);
         Estoque estoque = criarEstoque(pedido.getEmpresa());
         reservaService.criar(new ReservaEstoqueRequest(
                 estoque.getId(),
@@ -200,11 +188,10 @@ class VendaFaturamentoControllerTests {
                 null,
                 "Reserva do teste controller"
         ));
-        return new Fixture(pedido.getId(), pedido.getEmpresa().getId(), pedido.getCliente().getId());
+        return new Fixture(pedido.getId(), pedido.getCliente().getId());
     }
 
-    private PedidoVenda criarPedido(StatusPedidoVenda status) {
-        Empresa empresa = empresa();
+    private PedidoVenda criarPedido(StatusPedidoVenda status, Empresa empresa) {
         Cliente cliente = cliente();
         PedidoVenda pedido = new PedidoVenda();
         pedido.setEmpresa(empresa);
@@ -296,6 +283,27 @@ class VendaFaturamentoControllerTests {
         return prefixo + "%012d".formatted(Math.abs(UUID.randomUUID().getMostSignificantBits()) % 1_000_000_000_000L);
     }
 
-    private record Fixture(UUID pedidoId, UUID empresaId, UUID clienteId) {
+    @AfterEach
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
+
+    private ContextoTeste criarContexto(boolean admin) {
+        Empresa empresa = empresa();
+        Usuario usuario = admin
+                ? usuarioTestFactory.criarAtivoComPerfilAdmin()
+                : usuarioTestFactory.criarAtivoSemPerfil();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        testEmpresaContext.ativarEmpresa(usuario.getId(), empresa.getId());
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null,
+                admin ? java.util.Set.of("VENDA_FATURAMENTO:*") : java.util.Set.of());
+        return new ContextoTeste(token, empresa);
+    }
+
+    private record Fixture(UUID pedidoId, UUID clienteId) {
+    }
+
+    private record ContextoTeste(String token, Empresa empresa) {
     }
 }

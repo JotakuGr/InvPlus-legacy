@@ -28,6 +28,10 @@ public final class MovimentoFinanceiroSpecification {
         return id == null ? null : (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
     }
 
+    public static Specification<MovimentoFinanceiro> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(root.get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<MovimentoFinanceiro> filialIgual(UUID id) {
         return id == null ? null : (root, query, cb) -> cb.equal(root.get("filial").get("id"), id);
     }

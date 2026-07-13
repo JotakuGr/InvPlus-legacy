@@ -23,6 +23,8 @@ import br.com.invplus.modules.estoque.repository.EstoqueRepository;
 import br.com.invplus.modules.estoque.service.EstoqueFacade;
 import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
@@ -55,6 +57,8 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
     private final PedidoCompraService pedidoCompraService;
     private final CompraHistoricoService historicoService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmpresaContext empresaContext;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     public EntradaMercadoriaService(
             EntradaMercadoriaRepository repository,
@@ -69,7 +73,9 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
             EstoqueFacade estoqueFacade,
             PedidoCompraService pedidoCompraService,
             CompraHistoricoService historicoService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            EmpresaContext empresaContext,
+            UsuarioEmpresaAccessValidator accessValidator
     ) {
         super(repository, mapper, "Entrada de mercadoria");
         this.repository = repository;
@@ -85,15 +91,18 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
         this.pedidoCompraService = pedidoCompraService;
         this.historicoService = historicoService;
         this.eventPublisher = eventPublisher;
+        this.empresaContext = empresaContext;
+        this.accessValidator = accessValidator;
     }
 
     @Transactional(readOnly = true)
-    public Page<EntradaMercadoriaResponse> listarComFiltros(UUID empresaId, UUID fornecedorId, UUID pedidoCompraId,
+    public Page<EntradaMercadoriaResponse> listarComFiltros(UUID fornecedorId, UUID pedidoCompraId,
                                                             StatusEntradaMercadoria status, Boolean ativo,
                                                             Pageable pageable) {
-        Specification<EntradaMercadoria> specification = EntradaMercadoriaSpecification.naoDeletado()
+        UUID empresaId = empresaContext.getEmpresaId();
+        Specification<EntradaMercadoria> specification = EntradaMercadoriaSpecification.pertenceEmpresa(empresaId)
+                .and(EntradaMercadoriaSpecification.naoDeletado())
                 .and(EntradaMercadoriaSpecification.ativo(ativo))
-                .and(EntradaMercadoriaSpecification.empresaIgual(empresaId))
                 .and(EntradaMercadoriaSpecification.fornecedorIgual(fornecedorId))
                 .and(EntradaMercadoriaSpecification.pedidoIgual(pedidoCompraId))
                 .and(EntradaMercadoriaSpecification.statusIgual(status));
@@ -101,9 +110,16 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public EntradaMercadoriaResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
+    }
+
+    @Override
     @Transactional
     public EntradaMercadoriaResponse criar(EntradaMercadoriaRequest request) {
-        validator.validarCriacao(request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarCriacao(request, empresaId);
         EntradaMercadoria entity = mapper.toEntity(request);
         associar(entity, request);
         EntradaMercadoria salva = repository.save(entity);
@@ -114,8 +130,9 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
     @Override
     @Transactional
     public EntradaMercadoriaResponse atualizar(UUID id, EntradaMercadoriaRequest request) {
-        EntradaMercadoria entity = buscarEntidade(id);
-        validator.validarAtualizacao(entity, request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        EntradaMercadoria entity = buscarNoContexto(id);
+        validator.validarAtualizacao(entity, request, empresaId);
         mapper.updateEntity(entity, request);
         associar(entity, request);
         return mapper.toResponse(entity);
@@ -123,7 +140,7 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
 
     @Transactional
     public EntradaMercadoriaResponse conferir(UUID id) {
-        EntradaMercadoria entity = buscarEntidade(id);
+        EntradaMercadoria entity = buscarNoContexto(id);
         StatusEntradaMercadoria anterior = entity.getStatus();
         entity.conferir();
         historicoService.registrarEntrada(entity, anterior, entity.getStatus(), "Entrada de mercadoria conferida");
@@ -132,7 +149,7 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
 
     @Transactional
     public EntradaMercadoriaResponse cancelar(UUID id) {
-        EntradaMercadoria entity = buscarEntidade(id);
+        EntradaMercadoria entity = buscarNoContexto(id);
         StatusEntradaMercadoria anterior = entity.getStatus();
         entity.cancelar();
         historicoService.registrarEntrada(entity, anterior, entity.getStatus(), "Entrada de mercadoria cancelada");
@@ -141,7 +158,7 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
 
     @Transactional
     public EntradaMercadoriaResponse efetivar(UUID id) {
-        EntradaMercadoria entrada = buscarEntidade(id);
+        EntradaMercadoria entrada = buscarNoContexto(id);
         entrada.validarEditavel();
         StatusEntradaMercadoria anterior = entrada.getStatus();
         List<EntradaMercadoriaItem> itens = itemRepository.findByEntradaMercadoriaIdAndAtivoTrueAndDeletedAtIsNull(id);
@@ -180,11 +197,18 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
         entrada.atualizarValorTotal(total);
     }
 
+    @Override
+    @Transactional
+    public void excluir(UUID id) {
+        buscarNoContexto(id).excluirLogicamente();
+    }
+
     private void associar(EntradaMercadoria entity, EntradaMercadoriaRequest request) {
-        entity.setEmpresa(buscarEmpresa(request.empresaId()));
-        entity.setFilial(buscarFilial(request.filialId()));
+        UUID empresaId = empresaContext.getEmpresaId();
+        entity.setEmpresa(buscarEmpresa(empresaId));
+        entity.setFilial(buscarFilial(request.filialId(), empresaId));
         entity.setFornecedor(buscarFornecedor(request.fornecedorId()));
-        entity.setPedidoCompra(buscarPedido(request.pedidoCompraId()));
+        entity.setPedidoCompra(buscarPedido(request.pedidoCompraId(), empresaId));
     }
 
     private Empresa buscarEmpresa(UUID id) {
@@ -192,12 +216,14 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
     }
 
-    private Filial buscarFilial(UUID id) {
+    private Filial buscarFilial(UUID id, UUID empresaId) {
         if (id == null) {
             return null;
         }
-        return filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        Filial filial = filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filial nao encontrada"));
+        accessValidator.validarContexto(empresaContext.getUsuarioId(), empresaId, id);
+        return filial;
     }
 
     private Fornecedor buscarFornecedor(UUID id) {
@@ -205,11 +231,16 @@ public class EntradaMercadoriaService extends BaseCrudService<EntradaMercadoria,
                 .orElseThrow(() -> new ResourceNotFoundException("Fornecedor nao encontrado"));
     }
 
-    private PedidoCompra buscarPedido(UUID id) {
+    private PedidoCompra buscarPedido(UUID id, UUID empresaId) {
         if (id == null) {
             return null;
         }
-        return pedidoCompraRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return pedidoCompraRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido de compra nao encontrado"));
+    }
+
+    private EntradaMercadoria buscarNoContexto(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Entrada de mercadoria nao encontrada"));
     }
 }

@@ -6,6 +6,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,29 +36,33 @@ class EstoqueBusinessFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private EmpresaTestFactory empresaTestFactory;
+    @Autowired private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+    @Autowired private JwtTestFactory jwtTestFactory;
+
     @Test
     void deveCriarSaldoDeEstoqueNoFluxoCompleto() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
-        JsonNode deposito = criarDeposito(token, empresa.get("id").asString());
+        ContextoTeste contexto = criarContexto();
+        String token = contexto.token();
+        JsonNode deposito = criarDeposito(token);
         JsonNode localizacao = criarLocalizacao(token, deposito.get("id").asString());
         JsonNode categoria = criarCategoria(token);
         JsonNode unidade = criarUnidade(token);
         JsonNode produto = criarProduto(token, categoria.get("id").asString(), unidade.get("id").asString());
-        JsonNode estoque = criarEstoque(token, produto.get("id").asString(), empresa.get("id").asString(),
+        JsonNode estoque = criarEstoque(token, produto.get("id").asString(),
                 deposito.get("id").asString(), localizacao.get("id").asString());
 
         mockMvc.perform(get("/api/v1/estoques/" + estoque.get("id").asString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.produtoId").value(produto.get("id").asString()))
-                .andExpect(jsonPath("$.empresaId").value(empresa.get("id").asString()))
+                .andExpect(jsonPath("$.empresaId").value(contexto.empresaId().toString()))
                 .andExpect(jsonPath("$.depositoId").value(deposito.get("id").asString()))
                 .andExpect(jsonPath("$.localizacaoId").value(localizacao.get("id").asString()))
                 .andExpect(jsonPath("$.quantidadeDisponivel").value(7.000));
 
         mockMvc.perform(get("/api/v1/estoques/saldo?produtoId=" + produto.get("id").asString()
-                        + "&empresaId=" + empresa.get("id").asString()
                         + "&depositoId=" + deposito.get("id").asString()
                         + "&localizacaoId=" + localizacao.get("id").asString())
                         .header("Authorization", "Bearer " + token))
@@ -60,7 +70,6 @@ class EstoqueBusinessFlowIntegrationTest {
                 .andExpect(jsonPath("$.id").value(estoque.get("id").asString()));
 
         mockMvc.perform(get("/api/v1/estoques?produtoId=" + produto.get("id").asString()
-                        + "&empresaId=" + empresa.get("id").asString()
                         + "&depositoId=" + deposito.get("id").asString()
                         + "&localizacaoId=" + localizacao.get("id").asString()
                         + "&comSaldo=true&page=0&size=20")
@@ -69,47 +78,22 @@ class EstoqueBusinessFlowIntegrationTest {
                 .andExpect(jsonPath("$.content[0].id").value(estoque.get("id").asString()));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private ContextoTeste criarContexto() {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(usuario.getId(), usuario.getEmail(), empresa.getId(), null,
+                java.util.Set.of("CADASTROS:*", "PRODUTO:*", "DEPOSITO:*", "LOCALIZACAO_ESTOQUE:*",
+                        "ESTOQUE:*", "ESTOQUE_SALDO:*"));
+        return new ContextoTeste(token, empresa.getId());
     }
 
-    private JsonNode criarEmpresa(String token) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Estoque Fluxo %s",
-                                  "nomeFantasia": "Empresa Estoque",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "inscricaoMunicipal": "123",
-                                  "regimeTributario": "NORMAL",
-                                  "crt": 3,
-                                  "telefone": "71999990000",
-                                  "email": "empresa-estoque-%s@teste.com"
-                                }
-                                """.formatted(UUID.randomUUID(), cnpjUnico(), UUID.randomUUID())))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarDeposito(String token, String empresaId) throws Exception {
+    private JsonNode criarDeposito(String token) throws Exception {
         String response = mockMvc.perform(post("/api/v1/depositos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "codigo": "DEP-%s",
                                   "nome": "Deposito Estoque",
                                   "descricao": "Deposito para saldo",
@@ -121,7 +105,7 @@ class EstoqueBusinessFlowIntegrationTest {
                                   "controlaEstoque": true,
                                   "bloqueado": false
                                 }
-                                """.formatted(empresaId, codigoCurto())))
+                                """.formatted(codigoCurto())))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -220,14 +204,13 @@ class EstoqueBusinessFlowIntegrationTest {
         return objectMapper.readTree(response);
     }
 
-    private JsonNode criarEstoque(String token, String produtoId, String empresaId, String depositoId, String localizacaoId) throws Exception {
+    private JsonNode criarEstoque(String token, String produtoId, String depositoId, String localizacaoId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/estoques")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "produtoId": "%s",
-                                  "empresaId": "%s",
                                   "depositoId": "%s",
                                   "localizacaoId": "%s",
                                   "quantidade": 10.000,
@@ -237,7 +220,7 @@ class EstoqueBusinessFlowIntegrationTest {
                                   "estoqueMinimo": 2.000,
                                   "estoqueMaximo": 50.000
                                 }
-                                """.formatted(produtoId, empresaId, depositoId, localizacaoId)))
+                                """.formatted(produtoId, depositoId, localizacaoId)))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -251,5 +234,8 @@ class EstoqueBusinessFlowIntegrationTest {
 
     private String codigoCurto() {
         return Long.toString(Math.abs(System.nanoTime()), 36).toUpperCase();
+    }
+
+    private record ContextoTeste(String token, UUID empresaId) {
     }
 }

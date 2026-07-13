@@ -21,6 +21,10 @@ public final class ContaBancariaSpecification {
         return empresaId == null ? null : (root, query, cb) -> cb.equal(root.get("empresa").get("id"), empresaId);
     }
 
+    public static Specification<ContaBancaria> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(root.get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<ContaBancaria> filialIgual(UUID filialId) {
         return filialId == null ? null : (root, query, cb) -> cb.equal(root.get("filial").get("id"), filialId);
     }

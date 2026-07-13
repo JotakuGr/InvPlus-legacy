@@ -38,6 +38,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /**
  * Centraliza a criacao e o cancelamento dos registros do fluxo financeiro.
@@ -58,12 +61,15 @@ public class MovimentoFinanceiroService
     private final MovimentoFinanceiroValidator validator;
     private final ContaBancariaRepository contaBancariaRepository;
 
+    private final EmpresaContext empresaContext;
+
     public MovimentoFinanceiroService(MovimentoFinanceiroRepository repository,
             EmpresaRepository empresaRepository, FilialRepository filialRepository,
             FormaPagamentoRepository formaPagamentoRepository, ClienteRepository clienteRepository,
             FornecedorRepository fornecedorRepository, MovimentoFinanceiroMapper mapper,
             MovimentoFinanceiroValidator validator, CentroCustoRepository centroCustoRepository,
-            PlanoContaRepository planoContaRepository, ContaBancariaRepository contaBancariaRepository) {
+            PlanoContaRepository planoContaRepository, ContaBancariaRepository contaBancariaRepository,
+            EmpresaContext empresaContext) {
         super(repository, mapper, "Movimento financeiro");
         this.repository = repository;
         this.empresaRepository = empresaRepository;
@@ -76,6 +82,7 @@ public class MovimentoFinanceiroService
         this.centroCustoRepository = centroCustoRepository;
         this.planoContaRepository = planoContaRepository;
         this.contaBancariaRepository = contaBancariaRepository;
+        this.empresaContext = empresaContext;
     }
 
     @Override
@@ -86,7 +93,8 @@ public class MovimentoFinanceiroService
 
     @Transactional
     public MovimentoFinanceiroResponse criarManual(MovimentoFinanceiroRequest request) {
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        Empresa empresa = buscarEmpresa(empresaId);
         Filial filial = buscarFilial(request.filialId());
         FormaPagamento formaPagamento = buscarFormaPagamento(request.formaPagamentoId());
         Cliente cliente = buscarCliente(request.clienteId());
@@ -162,13 +170,14 @@ public class MovimentoFinanceiroService
     }
 
     @Transactional(readOnly = true)
-    public Page<MovimentoFinanceiroResponse> listarComFiltros(UUID empresaId, UUID filialId,
+    public Page<MovimentoFinanceiroResponse> listarComFiltros(UUID filialId,
             TipoMovimentoFinanceiro tipoMovimento, OrigemMovimentoFinanceiro origem, UUID origemId,
             UUID formaPagamentoId, UUID clienteId, UUID fornecedorId, UUID centroCustoId, UUID planoContaId,
             StatusMovimentoFinanceiro status,
             LocalDate dataMovimentoDe, LocalDate dataMovimentoAte, Boolean ativo, Pageable pageable) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Specification<MovimentoFinanceiro> specification = MovimentoFinanceiroSpecification.naoDeletado();
-        specification = and(specification, MovimentoFinanceiroSpecification.empresaIgual(empresaId));
+        specification = and(specification, MovimentoFinanceiroSpecification.pertenceEmpresa(empresaId));
         specification = and(specification, MovimentoFinanceiroSpecification.filialIgual(filialId));
         specification = and(specification, MovimentoFinanceiroSpecification.tipoIgual(tipoMovimento));
         specification = and(specification, MovimentoFinanceiroSpecification.origemIgual(origem));
@@ -184,7 +193,6 @@ public class MovimentoFinanceiroService
         specification = and(specification, MovimentoFinanceiroSpecification.ativo(ativo));
         return repository.findAll(specification, pageable).map(mapper::toResponse);
     }
-
     private void validarOrigemUnica(OrigemMovimentoFinanceiro origem, UUID origemId) {
         boolean existe = repository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
                 origem, origemId, StatusMovimentoFinanceiro.ATIVO);
@@ -229,8 +237,39 @@ public class MovimentoFinanceiroService
     }
 
     private ContaBancaria buscarContaBancaria(UUID id) {
-        return id == null ? null : contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        if (id == null) return null;
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return contaBancariaRepository
+                .findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
+        return contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
+    }
+
+    @Override
+    public MovimentoFinanceiro buscarEntidade(UUID id) {
+        UUID empresaId = empresaAtualOuNull();
+        return empresaId == null ? super.buscarEntidade(id) : buscarEntidade(id, empresaId);
+    }
+
+    public MovimentoFinanceiro buscarEntidade(UUID id, UUID empresaId) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Movimento financeiro nao encontrado"));
+    }
+
+    private UUID resolverEmpresa(UUID recebida) {
+        if (empresaContext == null) return recebida;
+        UUID contexto = empresaAtualOuNull();
+        if (contexto == null) return recebida;
+        if (recebida != null && !contexto.equals(recebida)) throw new AcessoEmpresaNegadoException();
+        return contexto;
+    }
+
+    private UUID empresaAtualOuNull() {
+        if (empresaContext == null) return null;
+        try { return empresaContext.getEmpresaId(); }
+        catch (br.com.invplus.security.exception.ContextoEmpresarialAusenteException
+                | org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) { return null; }
     }
 
     private void validarContaBancaria(ContaBancaria conta, Empresa empresa, Filial filial) {

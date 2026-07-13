@@ -22,6 +22,11 @@ import br.com.invplus.modules.pessoas.entity.Cliente;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
+import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -61,11 +66,17 @@ class RecebimentoBusinessFlowIntegrationTest {
     private FormaPagamentoRepository formaPagamentoRepository;
     @Autowired
     private MovimentoFinanceiroRepository movimentoFinanceiroRepository;
+    @Autowired
+    private JwtService jwtService;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
 
     @Test
     void deveReceberParcelaAtualizarContaEPermitirEstorno() throws Exception {
-        String token = login().get("accessToken").asString();
         ContaReceber conta = prepararConta();
+        String token = tokenAdmin(conta.getEmpresa());
         ParcelaReceber parcela = prepararParcela(conta);
         FormaPagamento formaPagamento = prepararFormaPagamento();
 
@@ -111,12 +122,10 @@ class RecebimentoBusinessFlowIntegrationTest {
                 .andExpect(jsonPath("$.valorAberto").value(600.00));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private String tokenAdmin(Empresa empresa) {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
     }
 
     private ContaReceber prepararConta() {

@@ -10,7 +10,6 @@ import java.util.UUID;
  * Payload para criar ou atualizar filiais.
  */
 public record FilialRequest(
-        @NotNull UUID empresaId,
         UUID enderecoId,
         @NotBlank @Size(max = 30) String codigo,
         @NotBlank @Size(max = 120) String nome,

@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,8 +56,10 @@ import br.com.invplus.modules.vendas.entity.PedidoVenda;
 import br.com.invplus.modules.vendas.entity.PedidoVendaItem;
 import br.com.invplus.modules.vendas.repository.PedidoVendaItemRepository;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 
 /**
  * Prova o fluxo PedidoVenda -> ReservaEstoque -> Estoque -> MovimentacaoEstoque.
@@ -70,9 +71,6 @@ class PedidoVendaReservaIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private EmpresaRepository empresaRepository;
@@ -119,10 +117,19 @@ class PedidoVendaReservaIntegrationTest {
     @Autowired
     private MovimentacaoEstoqueRepository movimentacaoRepository;
 
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+
+    @Autowired
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
+
     @Test
     void deveAprovarPedidoReservarEstoqueECancelarRestaurandoDisponivel() throws Exception {
-        String token = login().get("accessToken").asString();
         Contexto contexto = criarContexto();
+        String token = contexto.token();
 
         mockMvc.perform(post("/api/v1/pedidos-venda/" + contexto.pedido().getId() + "/aprovar")
                         .header("Authorization", "Bearer " + token))
@@ -176,8 +183,8 @@ class PedidoVendaReservaIntegrationTest {
 
     @Test
     void deveEvitarReservaDuplicadaEmAprovacaoConcorrente() throws Exception {
-        String token = login().get("accessToken").asString();
         Contexto contexto = criarContexto();
+        String token = contexto.token();
         CountDownLatch inicio = new CountDownLatch(1);
         var executor = Executors.newFixedThreadPool(2);
 
@@ -224,28 +231,22 @@ class PedidoVendaReservaIntegrationTest {
                 .getStatus();
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
     private Contexto criarContexto() {
         Empresa empresa = criarEmpresa();
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("PEDIDO_VENDA:*"));
         Cliente cliente = criarCliente();
         Produto produto = criarProduto();
-        ProdutoPreco preco = criarPreco(produto);
+        ProdutoPreco preco = criarPreco(empresa, produto);
         ProdutoUnidade unidade = criarProdutoUnidade(produto);
         Deposito deposito = criarDeposito(empresa);
         LocalizacaoEstoque localizacao = criarLocalizacao(deposito);
         Estoque estoque = criarEstoque(empresa, produto, deposito, localizacao);
         PedidoVenda pedido = criarPedido(empresa, cliente);
         criarItem(pedido, produto, preco, unidade);
-        return new Contexto(pedido, produto, estoque);
+        return new Contexto(token, pedido, produto, estoque);
     }
 
     private Empresa criarEmpresa() {
@@ -285,9 +286,10 @@ class PedidoVendaReservaIntegrationTest {
         return produtoRepository.saveAndFlush(produto);
     }
 
-    private ProdutoPreco criarPreco(Produto produto) {
+    private ProdutoPreco criarPreco(Empresa empresa, Produto produto) {
         ProdutoPreco preco = new ProdutoPreco();
         preco.setProduto(produto);
+        preco.setEmpresa(empresa);
         preco.atualizar(TipoPrecoProduto.VENDA, BigDecimal.TEN, LocalDate.of(2026, 7, 1), null, true, "Preco venda");
         return produtoPrecoRepository.saveAndFlush(preco);
     }
@@ -356,6 +358,6 @@ class PedidoVendaReservaIntegrationTest {
         return Long.toString(Math.abs(System.nanoTime()), 36).toUpperCase();
     }
 
-    private record Contexto(PedidoVenda pedido, Produto produto, Estoque estoque) {
+    private record Contexto(String token, PedidoVenda pedido, Produto produto, Estoque estoque) {
     }
 }

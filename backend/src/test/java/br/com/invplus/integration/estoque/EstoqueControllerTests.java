@@ -12,7 +12,6 @@ import br.com.invplus.modules.cadastros.entity.Categoria;
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.entity.UnidadeMedida;
 import br.com.invplus.modules.cadastros.repository.CategoriaRepository;
-import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
 import br.com.invplus.modules.cadastros.repository.UnidadeMedidaRepository;
 import br.com.invplus.modules.estoque.entity.Deposito;
 import br.com.invplus.modules.estoque.entity.LocalizacaoEstoque;
@@ -25,8 +24,10 @@ import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
@@ -60,17 +59,19 @@ class EstoqueControllerTests {
     @Autowired
     private UnidadeMedidaRepository unidadeRepository;
     @Autowired
-    private EmpresaRepository empresaRepository;
-    @Autowired
     private DepositoRepository depositoRepository;
     @Autowired
     private LocalizacaoEstoqueRepository localizacaoRepository;
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioTestFactory usuarioTestFactory;
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private EmpresaTestFactory empresaTestFactory;
     @Autowired
-    private JwtService jwtService;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
+
+    private Empresa empresaContexto;
 
     @Test
     void deveExecutarCrudCompletoComSoftDelete() throws Exception {
@@ -97,7 +98,6 @@ class EstoqueControllerTests {
                 .andExpect(jsonPath("$.id").value(id));
 
         mockMvc.perform(get("/api/v1/estoques/saldo?produtoId=" + contexto.produto.getId()
-                        + "&empresaId=" + contexto.empresa.getId()
                         + "&depositoId=" + contexto.deposito.getId()
                         + "&localizacaoId=" + contexto.localizacao.getId())
                         .header("Authorization", "Bearer " + token))
@@ -106,7 +106,6 @@ class EstoqueControllerTests {
                 .andExpect(jsonPath("$.quantidadeDisponivel").value(8.000));
 
         mockMvc.perform(get("/api/v1/estoques?produtoId=" + contexto.produto.getId()
-                        + "&empresaId=" + contexto.empresa.getId()
                         + "&depositoId=" + contexto.deposito.getId()
                         + "&localizacaoId=" + contexto.localizacao.getId()
                         + "&comSaldo=true&ativo=true&page=0&size=20")
@@ -220,7 +219,6 @@ class EstoqueControllerTests {
                 .andExpect(jsonPath("$.disponibilidade.disponivel").value(1.000));
 
         mockMvc.perform(get("/api/v1/estoques/disponivel?produtoId=" + contexto.produto.getId()
-                        + "&empresaId=" + contexto.empresa.getId()
                         + "&depositoId=" + contexto.deposito.getId()
                         + "&localizacaoId=" + contexto.localizacao.getId())
                         .header("Authorization", "Bearer " + token))
@@ -238,23 +236,25 @@ class EstoqueControllerTests {
 
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario("Sem Estoque",
-                "sem-estoque-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123"));
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("SEGURANCA:*").build());
+        Usuario usuario = usuarioTestFactory.criarAtivoSemPerfil();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("SEGURANCA:*"));
 
         mockMvc.perform(get("/api/v1/estoques").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
     private JsonNode login() throws Exception {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        empresaContexto = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresaContexto, true, true);
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
+                                {"email": "%s", "senha": "%s"}
+                                """.formatted(usuario.getEmail(), UsuarioTestFactory.SENHA)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response);
     }
@@ -275,7 +275,6 @@ class EstoqueControllerTests {
         return """
                 {
                   "produtoId": "%s",
-                  "empresaId": "%s",
                   "depositoId": "%s",
                   "localizacaoId": "%s",
                   "quantidade": %s,
@@ -285,23 +284,16 @@ class EstoqueControllerTests {
                   "estoqueMinimo": %s,
                   "estoqueMaximo": %s
                 }
-                """.formatted(contexto.produto.getId(), contexto.empresa.getId(), contexto.deposito.getId(),
+                """.formatted(contexto.produto.getId(), contexto.deposito.getId(),
                 contexto.localizacao.getId(), quantidade, reservada, minimo, maximo);
     }
 
     private Contexto criarContexto() {
-        Empresa empresa = criarEmpresa();
+        Empresa empresa = empresaContexto;
         Deposito deposito = criarDeposito(empresa);
         LocalizacaoEstoque localizacao = criarLocalizacao(deposito);
         Produto produto = criarProduto();
         return new Contexto(produto, empresa, deposito, localizacao);
-    }
-
-    private Empresa criarEmpresa() {
-        Empresa empresa = new Empresa();
-        empresa.atualizar("Empresa Estoque " + UUID.randomUUID(), "Empresa Estoque", cnpjUnico(),
-                "ISENTO", null, "NORMAL", 3, "71999990000", "empresa-estoque-" + UUID.randomUUID() + "@teste.com");
-        return empresaRepository.saveAndFlush(empresa);
     }
 
     private Deposito criarDeposito(Empresa empresa) {

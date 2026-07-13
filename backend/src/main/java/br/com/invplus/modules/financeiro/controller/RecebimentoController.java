@@ -44,7 +44,6 @@ public class RecebimentoController extends BaseCrudController {
             @RequestParam(required = false) UUID parcelaReceberId,
             @RequestParam(required = false) UUID contaReceberId,
             @RequestParam(required = false) UUID formaPagamentoId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID clienteId,
             @RequestParam(required = false) LocalDate dataRecebimentoDe,
@@ -53,7 +52,7 @@ public class RecebimentoController extends BaseCrudController {
             Pageable pageable
     ) {
         return ResponseEntity.ok(service.listarComFiltros(parcelaReceberId, contaReceberId, formaPagamentoId,
-                empresaId, filialId, clienteId, dataRecebimentoDe, dataRecebimentoAte, ativo, pageable));
+                null, filialId, clienteId, dataRecebimentoDe, dataRecebimentoAte, ativo, pageable));
     }
 
     @GetMapping("/{id}")

@@ -12,17 +12,21 @@ import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.context.TestEmpresaContext;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,11 +46,20 @@ class ImportacaoExtratoControllerTests {
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
+    @Autowired private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private TestEmpresaContext testEmpresaContext;
+
+    @AfterEach
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
 
     @Test
     void deveImportarConsultarEListarOfx() throws Exception {
-        String token = login().get("accessToken").asString();
-        UUID contaId = prepararConta();
+        ContaContexto contexto = prepararConta();
+        String token = contexto.token();
+        UUID contaId = contexto.contaId();
         MockMultipartFile arquivo = arquivo("extrato-valido.ofx", sufixo());
 
         String body = mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx")
@@ -71,8 +84,9 @@ class ImportacaoExtratoControllerTests {
 
     @Test
     void deveBloquearArquivoAusenteInvalidoEHashDuplicado() throws Exception {
-        String token = login().get("accessToken").asString();
-        UUID contaId = prepararConta();
+        ContaContexto contexto = prepararConta();
+        String token = contexto.token();
+        UUID contaId = contexto.contaId();
         MockMultipartFile arquivo = arquivo("extrato-valido.ofx", sufixo());
 
         mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx")
@@ -102,19 +116,24 @@ class ImportacaoExtratoControllerTests {
         Usuario usuario = new Usuario("Sem Importacao",
                 "sem-importacao-" + UUID.randomUUID() + "@invplus.com", passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("EXTRATO_BANCARIO:VISUALIZAR").build());
+        Empresa empresa = novaEmpresa(sufixo());
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
         mockMvc.perform(get("/api/v1/importacoes-extratos")
                         .header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
     }
 
-    private UUID prepararConta() {
+    private ContaContexto prepararConta() {
         String sufixo = sufixo();
-        Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa OFX Ctrl " + sufixo,
-                "Empresa OFX Ctrl " + sufixo, documento(sufixo), null, null, null));
-        return contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null, "001",
+        Empresa empresa = novaEmpresa(sufixo);
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
+        testEmpresaContext.ativarEmpresa(admin.getId(), empresa.getId());
+        UUID contaId = contaBancariaService.criar(new ContaBancariaRequest(null, "001",
                 "Banco OFX Ctrl", "1234", null, "99999", "9", TipoContaBancaria.CORRENTE,
                 "Empresa OFX Ctrl", null, null, BigDecimal.ZERO, LocalDate.of(2026, 7, 1), true)).id();
+        return new ContaContexto(contaId, token);
     }
 
     private MockMultipartFile arquivo(String nome, String nonce) throws Exception {
@@ -127,12 +146,9 @@ class ImportacaoExtratoControllerTests {
                 conteudo.getBytes(StandardCharsets.UTF_8));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .post("/api/v1/auth/login").contentType("application/json")
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private Empresa novaEmpresa(String sufixo) {
+        return empresaRepository.saveAndFlush(new Empresa("Empresa OFX Ctrl " + sufixo,
+                "Empresa OFX Ctrl " + sufixo, documento(sufixo), null, null, null));
     }
 
     private String documento(String base) {
@@ -142,5 +158,8 @@ class ImportacaoExtratoControllerTests {
 
     private String sufixo() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    private record ContaContexto(UUID contaId, String token) {
     }
 }

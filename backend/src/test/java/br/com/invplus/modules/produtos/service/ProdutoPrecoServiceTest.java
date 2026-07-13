@@ -1,10 +1,25 @@
 package br.com.invplus.modules.produtos.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -17,22 +32,10 @@ import br.com.invplus.modules.produtos.mapper.ProdutoPrecoMapper;
 import br.com.invplus.modules.produtos.repository.ProdutoPrecoRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.modules.produtos.validator.ProdutoPrecoValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Testes unitarios das regras de ProdutoPreco.
@@ -49,26 +52,37 @@ class ProdutoPrecoServiceTest {
     @Mock
     private EmpresaRepository empresaRepository;
 
+    @Mock
+    private EmpresaContext empresaContext;
+
     private ProdutoPrecoService service;
+    private Empresa empresaAtiva;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         ProdutoPrecoMapper mapper = new ProdutoPrecoMapper();
         ProdutoPrecoValidator validator = new ProdutoPrecoValidator(repository);
-        service = new ProdutoPrecoService(repository, mapper, validator, produtoRepository, empresaRepository);
+        empresaAtiva = empresaAtiva();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresaAtiva.getId());
+        lenient().when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresaAtiva.getId()))
+                .thenReturn(Optional.of(empresaAtiva));
+        service = new ProdutoPrecoService(
+                repository, mapper, validator, produtoRepository, empresaRepository, empresaContext);
     }
 
     /**
      * Cria preco global para produto ativo.
      */
     @Test
-    void deveCriarPrecoGlobalComSucesso() {
+    void deveCriarPrecoDaEmpresaAtivaComSucesso() {
         Produto produto = produtoAtivo();
-        ProdutoPrecoRequest request = request(produto.getId(), null, TipoPrecoProduto.VENDA, "19.9000", true);
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                produto.getId(), TipoPrecoProduto.VENDA, request.vigenciaInicio())).thenReturn(Optional.empty());
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
-                produto.getId(), TipoPrecoProduto.VENDA)).thenReturn(Optional.empty());
+        ProdutoPrecoRequest request = request(produto.getId(), TipoPrecoProduto.VENDA, "19.9000", true);
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
+                produto.getId(), TipoPrecoProduto.VENDA, empresaAtiva.getId(), request.vigenciaInicio()))
+                .thenReturn(Optional.empty());
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
+                produto.getId(), TipoPrecoProduto.VENDA, empresaAtiva.getId())).thenReturn(Optional.empty());
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(produto.getId())).thenReturn(Optional.of(produto));
         when(repository.save(any(ProdutoPreco.class))).thenAnswer(invocation -> {
             ProdutoPreco preco = invocation.getArgument(0);
@@ -79,7 +93,7 @@ class ProdutoPrecoServiceTest {
         ProdutoPrecoResponse response = service.criar(request);
 
         assertThat(response.produtoId()).isEqualTo(produto.getId());
-        assertThat(response.empresaId()).isNull();
+        assertThat(response.empresaId()).isEqualTo(empresaAtiva.getId());
         assertThat(response.tipoPreco()).isEqualTo(TipoPrecoProduto.VENDA);
         assertThat(response.preco()).isEqualByComparingTo("19.9000");
         assertThat(response.principal()).isTrue();
@@ -92,7 +106,8 @@ class ProdutoPrecoServiceTest {
     void deveCriarPrecoPorEmpresaComSucesso() {
         Produto produto = produtoAtivo();
         Empresa empresa = empresaAtiva();
-        ProdutoPrecoRequest request = request(produto.getId(), empresa.getId(), TipoPrecoProduto.ATACADO, "15.5000", false);
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
+        ProdutoPrecoRequest request = request(produto.getId(), TipoPrecoProduto.ATACADO, "15.5000", false);
         when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
                 produto.getId(), TipoPrecoProduto.ATACADO, empresa.getId(), request.vigenciaInicio())).thenReturn(Optional.empty());
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(produto.getId())).thenReturn(Optional.of(produto));
@@ -116,9 +131,10 @@ class ProdutoPrecoServiceTest {
     @Test
     void deveBloquearProdutoInexistente() {
         UUID produtoId = UUID.randomUUID();
-        ProdutoPrecoRequest request = request(produtoId, null, TipoPrecoProduto.VENDA, "19.9000", false);
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                produtoId, TipoPrecoProduto.VENDA, request.vigenciaInicio())).thenReturn(Optional.empty());
+        ProdutoPrecoRequest request = request(produtoId, TipoPrecoProduto.VENDA, "19.9000", false);
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
+                produtoId, TipoPrecoProduto.VENDA, empresaAtiva.getId(), request.vigenciaInicio()))
+                .thenReturn(Optional.empty());
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(produtoId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.criar(request))
@@ -130,10 +146,11 @@ class ProdutoPrecoServiceTest {
      * Empresa inexistente ou inativa deve retornar 404 quando informada.
      */
     @Test
-    void deveBloquearEmpresaInexistente() {
+    void deveBloquearEmpresaDoContextoInexistente() {
         Produto produto = produtoAtivo();
         UUID empresaId = UUID.randomUUID();
-        ProdutoPrecoRequest request = request(produto.getId(), empresaId, TipoPrecoProduto.VENDA, "19.9000", false);
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
+        ProdutoPrecoRequest request = request(produto.getId(), TipoPrecoProduto.VENDA, "19.9000", false);
         when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
                 produto.getId(), TipoPrecoProduto.VENDA, empresaId, request.vigenciaInicio())).thenReturn(Optional.empty());
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(produto.getId())).thenReturn(Optional.of(produto));
@@ -150,9 +167,10 @@ class ProdutoPrecoServiceTest {
     @Test
     void deveBloquearPrecoDuplicado() {
         ProdutoPreco existente = precoAtivo();
-        ProdutoPrecoRequest request = request(existente.getProduto().getId(), null, TipoPrecoProduto.VENDA, "19.9000", false);
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                request.produtoId(), request.tipoPreco(), request.vigenciaInicio())).thenReturn(Optional.of(existente));
+        ProdutoPrecoRequest request = request(existente.getProduto().getId(), TipoPrecoProduto.VENDA, "19.9000", false);
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
+                request.produtoId(), request.tipoPreco(), empresaAtiva.getId(), request.vigenciaInicio()))
+                .thenReturn(Optional.of(existente));
 
         assertThatThrownBy(() -> service.criar(request))
                 .isInstanceOf(ConflictException.class)
@@ -164,7 +182,7 @@ class ProdutoPrecoServiceTest {
      */
     @Test
     void deveBloquearPrecoNegativo() {
-        ProdutoPrecoRequest request = request(UUID.randomUUID(), null, TipoPrecoProduto.VENDA, "-1.0000", false);
+        ProdutoPrecoRequest request = request(UUID.randomUUID(), TipoPrecoProduto.VENDA, "-1.0000", false);
 
         assertThatThrownBy(() -> service.criar(request))
                 .isInstanceOf(BusinessException.class)
@@ -176,7 +194,7 @@ class ProdutoPrecoServiceTest {
      */
     @Test
     void deveBloquearVigenciaInvalida() {
-        ProdutoPrecoRequest request = new ProdutoPrecoRequest(UUID.randomUUID(), null, TipoPrecoProduto.VENDA,
+        ProdutoPrecoRequest request = new ProdutoPrecoRequest(UUID.randomUUID(), TipoPrecoProduto.VENDA,
                 new BigDecimal("10.0000"), LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 1), false, "Invalido");
 
         assertThatThrownBy(() -> service.criar(request))
@@ -190,11 +208,12 @@ class ProdutoPrecoServiceTest {
     @Test
     void deveBloquearSegundoPrecoPrincipal() {
         ProdutoPreco existente = precoAtivo();
-        ProdutoPrecoRequest request = request(existente.getProduto().getId(), null, TipoPrecoProduto.VENDA, "20.0000", true);
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                request.produtoId(), request.tipoPreco(), request.vigenciaInicio())).thenReturn(Optional.empty());
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
-                request.produtoId(), request.tipoPreco())).thenReturn(Optional.of(existente));
+        ProdutoPrecoRequest request = request(existente.getProduto().getId(), TipoPrecoProduto.VENDA, "20.0000", true);
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
+                request.produtoId(), request.tipoPreco(), empresaAtiva.getId(), request.vigenciaInicio()))
+                .thenReturn(Optional.empty());
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
+                request.produtoId(), request.tipoPreco(), empresaAtiva.getId())).thenReturn(Optional.of(existente));
 
         assertThatThrownBy(() -> service.criar(request))
                 .isInstanceOf(ConflictException.class)
@@ -210,7 +229,7 @@ class ProdutoPrecoServiceTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), TipoPrecoProduto.VENDA,
+        service.listarComFiltros(UUID.randomUUID(), TipoPrecoProduto.VENDA,
                 true, LocalDate.of(2026, 7, 1), null, true, PageRequest.of(0, 20));
 
         verify(repository).findAll(any(Specification.class), any(Pageable.class));
@@ -222,7 +241,8 @@ class ProdutoPrecoServiceTest {
     @Test
     void deveBuscarPrecoVigente() {
         ProdutoPreco preco = precoAtivo();
-        when(repository.buscarPrecosVigentesGlobais(preco.getProduto().getId(), TipoPrecoProduto.VENDA, LocalDate.of(2026, 7, 5)))
+        when(repository.buscarPrecosVigentes(preco.getProduto().getId(), empresaAtiva.getId(),
+                TipoPrecoProduto.VENDA, LocalDate.of(2026, 7, 5)))
                 .thenReturn(List.of(preco));
 
         Optional<ProdutoPrecoResponse> response = service.buscarPrecoVigente(
@@ -238,12 +258,15 @@ class ProdutoPrecoServiceTest {
     @Test
     void deveAtualizarMantendoPrincipal() {
         ProdutoPreco preco = precoAtivo();
-        ProdutoPrecoRequest request = request(preco.getProduto().getId(), null, TipoPrecoProduto.VENDA, "21.0000", true);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(preco.getId())).thenReturn(Optional.of(preco));
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                request.produtoId(), request.tipoPreco(), request.vigenciaInicio())).thenReturn(Optional.of(preco));
-        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
-                request.produtoId(), request.tipoPreco())).thenReturn(Optional.of(preco));
+        preco.setEmpresa(empresaAtiva);
+        ProdutoPrecoRequest request = request(preco.getProduto().getId(), TipoPrecoProduto.VENDA, "21.0000", true);
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(preco.getId(), empresaAtiva.getId()))
+                .thenReturn(Optional.of(preco));
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
+                request.produtoId(), request.tipoPreco(), empresaAtiva.getId(), request.vigenciaInicio()))
+                .thenReturn(Optional.of(preco));
+        when(repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
+                request.produtoId(), request.tipoPreco(), empresaAtiva.getId())).thenReturn(Optional.of(preco));
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(request.produtoId())).thenReturn(Optional.of(preco.getProduto()));
 
         ProdutoPrecoResponse response = service.atualizar(preco.getId(), request);
@@ -258,7 +281,9 @@ class ProdutoPrecoServiceTest {
     @Test
     void deveExcluirLogicamente() {
         ProdutoPreco preco = precoAtivo();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(preco.getId())).thenReturn(Optional.of(preco));
+        preco.setEmpresa(empresaAtiva);
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(preco.getId(), empresaAtiva.getId()))
+                .thenReturn(Optional.of(preco));
 
         service.excluir(preco.getId());
 
@@ -266,10 +291,9 @@ class ProdutoPrecoServiceTest {
         assertThat(preco.getDeletedAt()).isNotNull();
     }
 
-    private ProdutoPrecoRequest request(UUID produtoId, UUID empresaId, TipoPrecoProduto tipoPreco, String preco, Boolean principal) {
+    private ProdutoPrecoRequest request(UUID produtoId, TipoPrecoProduto tipoPreco, String preco, Boolean principal) {
         return new ProdutoPrecoRequest(
                 produtoId,
-                empresaId,
                 tipoPreco,
                 new BigDecimal(preco),
                 LocalDate.of(2026, 7, 1),

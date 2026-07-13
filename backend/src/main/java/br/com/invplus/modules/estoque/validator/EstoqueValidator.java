@@ -24,26 +24,25 @@ public class EstoqueValidator {
         this.repository = repository;
     }
 
-    public void validarCriacao(EstoqueRequest request, Filial filial, Deposito deposito, LocalizacaoEstoque localizacao) {
+    public void validarCriacao(UUID empresaId, EstoqueRequest request, Filial filial, Deposito deposito,
+            LocalizacaoEstoque localizacao) {
         validarCamposObrigatorios(request);
         validarValores(request);
-        validarVinculos(request, filial, deposito, localizacao);
-        validarDuplicidade(request, null);
+        validarVinculos(empresaId, request, filial, deposito, localizacao);
+        validarDuplicidade(empresaId, request, null);
     }
 
-    public void validarAtualizacao(Estoque atual, EstoqueRequest request, Filial filial, Deposito deposito, LocalizacaoEstoque localizacao) {
+    public void validarAtualizacao(UUID empresaId, Estoque atual, EstoqueRequest request, Filial filial,
+            Deposito deposito, LocalizacaoEstoque localizacao) {
         validarCamposObrigatorios(request);
         validarValores(request);
-        validarVinculos(request, filial, deposito, localizacao);
-        validarDuplicidade(request, atual.getId());
+        validarVinculos(empresaId, request, filial, deposito, localizacao);
+        validarDuplicidade(empresaId, request, atual.getId());
     }
 
     private void validarCamposObrigatorios(EstoqueRequest request) {
         if (request.produtoId() == null) {
             throw new BusinessException("Produto e obrigatorio");
-        }
-        if (request.empresaId() == null) {
-            throw new BusinessException("Empresa e obrigatoria");
         }
         if (request.depositoId() == null) {
             throw new BusinessException("Deposito e obrigatorio");
@@ -72,12 +71,13 @@ public class EstoqueValidator {
         }
     }
 
-    private void validarVinculos(EstoqueRequest request, Filial filial, Deposito deposito, LocalizacaoEstoque localizacao) {
-        if (filial != null && !filial.getEmpresa().getId().equals(request.empresaId())) {
-            throw new BusinessException("Filial deve pertencer a empresa informada");
+    private void validarVinculos(UUID empresaId, EstoqueRequest request, Filial filial, Deposito deposito,
+            LocalizacaoEstoque localizacao) {
+        if (filial != null && !filial.getEmpresa().getId().equals(empresaId)) {
+            throw new BusinessException("Filial deve pertencer a empresa ativa");
         }
-        if (!deposito.getEmpresa().getId().equals(request.empresaId())) {
-            throw new BusinessException("Deposito deve pertencer a empresa informada");
+        if (!deposito.getEmpresa().getId().equals(empresaId)) {
+            throw new BusinessException("Deposito deve pertencer a empresa ativa");
         }
         if (filial != null && deposito.getFilial() != null && !deposito.getFilial().getId().equals(filial.getId())) {
             throw new BusinessException("Deposito deve pertencer a filial informada");
@@ -87,10 +87,10 @@ public class EstoqueValidator {
         }
     }
 
-    private void validarDuplicidade(EstoqueRequest request, UUID idAtual) {
+    private void validarDuplicidade(UUID empresaId, EstoqueRequest request, UUID idAtual) {
         repository.findByProdutoIdAndEmpresaIdAndDepositoIdAndLocalizacaoIdAndAtivoTrueAndDeletedAtIsNull(
                         request.produtoId(),
-                        request.empresaId(),
+                        empresaId,
                         request.depositoId(),
                         request.localizacaoId()
                 )

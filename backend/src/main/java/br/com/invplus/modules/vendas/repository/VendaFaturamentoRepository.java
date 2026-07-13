@@ -10,9 +10,16 @@ import java.util.UUID;
  */
 public interface VendaFaturamentoRepository extends BaseRepository<VendaFaturamento> {
 
+    Optional<VendaFaturamento> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     boolean existsByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(UUID pedidoVendaId);
 
     boolean existsByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String numero);
 
     Optional<VendaFaturamento> findByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(UUID pedidoVendaId);
+
+    Optional<VendaFaturamento> findByPedidoVendaIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+            UUID pedidoVendaId,
+            UUID empresaId
+    );
 }

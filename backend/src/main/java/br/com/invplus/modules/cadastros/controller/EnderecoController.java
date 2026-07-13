@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -33,12 +32,12 @@ public class EnderecoController {
     private final EnderecoService enderecoService;
 
     /**
-     * Lista enderecos, opcionalmente filtrando por empresa.
+     * Lista enderecos da empresa ativa.
      */
     @GetMapping
     @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
-    public ResponseEntity<Page<EnderecoResponse>> listar(@RequestParam(required = false) UUID empresaId, Pageable pageable) {
-        return ResponseEntity.ok(enderecoService.listar(empresaId, pageable));
+    public ResponseEntity<Page<EnderecoResponse>> listar(Pageable pageable) {
+        return ResponseEntity.ok(enderecoService.listar(pageable));
     }
 
     /**

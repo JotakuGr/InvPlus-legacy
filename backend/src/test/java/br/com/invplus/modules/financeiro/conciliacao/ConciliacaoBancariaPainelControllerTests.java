@@ -20,19 +20,18 @@ class ConciliacaoBancariaPainelControllerTests {
     @Mock ConciliacaoBancariaPainelService service;
 
     @Test void deveConsultarAsTresVisoes() {
-        UUID empresa = UUID.randomUUID();
         var indicadores = new IndicadoresConciliacaoResponse(0,0,0,0,0,0,0,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO.setScale(2));
         var painel = new PainelConciliacaoBancariaResponse(indicadores, List.of());
-        when(service.buscarPainel(empresa, null, null, null)).thenReturn(painel);
-        when(service.buscarExtratosPendentes(eq(empresa), isNull(), isNull(), isNull(), isNull(), any()))
+        when(service.buscarPainel(null, null, null)).thenReturn(painel);
+        when(service.buscarExtratosPendentes(isNull(), isNull(), isNull(), isNull(), any()))
                 .thenReturn(Page.empty());
-        when(service.buscarPendencias(eq(empresa), isNull(), isNull(), isNull(), isNull(), isNull(),
+        when(service.buscarPendencias(isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), any())).thenReturn(Page.empty());
         var controller = new ConciliacaoBancariaPainelController(service);
-        assertThat(controller.painel(empresa, null, null, null).getBody()).isEqualTo(painel);
-        assertThat(controller.extratos(empresa, null, null, null, null, Pageable.unpaged()).getBody()).isEmpty();
-        assertThat(controller.pendencias(empresa, null, null, null, null, null, null,
+        assertThat(controller.painel(null, null, null).getBody()).isEqualTo(painel);
+        assertThat(controller.extratos(null, null, null, null, Pageable.unpaged()).getBody()).isEmpty();
+        assertThat(controller.pendencias(null, null, null, null, null, null,
                 null, null, Pageable.unpaged()).getBody()).isEmpty();
     }
 }

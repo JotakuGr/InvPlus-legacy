@@ -23,28 +23,28 @@ public class ConciliacaoBancariaPainelController {
     @GetMapping("/painel")
     @PreAuthorize("hasAnyAuthority('CONCILIACAO_BANCARIA:*','CONCILIACAO_BANCARIA:PAINEL')")
     public ResponseEntity<PainelConciliacaoBancariaResponse> painel(
-            @RequestParam(required = false) UUID empresaId, @RequestParam(required = false) UUID contaBancariaId,
+            @RequestParam(required = false) UUID contaBancariaId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
-        return ResponseEntity.ok(service.buscarPainel(empresaId, contaBancariaId, dataInicio, dataFim));
+        return ResponseEntity.ok(service.buscarPainel(contaBancariaId, dataInicio, dataFim));
     }
 
     @GetMapping("/extratos-pendentes")
     @PreAuthorize("hasAnyAuthority('CONCILIACAO_BANCARIA:*','CONCILIACAO_BANCARIA:PAINEL')")
     public ResponseEntity<Page<ExtratoPendenteResponse>> extratos(
-            @RequestParam(required = false) UUID empresaId, @RequestParam(required = false) UUID contaBancariaId,
+            @RequestParam(required = false) UUID contaBancariaId,
             @RequestParam(required = false) StatusExtratoBancario status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             Pageable pageable) {
         return ResponseEntity.ok(service.buscarExtratosPendentes(
-                empresaId, contaBancariaId, status, dataInicio, dataFim, pageable));
+                contaBancariaId, status, dataInicio, dataFim, pageable));
     }
 
     @GetMapping("/pendencias")
     @PreAuthorize("hasAnyAuthority('CONCILIACAO_BANCARIA:*','CONCILIACAO_BANCARIA:PAINEL')")
     public ResponseEntity<Page<LancamentoPendenteResponse>> pendencias(
-            @RequestParam(required = false) UUID empresaId, @RequestParam(required = false) UUID extratoBancarioId,
+            @RequestParam(required = false) UUID extratoBancarioId,
             @RequestParam(required = false) UUID contaBancariaId,
             @RequestParam(required = false) TipoLancamentoBancario tipo,
             @RequestParam(required = false) CategoriaLancamentoBancario categoria,
@@ -53,7 +53,7 @@ public class ConciliacaoBancariaPainelController {
             @RequestParam(required = false) Boolean possuiSugestao,
             @RequestParam(required = false) NivelConfiancaConciliacao nivelConfianca,
             Pageable pageable) {
-        return ResponseEntity.ok(service.buscarPendencias(empresaId, extratoBancarioId, contaBancariaId,
+        return ResponseEntity.ok(service.buscarPendencias(extratoBancarioId, contaBancariaId,
                 tipo, categoria, dataInicio, dataFim, possuiSugestao, nivelConfianca, pageable));
     }
 }

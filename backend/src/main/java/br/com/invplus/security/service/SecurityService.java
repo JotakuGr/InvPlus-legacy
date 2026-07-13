@@ -2,6 +2,7 @@ package br.com.invplus.security.service;
 
 import br.com.invplus.security.dto.LoginRequest;
 import br.com.invplus.security.dto.LoginResponse;
+import br.com.invplus.security.dto.TokenContextoResponse;
 import br.com.invplus.security.entity.Perfil;
 import br.com.invplus.security.entity.Permissao;
 import br.com.invplus.security.entity.Usuario;
@@ -54,9 +55,7 @@ public class SecurityService {
             return new LoginResponse("Bearer",tokens.accessToken(),tokens.refreshToken(),jwtService.calcularExpiracao(),
                     usuarioResponse(usuario),"AUTENTICADO",null,tokens.contexto(),empresas);
         }
-        // Compatibilidade temporaria para usuarios pendentes de saneamento da V126.
-        String token=jwtService.gerarToken(userDetails);
-        return montarLoginResponse(token,refreshTokenService.criar(usuario,ip,userAgent),jwtService.calcularExpiracao(),usuario);
+        throw new br.com.invplus.security.exception.AcessoEmpresaNegadoException();
     }
 
     @Transactional
@@ -65,14 +64,21 @@ public class SecurityService {
         Usuario usuario = usuarioRepository.findByIdWithPerfisAndPermissoes(refresh.getUsuario().getId()).orElseThrow();
         UUID empresaId=refresh.getEmpresa()==null?null:refresh.getEmpresa().getId();
         UUID filialId=refresh.getFilial()==null?null:refresh.getFilial().getId();
-        if(empresaId!=null) contextoService.validarAcesso(usuario.getId(),empresaId,filialId);
-        UserDetails userDetails = new AuthenticatedUserDetails(usuario.getId(),usuario.getEmail(),usuario.getSenhaHash(),
-                usuarioDetailsService.toAuthorities(usuario),true,empresaId,filialId);
-        String accessToken = jwtService.gerarAccessToken(userDetails,empresaId,filialId);
-        String novoRefreshToken = refreshTokenService.criar(usuario,refresh.getEmpresa(),refresh.getFilial(),ip,userAgent);
+        if (empresaId == null) {
+            throw new br.com.invplus.security.exception.AcessoEmpresaNegadoException();
+        }
+        TokenContextoResponse tokens = contextoService.emitir(usuario.getId(), empresaId, filialId, ip, userAgent);
         refreshTokenService.revogar(refreshToken);
-
-        return montarLoginResponse(accessToken, novoRefreshToken, jwtService.calcularExpiracao(), usuario);
+        return new LoginResponse(
+                "Bearer",
+                tokens.accessToken(),
+                tokens.refreshToken(),
+                jwtService.calcularExpiracao(),
+                usuarioResponse(usuario),
+                "AUTENTICADO",
+                null,
+                tokens.contexto(),
+                contextoService.empresas(usuario.getId()));
     }
 
     @Transactional

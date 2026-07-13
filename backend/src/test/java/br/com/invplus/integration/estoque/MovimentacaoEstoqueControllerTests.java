@@ -22,8 +22,9 @@ import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -31,8 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
@@ -63,16 +62,16 @@ class MovimentacaoEstoqueControllerTests {
     @Autowired
     private LocalizacaoEstoqueRepository localizacaoRepository;
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioTestFactory usuarioTestFactory;
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
     @Autowired
-    private JwtService jwtService;
+    private JwtTestFactory jwtTestFactory;
 
     @Test
     void deveConsultarMovimentacaoGeradaPeloEstoque() throws Exception {
-        String token = login().get("accessToken").asString();
         Contexto contexto = criarContexto();
+        String token = token(contexto.empresa, java.util.Set.of("ESTOQUE:*"));
         JsonNode estoque = criarEstoque(token, contexto, "10.000", "0.000");
         String movimentoId = estoque.get("ultimoMovimentoId").asString();
 
@@ -89,7 +88,6 @@ class MovimentacaoEstoqueControllerTests {
 
         mockMvc.perform(get("/api/v1/movimentacoes-estoque?estoqueId=" + estoque.get("id").asString()
                         + "&produtoId=" + contexto.produto.getId()
-                        + "&empresaId=" + contexto.empresa.getId()
                         + "&depositoId=" + contexto.deposito.getId()
                         + "&localizacaoId=" + contexto.localizacao.getId()
                         + "&tipoMovimentacao=ENTRADA&page=0&size=20")
@@ -105,25 +103,30 @@ class MovimentacaoEstoqueControllerTests {
 
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario("Sem Movimentacao",
-                "sem-movimentacao-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123"));
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("SEGURANCA:*").build());
+        Empresa empresa = criarEmpresa();
+        String token = token(empresa, java.util.Set.of("SEGURANCA:*"));
 
         mockMvc.perform(get("/api/v1/movimentacoes-estoque").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
+    @Test
+    void deveIsolarMovimentacaoPorEmpresaDoToken() throws Exception {
+        Contexto contextoA = criarContexto();
+        Contexto contextoB = criarContexto();
+        String tokenA = token(contextoA.empresa, java.util.Set.of("ESTOQUE:*"));
+        String tokenB = token(contextoB.empresa, java.util.Set.of("ESTOQUE:*"));
+        JsonNode estoque = criarEstoque(tokenA, contextoA, "10.000", "0.000");
+        String movimentoId = estoque.get("ultimoMovimentoId").asString();
+
+        mockMvc.perform(get("/api/v1/movimentacoes-estoque/" + movimentoId)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+
+        String listagem = mockMvc.perform(get("/api/v1/movimentacoes-estoque?page=0&size=50")
+                        .header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+        org.assertj.core.api.Assertions.assertThat(listagem).doesNotContain(movimentoId);
     }
 
     private JsonNode criarEstoque(String token, Contexto contexto, String quantidade, String reservada) throws Exception {
@@ -133,7 +136,6 @@ class MovimentacaoEstoqueControllerTests {
                         .content("""
                                 {
                                   "produtoId": "%s",
-                                  "empresaId": "%s",
                                   "depositoId": "%s",
                                   "localizacaoId": "%s",
                                   "quantidade": %s,
@@ -143,7 +145,7 @@ class MovimentacaoEstoqueControllerTests {
                                   "estoqueMinimo": 2.000,
                                   "estoqueMaximo": 50.000
                                 }
-                                """.formatted(contexto.produto.getId(), contexto.empresa.getId(), contexto.deposito.getId(),
+                                """.formatted(contexto.produto.getId(), contexto.deposito.getId(),
                                 contexto.localizacao.getId(), quantidade, reservada)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -207,6 +209,14 @@ class MovimentacaoEstoqueControllerTests {
 
     private String codigoCurto() {
         return Long.toString(Math.abs(System.nanoTime()), 36).toUpperCase();
+    }
+
+    private String token(Empresa empresa, java.util.Set<String> permissoes) {
+        Usuario usuario = permissoes.contains("ESTOQUE:*")
+                ? usuarioTestFactory.criarAtivoComPerfilAdmin()
+                : usuarioTestFactory.criarAtivoSemPerfil();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        return jwtTestFactory.accessToken(usuario.getId(), usuario.getEmail(), empresa.getId(), null, permissoes);
     }
 
     private record Contexto(Produto produto, Empresa empresa, Deposito deposito, LocalizacaoEstoque localizacao) {

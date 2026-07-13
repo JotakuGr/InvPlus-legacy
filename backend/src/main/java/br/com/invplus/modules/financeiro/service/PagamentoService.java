@@ -25,6 +25,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /**
  * Registra eventos de pagamento e delega a baixa financeira para ParcelaPagarService.
@@ -40,6 +43,9 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     private final PagamentoMapper mapper;
     private final PagamentoValidator validator;
     private final ContaBancariaRepository contaBancariaRepository;
+
+    @Autowired(required = false)
+    private EmpresaContext empresaContext;
 
     public PagamentoService(
             PagamentoRepository repository,
@@ -67,6 +73,7 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
             UUID formaPagamentoId, UUID empresaId, UUID filialId, UUID fornecedorId,
             StatusPagamentoFinanceiro status, LocalDate dataPagamentoDe, LocalDate dataPagamentoAte,
             Boolean ativo, Pageable pageable) {
+        empresaId = resolverEmpresa(empresaId);
         Specification<Pagamento> specification = PagamentoSpecification.naoDeletado();
         specification = and(specification, PagamentoSpecification.ativo(ativo));
         specification = and(specification, PagamentoSpecification.parcelaIgual(parcelaPagarId));
@@ -127,6 +134,10 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     }
 
     private ParcelaPagar buscarParcela(UUID id) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return parcelaPagarRepository
+                .findByIdAndContaPagarEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Parcela a pagar nao encontrada"));
         return parcelaPagarRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Parcela a pagar nao encontrada"));
     }
@@ -137,10 +148,15 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
     }
 
     private ContaBancaria buscarContaBancaria(UUID id, UUID empresaId) {
+        UUID contexto = empresaAtualOuNull();
+        if (contexto != null && !contexto.equals(empresaId)) {
+            throw new ResourceNotFoundException("Parcela a pagar nao encontrada");
+        }
+        UUID empresaEfetiva = contexto == null ? empresaId : contexto;
         ContaBancaria conta = id == null
-                ? contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId)
+                ? contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaEfetiva)
                         .orElse(null)
-                : contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                : contaBancariaRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaEfetiva)
                         .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
         if (conta == null) return null;
         if (!conta.getEmpresa().getId().equals(empresaId)) {
@@ -148,6 +164,28 @@ public class PagamentoService extends BaseCrudService<Pagamento, PagamentoReques
                     "Conta bancaria deve pertencer a mesma empresa do pagamento");
         }
         return conta;
+    }
+
+    @Override
+    public Pagamento buscarEntidade(UUID id) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId == null) return super.buscarEntidade(id);
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pagamento nao encontrado"));
+    }
+
+    private UUID resolverEmpresa(UUID recebida) {
+        UUID contexto = empresaAtualOuNull();
+        if (contexto == null) return recebida;
+        if (recebida != null && !contexto.equals(recebida)) throw new AcessoEmpresaNegadoException();
+        return contexto;
+    }
+
+    private UUID empresaAtualOuNull() {
+        if (empresaContext == null) return null;
+        try { return empresaContext.getEmpresaId(); }
+        catch (br.com.invplus.security.exception.ContextoEmpresarialAusenteException
+                | org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) { return null; }
     }
 
     private Specification<Pagamento> and(Specification<Pagamento> base, Specification<Pagamento> filtro) {

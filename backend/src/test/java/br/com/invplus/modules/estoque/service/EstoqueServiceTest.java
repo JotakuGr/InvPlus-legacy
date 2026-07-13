@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +44,8 @@ import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.EstoqueDomainService;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 
 /**
  * Testes unitarios das regras de saldo de Estoque.
@@ -64,16 +67,24 @@ class EstoqueServiceTest {
     private LocalizacaoEstoqueRepository localizacaoRepository;
     @Mock
     private EstoqueDomainService estoqueDomainService;
+    @Mock
+    private EmpresaContext empresaContext;
+    @Mock
+    private UsuarioEmpresaAccessValidator accessValidator;
 
     private EstoqueService service;
+    private UUID empresaId;
 
     @BeforeEach
     @SuppressWarnings("unused")
     void setUp() {
         EstoqueMapper mapper = new EstoqueMapper();
         EstoqueValidator validator = new EstoqueValidator(repository);
+        empresaId = UUID.randomUUID();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         service = new EstoqueService(repository, mapper, validator, produtoRepository, empresaRepository,
-                filialRepository, depositoRepository, localizacaoRepository, estoqueDomainService);
+                filialRepository, depositoRepository, localizacaoRepository, estoqueDomainService,
+                empresaContext, accessValidator);
     }
 
     @Test
@@ -154,7 +165,7 @@ class EstoqueServiceTest {
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
         service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), true, true, false, true, false, PageRequest.of(0, 20));
+                true, true, false, true, false, PageRequest.of(0, 20));
 
         verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
@@ -167,8 +178,8 @@ class EstoqueServiceTest {
                 contexto.produto.getId(), contexto.empresa.getId(), contexto.deposito.getId(), contexto.localizacao.getId()))
                 .thenReturn(Optional.of(estoque));
 
-        EstoqueResponse response = service.buscarSaldo(contexto.produto.getId(), contexto.empresa.getId(),
-                contexto.deposito.getId(), contexto.localizacao.getId());
+        EstoqueResponse response = service.buscarSaldo(
+                contexto.produto.getId(), contexto.deposito.getId(), contexto.localizacao.getId());
 
         assertThat(response.quantidadeDisponivel()).isEqualByComparingTo("8.000");
     }
@@ -176,12 +187,14 @@ class EstoqueServiceTest {
     private void prepararBuscaContexto(Contexto contexto) {
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(contexto.produto.getId())).thenReturn(Optional.of(contexto.produto));
         when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(contexto.empresa.getId())).thenReturn(Optional.of(contexto.empresa));
-        when(depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(contexto.deposito.getId())).thenReturn(Optional.of(contexto.deposito));
-        when(localizacaoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(contexto.localizacao.getId())).thenReturn(Optional.of(contexto.localizacao));
+        when(depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                contexto.deposito.getId(), contexto.empresa.getId())).thenReturn(Optional.of(contexto.deposito));
+        when(localizacaoRepository.findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                contexto.localizacao.getId(), contexto.empresa.getId())).thenReturn(Optional.of(contexto.localizacao));
     }
 
     private EstoqueRequest request(Contexto contexto, BigDecimal quantidade, BigDecimal reservada, BigDecimal minimo, BigDecimal maximo) {
-        return new EstoqueRequest(contexto.produto.getId(), contexto.empresa.getId(), null, contexto.deposito.getId(),
+        return new EstoqueRequest(contexto.produto.getId(), null, contexto.deposito.getId(),
                 contexto.localizacao.getId(), quantidade, reservada, BigDecimal.ZERO, BigDecimal.ZERO, minimo, maximo, null, null);
     }
 
@@ -198,7 +211,7 @@ class EstoqueServiceTest {
 
     private Contexto contexto() {
         Empresa empresa = new Empresa();
-        empresa.setId(UUID.randomUUID());
+        empresa.setId(empresaId);
         empresa.atualizar("Empresa Estoque", "Empresa", "12345678000199", "ISENTO", null, "NORMAL", 3, "71999990000", "empresa@teste.com");
 
         Deposito deposito = deposito(empresa);

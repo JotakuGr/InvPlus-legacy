@@ -22,6 +22,8 @@ import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import br.com.invplus.shared.domain.service.EstoqueDomainService;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -45,6 +47,8 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
     private final DepositoRepository depositoRepository;
     private final LocalizacaoEstoqueRepository localizacaoRepository;
     private final EstoqueDomainService estoqueDomainService;
+    private final EmpresaContext empresaContext;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     public EstoqueService(
             EstoqueRepository repository,
@@ -55,7 +59,9 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
             FilialRepository filialRepository,
             DepositoRepository depositoRepository,
             LocalizacaoEstoqueRepository localizacaoRepository,
-            EstoqueDomainService estoqueDomainService
+            EstoqueDomainService estoqueDomainService,
+            EmpresaContext empresaContext,
+            UsuarioEmpresaAccessValidator accessValidator
     ) {
         super(repository, mapper, "Estoque");
         this.repository = repository;
@@ -67,12 +73,13 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
         this.depositoRepository = depositoRepository;
         this.localizacaoRepository = localizacaoRepository;
         this.estoqueDomainService = estoqueDomainService;
+        this.empresaContext = empresaContext;
+        this.accessValidator = accessValidator;
     }
 
     @Transactional(readOnly = true)
     public Page<EstoqueResponse> listarComFiltros(
             UUID produtoId,
-            UUID empresaId,
             UUID filialId,
             UUID depositoId,
             UUID localizacaoId,
@@ -83,10 +90,12 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
             Boolean semSaldo,
             Pageable pageable
     ) {
-        Specification<Estoque> specification = EstoqueSpecification.naoDeletado()
+        UUID empresaId = empresaContext.getEmpresaId();
+        validarAcessoFilial(filialId, empresaId);
+        Specification<Estoque> specification = EstoqueSpecification.pertenceEmpresa(empresaId)
+                .and(EstoqueSpecification.naoDeletado())
                 .and(EstoqueSpecification.ativo(ativo))
                 .and(EstoqueSpecification.produtoIgual(produtoId))
-                .and(EstoqueSpecification.empresaIgual(empresaId))
                 .and(EstoqueSpecification.filialIgual(filialId))
                 .and(EstoqueSpecification.depositoIgual(depositoId))
                 .and(EstoqueSpecification.localizacaoIgual(localizacaoId))
@@ -98,8 +107,9 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
     }
 
     @Transactional(readOnly = true)
-    public EstoqueResponse buscarSaldo(UUID produtoId, UUID empresaId, UUID depositoId, UUID localizacaoId) {
-        validarParametrosSaldo(produtoId, empresaId, depositoId, localizacaoId);
+    public EstoqueResponse buscarSaldo(UUID produtoId, UUID depositoId, UUID localizacaoId) {
+        UUID empresaId = empresaContext.getEmpresaId();
+        validarParametrosSaldo(produtoId, depositoId, localizacaoId);
         return repository.findByProdutoIdAndEmpresaIdAndDepositoIdAndLocalizacaoIdAndAtivoTrueAndDeletedAtIsNull(
                         produtoId,
                         empresaId,
@@ -111,15 +121,23 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public EstoqueResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
+    }
+
+    @Override
     @Transactional
     public EstoqueResponse criar(EstoqueRequest request) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Produto produto = buscarProdutoAtivo(request.produtoId());
-        Empresa empresa = buscarEmpresaAtiva(request.empresaId());
-        Filial filial = buscarFilialAtiva(request.filialId());
-        Deposito deposito = buscarDepositoAtivo(request.depositoId());
-        LocalizacaoEstoque localizacao = buscarLocalizacaoAtiva(request.localizacaoId());
+        Empresa empresa = buscarEmpresaAtiva(empresaId);
+        Filial filial = buscarFilialAtiva(request.filialId(), empresaId);
+        Deposito deposito = buscarDepositoAtivo(request.depositoId(), empresaId);
+        LocalizacaoEstoque localizacao = buscarLocalizacaoAtiva(request.localizacaoId(), empresaId);
+        validarAcessoFilial(request.filialId(), empresaId);
 
-        validator.validarCriacao(request, filial, deposito, localizacao);
+        validator.validarCriacao(empresaId, request, filial, deposito, localizacao);
 
         Estoque entity = mapper.toEntity(request);
         associar(entity, produto, empresa, filial, deposito, localizacao);
@@ -131,14 +149,16 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
     @Override
     @Transactional
     public EstoqueResponse atualizar(UUID id, EstoqueRequest request) {
-        Estoque entity = buscarEntidade(id);
+        UUID empresaId = empresaContext.getEmpresaId();
+        Estoque entity = buscarNoContexto(id);
         Produto produto = buscarProdutoAtivo(request.produtoId());
-        Empresa empresa = buscarEmpresaAtiva(request.empresaId());
-        Filial filial = buscarFilialAtiva(request.filialId());
-        Deposito deposito = buscarDepositoAtivo(request.depositoId());
-        LocalizacaoEstoque localizacao = buscarLocalizacaoAtiva(request.localizacaoId());
+        Empresa empresa = buscarEmpresaAtiva(empresaId);
+        Filial filial = buscarFilialAtiva(request.filialId(), empresaId);
+        Deposito deposito = buscarDepositoAtivo(request.depositoId(), empresaId);
+        LocalizacaoEstoque localizacao = buscarLocalizacaoAtiva(request.localizacaoId(), empresaId);
+        validarAcessoFilial(request.filialId(), empresaId);
 
-        validator.validarAtualizacao(entity, request, filial, deposito, localizacao);
+        validator.validarAtualizacao(empresaId, entity, request, filial, deposito, localizacao);
 
         BigDecimal saldoAnterior = entity.getQuantidade();
         associar(entity, produto, empresa, filial, deposito, localizacao);
@@ -146,6 +166,12 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
         estoqueDomainService.ajuste(entity, saldoAnterior, MovimentacaoOrigem.API, entity.getId(),
                 null, "Ajuste manual do saldo de estoque");
         return mapper.toResponse(entity);
+    }
+
+    @Override
+    @Transactional
+    public void excluir(UUID id) {
+        buscarNoContexto(id).excluirLogicamente();
     }
 
     private void associar(
@@ -173,27 +199,38 @@ public class EstoqueService extends BaseCrudService<Estoque, EstoqueRequest, Est
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
     }
 
-    private Filial buscarFilialAtiva(UUID id) {
+    private Filial buscarFilialAtiva(UUID id, UUID empresaId) {
         if (id == null) {
             return null;
         }
-        return filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filial nao encontrada"));
     }
 
-    private Deposito buscarDepositoAtivo(UUID id) {
-        return depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+    private Deposito buscarDepositoAtivo(UUID id, UUID empresaId) {
+        return depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Deposito nao encontrado"));
     }
 
-    private LocalizacaoEstoque buscarLocalizacaoAtiva(UUID id) {
-        return localizacaoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+    private LocalizacaoEstoque buscarLocalizacaoAtiva(UUID id, UUID empresaId) {
+        return localizacaoRepository.findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Localizacao nao encontrada"));
     }
 
-    private void validarParametrosSaldo(UUID produtoId, UUID empresaId, UUID depositoId, UUID localizacaoId) {
-        if (produtoId == null || empresaId == null || depositoId == null || localizacaoId == null) {
-            throw new BusinessException("Produto, empresa, deposito e localizacao sao obrigatorios para consultar saldo");
+    private void validarParametrosSaldo(UUID produtoId, UUID depositoId, UUID localizacaoId) {
+        if (produtoId == null || depositoId == null || localizacaoId == null) {
+            throw new BusinessException("Produto, deposito e localizacao sao obrigatorios para consultar saldo");
+        }
+    }
+
+    private Estoque buscarNoContexto(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Estoque nao encontrado"));
+    }
+
+    private void validarAcessoFilial(UUID filialId, UUID empresaId) {
+        if (filialId != null) {
+            accessValidator.validarContexto(empresaContext.getUsuarioId(), empresaId, filialId);
         }
     }
 }

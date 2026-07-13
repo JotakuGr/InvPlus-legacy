@@ -38,7 +38,6 @@ public class ProdutoPrecoController extends BaseCrudController {
     @PreAuthorize("hasAuthority('PRODUTO_PRECO:VISUALIZAR') or hasAuthority('PRODUTO_PRECO:*') or hasAuthority('PRODUTO:*')")
     public ResponseEntity<Page<ProdutoPrecoResponse>> listar(
             @RequestParam(required = false) UUID produtoId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) TipoPrecoProduto tipoPreco,
             @RequestParam(required = false) Boolean principal,
             @RequestParam(required = false) LocalDate vigenciaInicioDe,
@@ -46,7 +45,7 @@ public class ProdutoPrecoController extends BaseCrudController {
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(produtoId, empresaId, tipoPreco, principal,
+        return ResponseEntity.ok(service.listarComFiltros(produtoId, tipoPreco, principal,
                 vigenciaInicioDe, vigenciaFimAte, ativo, pageable));
     }
 

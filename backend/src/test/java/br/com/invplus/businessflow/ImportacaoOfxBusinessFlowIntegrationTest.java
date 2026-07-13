@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,7 +34,7 @@ import org.springframework.test.context.ActiveProfiles;
 /** Valida OFX -> extrato -> lancamento -> movimento -> conciliacao. */
 @SpringBootTest
 @ActiveProfiles("test")
-class ImportacaoOfxBusinessFlowIntegrationTest {
+class ImportacaoOfxBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired private ImportacaoExtratoService importacaoService;
     @Autowired private ConciliacaoBancariaService conciliacaoService;
@@ -48,7 +49,8 @@ class ImportacaoOfxBusinessFlowIntegrationTest {
         String sufixo = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa OFX Flow " + sufixo,
                 "Empresa OFX Flow " + sufixo, documento(sufixo), null, null, null));
-        UUID contaId = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null, "001",
+        ativarEmpresa(empresa.getId());
+        UUID contaId = contaBancariaService.criar(new ContaBancariaRequest(null, "001",
                 "Banco OFX Flow", "1234", null, "99999", "9", TipoContaBancaria.CORRENTE,
                 "Empresa OFX Flow", null, null, BigDecimal.ZERO, LocalDate.of(2026, 7, 1), true)).id();
         FormaPagamento forma = new FormaPagamento();
@@ -58,8 +60,8 @@ class ImportacaoOfxBusinessFlowIntegrationTest {
         var importacao = importacaoService.importarOfx(arquivo(sufixo), contaId, "Fluxo completo");
         var lancamento = lancamentoRepository.findByExtratoBancarioIdAndAtivoTrueAndDeletedAtIsNull(
                 importacao.extratoBancarioId()).getFirst();
-        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(empresa.getId(), null,
-                forma.getId(), null, null, TipoMovimentoFinanceiro.ENTRADA,
+        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(null,
+                forma.getId(), null, null, null, null, null, TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.AJUSTE_MANUAL, null, new BigDecimal("150.00"),
                 LocalDate.of(2026, 7, 10), "Recebimento OFX", null));
         var conciliacao = conciliacaoService.criar(new ConciliacaoBancariaRequest(lancamento.getId(),

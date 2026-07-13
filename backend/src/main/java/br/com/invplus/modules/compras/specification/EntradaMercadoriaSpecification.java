@@ -18,22 +18,26 @@ public final class EntradaMercadoriaSpecification {
     }
 
     public static Specification<EntradaMercadoria> ativo(Boolean ativo) {
-        return ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
+        return ativo == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
     }
 
-    public static Specification<EntradaMercadoria> empresaIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
+    public static Specification<EntradaMercadoria> pertenceEmpresa(UUID id) {
+        return (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
     }
 
     public static Specification<EntradaMercadoria> fornecedorIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("fornecedor").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("fornecedor").get("id"), id);
     }
 
     public static Specification<EntradaMercadoria> pedidoIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("pedidoCompra").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("pedidoCompra").get("id"), id);
     }
 
     public static Specification<EntradaMercadoria> statusIgual(StatusEntradaMercadoria status) {
-        return status == null ? null : (root, query, cb) -> cb.equal(root.get("status"), status);
+        return status == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("status"), status);
+    }
+
+    private static Specification<EntradaMercadoria> sempreVerdadeiro() {
+        return (root, query, cb) -> cb.conjunction();
     }
 }

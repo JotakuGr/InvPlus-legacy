@@ -48,7 +48,6 @@ public class ContaReceberController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('CONTA_RECEBER:VISUALIZAR') or hasAuthority('CONTA_RECEBER:*')")
     public ResponseEntity<Page<ContaReceberResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID clienteId,
             @RequestParam(required = false) UUID vendaFaturamentoId,
@@ -61,7 +60,7 @@ public class ContaReceberController extends BaseCrudController {
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(empresaId, filialId, clienteId, vendaFaturamentoId,
+        return ResponseEntity.ok(service.listarComFiltros(filialId, clienteId, vendaFaturamentoId,
                 centroCustoId, planoContaId, numero, status, dataEmissaoDe, dataEmissaoAte, ativo, pageable));
     }
 

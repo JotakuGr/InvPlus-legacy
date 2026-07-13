@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import br.com.invplus.modules.financeiro.conciliacao.projection.*;
 import br.com.invplus.modules.financeiro.conciliacao.service.*;
 import br.com.invplus.modules.financeiro.repository.*;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,17 +24,19 @@ class ConciliacaoBancariaPainelServiceTest {
     @Mock MovimentoFinanceiroRepository movimentoRepository;
     @Mock ContaBancariaRepository contaRepository;
     @Mock PontuacaoConciliacaoService pontuacaoService;
+    @Mock EmpresaContext empresaContext;
     @Mock IndicadoresExtratoProjection extratos;
     @Mock IndicadoresLancamentoProjection lancamentos;
     ConciliacaoBancariaPainelService service;
 
     @BeforeEach void setup() {
         service = new ConciliacaoBancariaPainelService(extratoRepository, lancamentoRepository,
-                movimentoRepository, contaRepository, pontuacaoService, null);
+                movimentoRepository, contaRepository, pontuacaoService, empresaContext);
     }
 
     @Test void deveCalcularIndicadoresEPercentual() {
         UUID empresaId = UUID.randomUUID();
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         when(extratoRepository.indicadoresPainel(eq(empresaId), isNull(), isNull(), isNull()))
                 .thenReturn(extratos);
         when(lancamentoRepository.indicadoresPainel(eq(empresaId), isNull(), isNull(), isNull()))
@@ -45,18 +48,19 @@ class ConciliacaoBancariaPainelServiceTest {
         when(lancamentos.getValorTotalDebitosPendentes()).thenReturn(new BigDecimal("200.00"));
         when(extratoRepository.buscarResumoExtratos(eq(empresaId), isNull(), isNull(), isNull(),
                 isNull(), eq(false), any())).thenReturn(new PageImpl<>(java.util.List.of()));
-        var resposta = service.buscarPainel(empresaId, null, null, null);
+        var resposta = service.buscarPainel(null, null, null);
         assertThat(resposta.indicadores().percentualConciliado()).isEqualByComparingTo("75.00");
         assertThat(resposta.indicadores().valorTotalCreditosPendentes()).isEqualByComparingTo("500.00");
     }
 
     @Test void deveRetornarPercentualZeroSemLancamentos() {
         UUID empresaId = UUID.randomUUID();
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         when(extratoRepository.indicadoresPainel(any(), any(), any(), any())).thenReturn(extratos);
         when(lancamentoRepository.indicadoresPainel(any(), any(), any(), any())).thenReturn(lancamentos);
         when(extratoRepository.buscarResumoExtratos(any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new PageImpl<>(java.util.List.of()));
-        assertThat(service.buscarPainel(empresaId, null, null, null).indicadores().percentualConciliado())
+        assertThat(service.buscarPainel(null, null, null).indicadores().percentualConciliado())
                 .isEqualByComparingTo("0.00");
     }
 }

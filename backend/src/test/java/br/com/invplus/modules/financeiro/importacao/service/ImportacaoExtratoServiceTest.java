@@ -21,15 +21,25 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import br.com.invplus.security.service.AuthenticatedUserDetails;
+import java.util.List;
 
 /** Testes integrados do service de importacao e sua atomicidade. */
 @SpringBootTest
 @ActiveProfiles("test")
 class ImportacaoExtratoServiceTest {
+
+    @AfterEach
+    void limparContexto() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Autowired private ImportacaoExtratoService service;
     @Autowired private ContaBancariaService contaBancariaService;
@@ -113,7 +123,11 @@ class ImportacaoExtratoServiceTest {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa OFX " + sufixo,
                 "Empresa OFX " + sufixo, documento(sufixo), null, null, null));
-        var response = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null,
+        var principal = new AuthenticatedUserDetails(UUID.randomUUID(), "ofx@teste.local", "",
+                List.of(), true, empresa.getId(), null);
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(principal, null, List.of()));
+        var response = contaBancariaService.criar(new ContaBancariaRequest(null,
                 banco, "Banco OFX", agencia, null, numero, digito, TipoContaBancaria.CORRENTE,
                 "Empresa OFX", null, null, new BigDecimal("500.00"), LocalDate.of(2026, 7, 1), true));
         return contaBancariaRepository.findById(response.id()).orElseThrow();

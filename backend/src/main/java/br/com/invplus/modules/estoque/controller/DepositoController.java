@@ -36,7 +36,6 @@ public class DepositoController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('DEPOSITO:VISUALIZAR') or hasAuthority('DEPOSITO:*') or hasAuthority('ESTOQUE:*')")
     public ResponseEntity<Page<DepositoResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) String codigo,
             @RequestParam(required = false) String nome,
@@ -47,7 +46,7 @@ public class DepositoController extends BaseCrudController {
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(empresaId, filialId, codigo, nome, tipoDeposito,
+        return ResponseEntity.ok(service.listarComFiltros(filialId, codigo, nome, tipoDeposito,
                 principal, controlaEstoque, bloqueado, ativo, pageable));
     }
 

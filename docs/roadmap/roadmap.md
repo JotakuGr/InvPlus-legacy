@@ -77,3 +77,12 @@ Sugestões:
 - Contexto empresarial no JWT iniciado com migrations V124/V125/V126 e migracao bancaria compativel.
 
 - ImportacaoExtratoBancario concluida com upload em `/api/v1/extratos-bancarios/importar/ofx`, consultas em `/api/v1/importacoes-extratos`, permissões `IMPORTACAO_EXTRATO:*`, migrations V118/V119, parser OFX extensível, hash idempotente e integração com conciliação.
+- [x] Contexto empresarial no JWT e isolamento do modulo bancario
+- [x] Integrar login e selecao de contexto no frontend
+- [x] Remover parametros `empresaId` legados dos contratos operacionais
+- [x] Remover `empresaId` dos contratos operacionais de Estoque
+- [x] Isolar Deposito, LocalizacaoEstoque, Estoque, MovimentacaoEstoque e ReservaEstoque
+- [x] Migrar Compras para `EmpresaContext`
+- [x] Isolar PedidoCompra, EntradaMercadoria e respectivos itens
+- [x] Migrar Vendas para `EmpresaContext`
+- [x] Isolar PedidoVenda, itens, faturamento, estoque e ContaReceber por empresa

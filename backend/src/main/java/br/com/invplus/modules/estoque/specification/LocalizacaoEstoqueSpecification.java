@@ -16,6 +16,11 @@ public final class LocalizacaoEstoqueSpecification {
         return (root, query, builder) -> builder.isNull(root.get("deletedAt"));
     }
 
+    public static Specification<LocalizacaoEstoque> pertenceEmpresa(UUID empresaId) {
+        return (root, query, builder) -> builder.equal(
+                root.get("deposito").get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<LocalizacaoEstoque> ativo(Boolean ativo) {
         return (root, query, builder) -> builder.equal(root.get("ativo"), ativo == null ? Boolean.TRUE : ativo);
     }

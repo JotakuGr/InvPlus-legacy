@@ -29,6 +29,7 @@ import br.com.invplus.modules.produtos.repository.ProdutoImagemRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoPrecoRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoUnidadeRepository;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 
 /**
@@ -51,6 +52,7 @@ public class ProdutoAggregateService {
     private final ProdutoCodigoBarrasMapper codigoBarrasMapper;
     private final ProdutoFiscalMapper fiscalMapper;
     private final ProdutoUnidadeMapper unidadeMapper;
+    private final EmpresaContext empresaContext;
 
     public ProdutoAggregateService(
             ProdutoRepository produtoRepository,
@@ -66,7 +68,8 @@ public class ProdutoAggregateService {
             ProdutoImagemMapper imagemMapper,
             ProdutoCodigoBarrasMapper codigoBarrasMapper,
             ProdutoFiscalMapper fiscalMapper,
-            ProdutoUnidadeMapper unidadeMapper
+            ProdutoUnidadeMapper unidadeMapper,
+            EmpresaContext empresaContext
     ) {
         this.produtoRepository = produtoRepository;
         this.fornecedorRepository = fornecedorRepository;
@@ -82,6 +85,7 @@ public class ProdutoAggregateService {
         this.codigoBarrasMapper = codigoBarrasMapper;
         this.fiscalMapper = fiscalMapper;
         this.unidadeMapper = unidadeMapper;
+        this.empresaContext = empresaContext;
     }
 
     /**
@@ -105,7 +109,8 @@ public class ProdutoAggregateService {
                 .stream()
                 .map(codigoBarrasMapper::toResponse)
                 .toList();
-        List<ProdutoPrecoResponse> precos = precoRepository.findByProdutoIdAndAtivoTrueAndDeletedAtIsNull(id)
+        List<ProdutoPrecoResponse> precos = precoRepository
+                .findByProdutoIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
                 .stream()
                 .map(precoMapper::toResponse)
                 .toList();

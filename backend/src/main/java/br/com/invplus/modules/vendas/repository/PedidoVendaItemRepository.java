@@ -4,6 +4,7 @@ import br.com.invplus.modules.vendas.entity.PedidoVendaItem;
 import br.com.invplus.shared.domain.repository.BaseRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,11 @@ import org.springframework.data.repository.query.Param;
  * Persistencia dos itens de pedido de venda.
  */
 public interface PedidoVendaItemRepository extends BaseRepository<PedidoVendaItem> {
+
+    Optional<PedidoVendaItem> findByIdAndPedidoVendaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+            UUID id,
+            UUID empresaId
+    );
 
     List<PedidoVendaItem> findByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(UUID pedidoVendaId);
 

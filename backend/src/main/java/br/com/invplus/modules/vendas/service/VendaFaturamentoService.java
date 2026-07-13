@@ -22,6 +22,7 @@ import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
 import br.com.invplus.modules.vendas.repository.VendaFaturamentoRepository;
 import br.com.invplus.modules.vendas.specification.VendaFaturamentoSpecification;
 import br.com.invplus.modules.vendas.validator.VendaFaturamentoValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
@@ -49,6 +50,7 @@ public class VendaFaturamentoService extends BaseCrudService<VendaFaturamento, V
     private final VendaFaturamentoValidator validator;
     private final VendaHistoricoService historicoService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmpresaContext empresaContext;
 
     public VendaFaturamentoService(
             VendaFaturamentoRepository repository,
@@ -59,7 +61,8 @@ public class VendaFaturamentoService extends BaseCrudService<VendaFaturamento, V
             VendaFaturamentoMapper mapper,
             VendaFaturamentoValidator validator,
             VendaHistoricoService historicoService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Faturamento de venda");
         this.repository = repository;
@@ -71,12 +74,12 @@ public class VendaFaturamentoService extends BaseCrudService<VendaFaturamento, V
         this.validator = validator;
         this.historicoService = historicoService;
         this.eventPublisher = eventPublisher;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public Page<VendaFaturamentoResponse> listarComFiltros(
             UUID pedidoVendaId,
-            UUID empresaId,
             UUID filialId,
             UUID clienteId,
             String numero,
@@ -84,25 +87,29 @@ public class VendaFaturamentoService extends BaseCrudService<VendaFaturamento, V
             Boolean ativo,
             Pageable pageable
     ) {
-        Specification<VendaFaturamento> specification = VendaFaturamentoSpecification.naoDeletado();
-        specification = and(specification, VendaFaturamentoSpecification.ativo(ativo));
-        specification = and(specification, VendaFaturamentoSpecification.pedidoIgual(pedidoVendaId));
-        specification = and(specification, VendaFaturamentoSpecification.empresaIgual(empresaId));
-        specification = and(specification, VendaFaturamentoSpecification.filialIgual(filialId));
-        specification = and(specification, VendaFaturamentoSpecification.clienteIgual(clienteId));
-        specification = and(specification, VendaFaturamentoSpecification.numeroContem(numero));
-        specification = and(specification, VendaFaturamentoSpecification.statusIgual(status));
+        Specification<VendaFaturamento> specification = VendaFaturamentoSpecification
+                .pertenceEmpresa(empresaContext.getEmpresaId())
+                .and(VendaFaturamentoSpecification.naoDeletado())
+                .and(VendaFaturamentoSpecification.ativo(ativo))
+                .and(VendaFaturamentoSpecification.pedidoIgual(pedidoVendaId))
+                .and(VendaFaturamentoSpecification.filialIgual(filialId))
+                .and(VendaFaturamentoSpecification.clienteIgual(clienteId))
+                .and(VendaFaturamentoSpecification.numeroContem(numero))
+                .and(VendaFaturamentoSpecification.statusIgual(status));
         return repository.findAll(specification, pageable).map(mapper::toResponse);
     }
 
     @Transactional
     public VendaFaturamentoResponse faturar(VendaFaturamentoRequest request) {
         PedidoVenda pedido = buscarPedido(request.pedidoVendaId());
-        validator.validarFaturamento(request, pedido);
-        List<ReservaEstoque> reservas = reservaRepository.findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarFaturamento(request, pedido, empresaId);
+        List<ReservaEstoque> reservas = reservaRepository
+                .findByOrigemAndOrigemIdAndStatusAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
                 MovimentacaoOrigem.VENDA,
                 pedido.getId(),
-                StatusReservaEstoque.ATIVA
+                StatusReservaEstoque.ATIVA,
+                empresaId
         );
 
         VendaFaturamento faturamento = new VendaFaturamento();
@@ -173,11 +180,20 @@ public class VendaFaturamentoService extends BaseCrudService<VendaFaturamento, V
     }
 
     private PedidoVenda buscarPedido(UUID id) {
-        return pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido de venda nao encontrado"));
     }
 
-    private Specification<VendaFaturamento> and(Specification<VendaFaturamento> base, Specification<VendaFaturamento> filtro) {
-        return filtro == null ? base : base.and(filtro);
+    @Override
+    @Transactional(readOnly = true)
+    public VendaFaturamentoResponse buscar(UUID id) {
+        return mapper.toResponse(buscarEntidade(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VendaFaturamento buscarEntidade(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Faturamento de venda nao encontrado"));
     }
 }

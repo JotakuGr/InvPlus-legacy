@@ -49,12 +49,15 @@ import br.com.invplus.modules.vendas.validator.VendaFaturamentoValidator;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Testes unitarios do fluxo de faturamento da venda.
  */
 @ExtendWith(MockitoExtension.class)
 class VendaFaturamentoServiceTest {
+
+    private final UUID empresaId = UUID.randomUUID();
 
     @Mock
     private VendaFaturamentoRepository repository;
@@ -70,12 +73,15 @@ class VendaFaturamentoServiceTest {
     private VendaHistoricoService historicoService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private VendaFaturamentoService service;
 
     @BeforeEach
     @SuppressWarnings("unused")
     void setUp() {
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         VendaFaturamentoMapper mapper = new VendaFaturamentoMapper();
         VendaFaturamentoValidator validator = new VendaFaturamentoValidator(repository, reservaRepository);
         service = new VendaFaturamentoService(
@@ -87,7 +93,8 @@ class VendaFaturamentoServiceTest {
                 mapper,
                 validator,
                 historicoService,
-                eventPublisher
+                eventPublisher,
+                empresaContext
         );
     }
 
@@ -95,14 +102,15 @@ class VendaFaturamentoServiceTest {
     void deveFaturarPedidoAprovadoComReservasAtivas() {
         PedidoVenda pedido = pedido(StatusPedidoVenda.APROVADO);
         ReservaEstoque reserva = reserva(pedido);
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
         when(repository.existsByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(false);
         when(repository.existsByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(pedido.getEmpresa().getId(), "VF-001"))
                 .thenReturn(false);
-        when(reservaRepository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
-                MovimentacaoOrigem.VENDA, pedido.getId(), StatusReservaEstoque.ATIVA)).thenReturn(true);
-        when(reservaRepository.findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
-                MovimentacaoOrigem.VENDA, pedido.getId(), StatusReservaEstoque.ATIVA)).thenReturn(List.of(reserva));
+        when(reservaRepository.existsByOrigemAndOrigemIdAndStatusAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                MovimentacaoOrigem.VENDA, pedido.getId(), StatusReservaEstoque.ATIVA, empresaId)).thenReturn(true);
+        when(reservaRepository.findByOrigemAndOrigemIdAndStatusAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                MovimentacaoOrigem.VENDA, pedido.getId(), StatusReservaEstoque.ATIVA, empresaId)).thenReturn(List.of(reserva));
         when(repository.save(any(VendaFaturamento.class))).thenAnswer(invocation -> {
             VendaFaturamento faturamento = invocation.getArgument(0);
             faturamento.setId(UUID.randomUUID());
@@ -129,7 +137,8 @@ class VendaFaturamentoServiceTest {
     @Test
     void deveBloquearPedidoInexistente() {
         UUID pedidoId = UUID.randomUUID();
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedidoId)).thenReturn(Optional.empty());
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedidoId, empresaId))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.faturar(request(pedidoId, "VF-404")))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -139,7 +148,8 @@ class VendaFaturamentoServiceTest {
     @Test
     void deveBloquearPedidoNaoAprovado() {
         PedidoVenda pedido = pedido(StatusPedidoVenda.ABERTO);
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
 
         assertThatThrownBy(() -> service.faturar(request(pedido.getId(), "VF-ABERTO")))
                 .isInstanceOf(InvalidOperationException.class)
@@ -149,12 +159,13 @@ class VendaFaturamentoServiceTest {
     @Test
     void deveBloquearPedidoSemReservaAtiva() {
         PedidoVenda pedido = pedido(StatusPedidoVenda.APROVADO);
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
         when(repository.existsByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(false);
         when(repository.existsByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(pedido.getEmpresa().getId(), "VF-SEM-RES"))
                 .thenReturn(false);
-        when(reservaRepository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
-                MovimentacaoOrigem.VENDA, pedido.getId(), StatusReservaEstoque.ATIVA)).thenReturn(false);
+        when(reservaRepository.existsByOrigemAndOrigemIdAndStatusAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                MovimentacaoOrigem.VENDA, pedido.getId(), StatusReservaEstoque.ATIVA, empresaId)).thenReturn(false);
 
         assertThatThrownBy(() -> service.faturar(request(pedido.getId(), "VF-SEM-RES")))
                 .isInstanceOf(InvalidOperationException.class)
@@ -164,7 +175,8 @@ class VendaFaturamentoServiceTest {
     @Test
     void deveBloquearPedidoJaFaturado() {
         PedidoVenda pedido = pedido(StatusPedidoVenda.APROVADO);
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
         when(repository.existsByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> service.faturar(request(pedido.getId(), "VF-DUP")))
@@ -210,7 +222,7 @@ class VendaFaturamentoServiceTest {
 
     private PedidoVenda pedido(StatusPedidoVenda status) {
         Empresa empresa = new Empresa();
-        empresa.setId(UUID.randomUUID());
+        empresa.setId(empresaId);
         empresa.atualizar("Empresa Venda", "Empresa Venda", cnpjUnico(), "ISENTO", null,
                 "NORMAL", 3, "71999990000", "empresa-venda@teste.com");
 
