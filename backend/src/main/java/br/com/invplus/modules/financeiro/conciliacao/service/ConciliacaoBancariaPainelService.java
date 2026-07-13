@@ -21,6 +21,8 @@ import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 @Service
 public class ConciliacaoBancariaPainelService {
 
+    private static final String CAMPO_IMPORTADO_EM = "importadoEm";
+
     private final ExtratoBancarioRepository extratoRepository;
     private final ExtratoBancarioLancamentoRepository lancamentoRepository;
     private final MovimentoFinanceiroRepository movimentoRepository;
@@ -58,7 +60,7 @@ public class ConciliacaoBancariaPainelService {
                 valor(lancamentos == null ? null : lancamentos.getValorTotalCreditosPendentes()),
                 valor(lancamentos == null ? null : lancamentos.getValorTotalDebitosPendentes()),
                 calcularPercentual(conciliados, total));
-        Pageable recentes = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "importadoEm"));
+        Pageable recentes = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, CAMPO_IMPORTADO_EM));
         List<ExtratoPendenteResponse> resumos = extratoRepository
                 .buscarResumoExtratos(empresaId, contaId, null, inicio, fim, false, recentes)
                 .stream().map(this::mapearExtrato).toList();

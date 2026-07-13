@@ -2,6 +2,7 @@ package br.com.invplus.modules.financeiro.importacao.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -13,6 +14,7 @@ import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.io.IOException;
@@ -25,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** Testes integrados do service de importacao e sua atomicidade. */
 @SpringBootTest
@@ -37,6 +40,7 @@ class ImportacaoExtratoServiceTest {
     @Autowired private ContaBancariaRepository contaBancariaRepository;
     @Autowired private ExtratoBancarioRepository extratoRepository;
     @Autowired private ExtratoBancarioLancamentoRepository lancamentoRepository;
+    @MockitoBean private EmpresaContext empresaContext;
 
     @Test
     void deveImportarOfxCriarExtratoELancamentosSemAlterarSaldoOuConciliar() throws IOException {
@@ -113,6 +117,7 @@ class ImportacaoExtratoServiceTest {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa OFX " + sufixo,
                 "Empresa OFX " + sufixo, documento(sufixo), null, null, null));
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
         var response = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null,
                 banco, "Banco OFX", agencia, null, numero, digito, TipoContaBancaria.CORRENTE,
                 "Empresa OFX", null, null, new BigDecimal("500.00"), LocalDate.of(2026, 7, 1), true));
