@@ -1,9 +1,20 @@
 package br.com.invplus.businessflow;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
+import br.com.invplus.modules.financeiro.conciliacao.service.ConciliacaoBancariaSugestaoService;
 import br.com.invplus.modules.financeiro.dto.request.ConciliacaoBancariaCancelamentoRequest;
 import br.com.invplus.modules.financeiro.dto.request.ConciliacaoBancariaRequest;
 import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
@@ -26,20 +37,10 @@ import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioLancamentoService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioService;
 import br.com.invplus.modules.financeiro.service.MovimentoFinanceiroService;
-import br.com.invplus.modules.financeiro.conciliacao.service.ConciliacaoBancariaSugestaoService;
-import br.com.invplus.shared.domain.exception.ConflictException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.support.context.TestEmpresaContext;
 
 /** Valida o ciclo MovimentoFinanceiro <-> Conciliacao <-> Lancamento bancario. */
@@ -110,6 +111,7 @@ class SugestaoConciliacaoBusinessFlowIntegrationTest {
     }
 
     @AfterEach
+    @SuppressWarnings("unused")
     void limparContexto() {
         testEmpresaContext.limpar();
     }

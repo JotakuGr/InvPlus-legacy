@@ -1,7 +1,22 @@
 package br.com.invplus.modules.financeiro.importacao.service;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -13,23 +28,9 @@ import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
+import br.com.invplus.security.service.AuthenticatedUserDetails;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import br.com.invplus.security.service.AuthenticatedUserDetails;
-import java.util.List;
 
 /** Testes integrados do service de importacao e sua atomicidade. */
 @SpringBootTest
@@ -37,6 +38,7 @@ import java.util.List;
 class ImportacaoExtratoServiceTest {
 
     @AfterEach
+    @SuppressWarnings("unused")
     void limparContexto() {
         SecurityContextHolder.clearContext();
     }

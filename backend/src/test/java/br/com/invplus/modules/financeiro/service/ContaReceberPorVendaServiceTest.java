@@ -1,10 +1,20 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -14,8 +24,8 @@ import br.com.invplus.modules.financeiro.dto.response.ContaReceberResponse;
 import br.com.invplus.modules.financeiro.entity.ContaReceber;
 import br.com.invplus.modules.financeiro.enums.StatusContaReceber;
 import br.com.invplus.modules.financeiro.mapper.ContaReceberMapper;
-import br.com.invplus.modules.financeiro.repository.ContaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
+import br.com.invplus.modules.financeiro.repository.ContaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.validator.ContaReceberValidator;
 import br.com.invplus.modules.pessoas.entity.Cliente;
@@ -24,17 +34,8 @@ import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.vendas.entity.PedidoVenda;
 import br.com.invplus.modules.vendas.entity.VendaFaturamento;
 import br.com.invplus.modules.vendas.repository.VendaFaturamentoRepository;
-import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.security.context.EmpresaContext;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import br.com.invplus.shared.domain.exception.ConflictException;
 
 /**
  * Testa a geracao automatica do financeiro a partir de uma venda faturada.
@@ -64,6 +65,7 @@ class ContaReceberPorVendaServiceTest {
     private ContaReceberService service;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ContaReceberService(
                 repository,

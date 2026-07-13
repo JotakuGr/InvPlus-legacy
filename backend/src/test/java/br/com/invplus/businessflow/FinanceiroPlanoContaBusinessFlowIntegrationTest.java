@@ -103,9 +103,9 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest extends AbstractContextoEm
                 "Outra empresa", TipoPlanoConta.ANALITICA, NaturezaPlanoConta.RECEITA));
 
         var receberResponse = contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, receita, "CR-PC-" + sufixo));
+                cliente, receita, "CR-PC-" + sufixo));
         var pagarResponse = contaPagarService.criar(contaPagarRequest(
-                empresa, fornecedor, despesa, "CP-PC-" + sufixo));
+                fornecedor, despesa, "CP-PC-" + sufixo));
 
         assertThat(receberResponse.planoContaId()).isEqualTo(receita.getId());
         assertThat(receberResponse.planoContaNatureza()).isEqualTo(NaturezaPlanoConta.RECEITA);
@@ -117,19 +117,19 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest extends AbstractContextoEm
                 null, null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
 
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, despesa, "CR-PC-INV-" + sufixo)))
+                cliente, despesa, "CR-PC-INV-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("RECEITA");
         assertThatThrownBy(() -> contaPagarService.criar(contaPagarRequest(
-                empresa, fornecedor, receita, "CP-PC-INV-" + sufixo)))
+                fornecedor, receita, "CP-PC-INV-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("DESPESA");
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, sintetica, "CR-PC-SIN-" + sufixo)))
+                cliente, sintetica, "CR-PC-SIN-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("ANALITICA");
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, outraEmpresaPlano, "CR-PC-OUT-" + sufixo)))
+                cliente, outraEmpresaPlano, "CR-PC-OUT-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("mesma empresa");
 
@@ -158,13 +158,13 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest extends AbstractContextoEm
     }
 
     private ContaReceberRequest contaReceberRequest(
-            Empresa empresa, Cliente cliente, PlanoConta plano, String numero) {
+            Cliente cliente, PlanoConta plano, String numero) {
         return new ContaReceberRequest(null, cliente.getId(), null, null, plano.getId(),
                 numero, "Conta classificada", DATA, new BigDecimal("500.00"), null);
     }
 
     private ContaPagarRequest contaPagarRequest(
-            Empresa empresa, Fornecedor fornecedor, PlanoConta plano, String numero) {
+            Fornecedor fornecedor, PlanoConta plano, String numero) {
         return new ContaPagarRequest(null, fornecedor.getId(), null, null, plano.getId(),
                 numero, "Conta classificada", DATA, new BigDecimal("200.00"), null);
     }

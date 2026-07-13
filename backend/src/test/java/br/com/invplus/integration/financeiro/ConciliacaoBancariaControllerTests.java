@@ -1,5 +1,17 @@
 package br.com.invplus.integration.financeiro;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,17 +41,6 @@ import br.com.invplus.support.security.EmpresaTestFactory;
 import br.com.invplus.support.security.JwtTestFactory;
 import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
 import br.com.invplus.support.security.UsuarioTestFactory;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 /** Testes REST e de seguranca da conciliacao bancaria. */
@@ -65,7 +66,7 @@ class ConciliacaoBancariaControllerTests {
     void deveCriarBuscarListarFiltrarECancelar() throws Exception {
         ContextoTeste contexto = criarContexto(true);
         String token = contexto.token();
-        Cenario cenario = prepararCenario(contexto.empresa());
+        Cenario cenario = prepararCenario();
         String response = mockMvc.perform(post("/api/v1/conciliacoes-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -113,7 +114,7 @@ class ConciliacaoBancariaControllerTests {
                 .andExpect(status().isForbidden());
     }
 
-    private Cenario prepararCenario(Empresa empresa) {
+    private Cenario prepararCenario() {
         String sufixo = sufixo();
         FormaPagamento forma = new FormaPagamento();
         forma.atualizar("FC" + sufixo, "Pix Conc " + sufixo, TipoFormaPagamento.PIX, false, false);
@@ -163,6 +164,7 @@ class ConciliacaoBancariaControllerTests {
     }
 
     @AfterEach
+    @SuppressWarnings("unused")
     void limparContexto() {
         testEmpresaContext.limpar();
     }

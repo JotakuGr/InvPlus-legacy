@@ -81,17 +81,17 @@ class FinanceiroDreBusinessFlowIntegrationTest extends AbstractContextoEmpresari
         PlanoConta despesa = planoContaRepository.save(plano(empresa, "4.1." + sufixo,
                 "Despesa DRE", NaturezaPlanoConta.DESPESA));
 
-        movimentoService.criarManual(movimento(empresa, forma, cliente, null, centro, receita,
+        movimentoService.criarManual(movimento(forma, cliente, null, centro, receita,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("1000.00"), "Receita principal"));
-        movimentoService.criarManual(movimento(empresa, forma, null, fornecedor, centro, despesa,
+        movimentoService.criarManual(movimento(forma, null, fornecedor, centro, despesa,
                 TipoMovimentoFinanceiro.SAIDA, new BigDecimal("300.00"), "Despesa principal"));
-        movimentoService.criarManual(movimento(empresa, forma, cliente, null, outroCentro, receita,
+        movimentoService.criarManual(movimento(forma, cliente, null, outroCentro, receita,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("200.00"), "Receita outro centro"));
         ativarEmpresa(outraEmpresa.getId());
-        movimentoService.criarManual(movimento(outraEmpresa, forma, cliente, null, null, null,
+        movimentoService.criarManual(movimento(forma, cliente, null, null, null,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("900.00"), "Sem plano ignorado"));
         ativarEmpresa(empresa.getId());
-        var cancelado = movimentoService.criarManual(movimento(empresa, forma, cliente, null, centro, receita,
+        var cancelado = movimentoService.criarManual(movimento(forma, cliente, null, centro, receita,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("500.00"), "Receita cancelada"));
         movimentoService.cancelar(cancelado.id());
 
@@ -111,7 +111,7 @@ class FinanceiroDreBusinessFlowIntegrationTest extends AbstractContextoEmpresari
         assertThat(drePlanoReceita.despesasOperacionais()).isZero();
     }
 
-    private MovimentoFinanceiroRequest movimento(Empresa empresa, FormaPagamento forma, Cliente cliente,
+    private MovimentoFinanceiroRequest movimento(FormaPagamento forma, Cliente cliente,
             Fornecedor fornecedor, CentroCusto centro, PlanoConta plano, TipoMovimentoFinanceiro tipo,
             BigDecimal valor, String descricao) {
         return new MovimentoFinanceiroRequest(null, forma.getId(),

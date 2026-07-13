@@ -63,7 +63,7 @@ class MovimentoFinanceiroControllerTests {
         String response = mockMvc.perform(post("/api/v1/movimentos-financeiros")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), forma.getId(), "ENTRADA", "250.00")))
+                        .content(payload(forma.getId(), "ENTRADA", "250.00")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tipoMovimento").value("ENTRADA"))
                 .andExpect(jsonPath("$.origem").value("AJUSTE_MANUAL"))
@@ -96,10 +96,10 @@ class MovimentoFinanceiroControllerTests {
         mockMvc.perform(post("/api/v1/movimentos-financeiros")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), forma.getId(), "ENTRADA", "0.00")))
+                        .content(payload(forma.getId(), "ENTRADA", "0.00")))
                 .andExpect(status().isBadRequest());
 
-        String automatico = payload(empresa.getId(), forma.getId(), "ENTRADA", "10.00")
+        String automatico = payload(forma.getId(), "ENTRADA", "10.00")
                 .replace("AJUSTE_MANUAL", "RECEBIMENTO");
         mockMvc.perform(post("/api/v1/movimentos-financeiros")
                         .header("Authorization", "Bearer " + token)
@@ -141,7 +141,7 @@ class MovimentoFinanceiroControllerTests {
         return formaPagamentoRepository.saveAndFlush(forma);
     }
 
-    private String payload(UUID empresaId, UUID formaId, String tipo, String valor) {
+    private String payload(UUID formaId, String tipo, String valor) {
         return """
                 {
                   "formaPagamentoId": "%s",

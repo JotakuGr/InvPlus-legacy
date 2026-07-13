@@ -31,6 +31,9 @@ import br.com.invplus.shared.domain.exception.InvalidOperationException;
 @ExtendWith(MockitoExtension.class)
 class CategoriaServiceTest {
 
+    private static final String CAMPO_ORDEM = "ordem";
+    private static final String CAMPO_NOME = "nome";
+
     @Mock
     private CategoriaRepository categoriaRepository;
 
@@ -155,7 +158,8 @@ class CategoriaServiceTest {
      */
     @Test
     void deveListarComPaginacao() {
-        PageRequest pageRequest = PageRequest.of(0, 20, Sort.by("ordem").ascending().and(Sort.by("nome").ascending()));
+        PageRequest pageRequest = PageRequest.of(0, 20,
+                Sort.by(CAMPO_ORDEM).ascending().and(Sort.by(CAMPO_NOME).ascending()));
         when(categoriaRepository.findByAtivoTrueAndDeletedAtIsNull(pageRequest))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 

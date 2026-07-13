@@ -86,7 +86,7 @@ public class ContaPagarValidator {
     }
 
     private void validarValores(ContaPagarRequest request) {
-        if (request.valorTotal() == null || request.valorTotal().compareTo(BigDecimal.ZERO) <= 0) {
+        if (request.valorTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Valor total deve ser maior que zero");
         }
     }

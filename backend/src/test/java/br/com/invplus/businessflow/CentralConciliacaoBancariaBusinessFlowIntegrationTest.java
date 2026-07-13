@@ -53,9 +53,9 @@ class CentralConciliacaoBancariaBusinessFlowIntegrationTest
                 OrigemExtratoBancario.OFX, "central-" + sufixo + ".ofx", hash(sufixo), null));
         var l1 = lancamentoService.criar(lancamento(extrato.id(), "500.00", "Mercado Central", "A" + sufixo));
         var l2 = lancamentoService.criar(lancamento(extrato.id(), "300.00", "Loja Norte", "B" + sufixo));
-        var m1 = movimentoService.criarManual(movimento(empresa.getId(), forma.getId(), conta.id(),
+        var m1 = movimentoService.criarManual(movimento(forma.getId(), conta.id(),
                 "500.00", "Mercado Central"));
-        var m2 = movimentoService.criarManual(movimento(empresa.getId(), forma.getId(), conta.id(),
+        var m2 = movimentoService.criarManual(movimento(forma.getId(), conta.id(),
                 "300.00", "Loja Norte"));
 
         var antes = painelService.buscarPainel(conta.id(), null, null);
@@ -81,7 +81,7 @@ class CentralConciliacaoBancariaBusinessFlowIntegrationTest
                 CategoriaLancamentoBancario.PIX, null);
     }
 
-    private MovimentoFinanceiroRequest movimento(UUID empresaId, UUID formaId, UUID contaId,
+    private MovimentoFinanceiroRequest movimento(UUID formaId, UUID contaId,
             String valor, String descricao) {
         return new MovimentoFinanceiroRequest(null, formaId, null, null, null, null, contaId,
                 TipoMovimentoFinanceiro.ENTRADA, OrigemMovimentoFinanceiro.AJUSTE_MANUAL, null,

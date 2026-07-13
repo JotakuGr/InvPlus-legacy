@@ -2,6 +2,7 @@ package br.com.invplus.modules.produtos.service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -102,7 +103,7 @@ public class ProdutoAggregateService {
                 .toList();
         List<ProdutoImagemResponse> imagens = imagemRepository.findByProdutoIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .stream()
-                .sorted(Comparator.comparing(entity -> entity.getOrdem() == null ? 0 : entity.getOrdem()))
+                .sorted(Comparator.comparingInt(entity -> Objects.requireNonNullElse(entity.getOrdem(), 0)))
                 .map(imagemMapper::toResponse)
                 .toList();
         List<ProdutoCodigoBarrasResponse> codigos = codigoBarrasRepository.findByProdutoIdAndAtivoTrueAndDeletedAtIsNull(id)

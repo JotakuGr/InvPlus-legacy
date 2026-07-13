@@ -1,5 +1,18 @@
 package br.com.invplus.integration.financeiro;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -11,24 +24,12 @@ import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
 import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.repository.UsuarioEmpresaRepository;
+import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.service.JwtService;
 import br.com.invplus.support.JwtContextoTestSupport;
 import br.com.invplus.support.context.TestEmpresaContext;
 import br.com.invplus.support.security.UsuarioTestFactory;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -61,6 +62,7 @@ class ExtratoBancarioControllerTests {
     private TestEmpresaContext testEmpresaContext;
 
     @AfterEach
+    @SuppressWarnings("unused")
     void limparContexto() {
         testEmpresaContext.limpar();
     }
