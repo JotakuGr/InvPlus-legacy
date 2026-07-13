@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class ConciliacaoBancariaLoteService {
+    private final br.com.invplus.security.context.EmpresaContext empresaContext;
     private final ConciliacaoBancariaLoteItemService itemService;
 
-    public ConciliacaoBancariaLoteResponse confirmar(UUID empresaId, ConciliacaoBancariaLoteRequest request) {
+    public ConciliacaoBancariaLoteResponse confirmar(ConciliacaoBancariaLoteRequest request) {
+        UUID empresaId = empresaContext.getEmpresaId();
         validarEstrutura(request);
         List<ConciliacaoBancariaLoteItemResponse> resultados = new ArrayList<>();
         for (var item : request.itens()) {
@@ -28,7 +30,6 @@ public class ConciliacaoBancariaLoteService {
         return new ConciliacaoBancariaLoteResponse(resultados.size(), conciliados,
                 resultados.size() - conciliados, List.copyOf(resultados));
     }
-
     private void validarEstrutura(ConciliacaoBancariaLoteRequest request) {
         if (request == null || request.itens() == null || request.itens().isEmpty())
             throw new InvalidOperationException("Lote deve possuir ao menos um item");

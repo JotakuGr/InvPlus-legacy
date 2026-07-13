@@ -44,7 +44,6 @@ public class MovimentoFinanceiroController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('MOVIMENTO_FINANCEIRO:VISUALIZAR') or hasAuthority('MOVIMENTO_FINANCEIRO:*')")
     public ResponseEntity<Page<MovimentoFinanceiroResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) TipoMovimentoFinanceiro tipoMovimento,
             @RequestParam(required = false) OrigemMovimentoFinanceiro origem,
@@ -60,7 +59,7 @@ public class MovimentoFinanceiroController extends BaseCrudController {
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(empresaId, filialId, tipoMovimento, origem, origemId,
+        return ResponseEntity.ok(service.listarComFiltros(filialId, tipoMovimento, origem, origemId,
                 formaPagamentoId, clienteId, fornecedorId, centroCustoId, planoContaId, status, dataMovimentoDe, dataMovimentoAte,
                 ativo, pageable));
     }

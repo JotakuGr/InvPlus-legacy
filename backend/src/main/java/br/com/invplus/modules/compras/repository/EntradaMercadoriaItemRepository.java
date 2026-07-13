@@ -4,6 +4,7 @@ import br.com.invplus.modules.compras.entity.EntradaMercadoriaItem;
 import br.com.invplus.shared.domain.repository.BaseRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,9 @@ import org.springframework.data.repository.query.Param;
  * Persistencia dos itens recebidos em entradas de mercadoria.
  */
 public interface EntradaMercadoriaItemRepository extends BaseRepository<EntradaMercadoriaItem> {
+
+    Optional<EntradaMercadoriaItem> findByIdAndEntradaMercadoriaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+            UUID id, UUID empresaId);
 
     List<EntradaMercadoriaItem> findByEntradaMercadoriaIdAndAtivoTrueAndDeletedAtIsNull(UUID entradaMercadoriaId);
 

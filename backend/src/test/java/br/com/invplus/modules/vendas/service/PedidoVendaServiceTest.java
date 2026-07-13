@@ -50,6 +50,8 @@ import br.com.invplus.modules.vendas.repository.PedidoVendaHistoricoRepository;
 import br.com.invplus.modules.vendas.repository.PedidoVendaItemRepository;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
 import br.com.invplus.modules.vendas.validator.PedidoVendaValidator;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
@@ -60,6 +62,8 @@ import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
  */
 @ExtendWith(MockitoExtension.class)
 class PedidoVendaServiceTest {
+
+    private final UUID empresaId = UUID.randomUUID();
 
     @Mock
     private PedidoVendaRepository repository;
@@ -94,6 +98,12 @@ class PedidoVendaServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private EmpresaContext empresaContext;
+
+    @Mock
+    private UsuarioEmpresaAccessValidator accessValidator;
+
     private PedidoVendaService service;
 
     @BeforeEach
@@ -102,6 +112,7 @@ class PedidoVendaServiceTest {
         PedidoVendaMapper mapper = new PedidoVendaMapper();
         PedidoVendaValidator validator = new PedidoVendaValidator(repository);
         VendaHistoricoService historicoService = new VendaHistoricoService(historicoRepository, auditorAware);
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         service = new PedidoVendaService(
                 repository,
                 mapper,
@@ -114,7 +125,9 @@ class PedidoVendaServiceTest {
                 estoqueRepository,
                 reservaEstoqueService,
                 historicoService,
-                eventPublisher
+                eventPublisher,
+                empresaContext,
+                accessValidator
         );
     }
 
@@ -137,7 +150,7 @@ class PedidoVendaServiceTest {
             return pedido;
         });
 
-        PedidoVendaResponse response = service.criar(request(empresa.getId(), null, cliente.getId(), vendedor.getId(), "PV-001"));
+        PedidoVendaResponse response = service.criar(request(null, cliente.getId(), vendedor.getId(), "PV-001"));
 
         assertThat(response.status()).isEqualTo(StatusPedidoVenda.ABERTO);
         assertThat(response.valorTotal()).isEqualByComparingTo(BigDecimal.ZERO);
@@ -151,13 +164,12 @@ class PedidoVendaServiceTest {
      */
     @Test
     void deveBloquearEmpresaInexistente() {
-        UUID empresaId = UUID.randomUUID();
         UUID clienteId = UUID.randomUUID();
         when(repository.findByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(empresaId, "PV-001"))
                 .thenReturn(Optional.empty());
         when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresaId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.criar(request(empresaId, null, clienteId, null, "PV-001")))
+        assertThatThrownBy(() -> service.criar(request(null, clienteId, null, "PV-001")))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Empresa nao encontrada");
     }
@@ -174,7 +186,7 @@ class PedidoVendaServiceTest {
         when(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresa.getId())).thenReturn(Optional.of(empresa));
         when(clienteRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(clienteId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.criar(request(empresa.getId(), null, clienteId, null, "PV-001")))
+        assertThatThrownBy(() -> service.criar(request(null, clienteId, null, "PV-001")))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Cliente nao encontrado");
     }
@@ -189,7 +201,7 @@ class PedidoVendaServiceTest {
         when(repository.findByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(empresa.getId(), "PV-001"))
                 .thenReturn(Optional.of(existente));
 
-        assertThatThrownBy(() -> service.criar(request(empresa.getId(), null, UUID.randomUUID(), null, "PV-001")))
+        assertThatThrownBy(() -> service.criar(request(null, UUID.randomUUID(), null, "PV-001")))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Ja existe pedido de venda ativo");
     }
@@ -200,7 +212,6 @@ class PedidoVendaServiceTest {
     @Test
     void deveBloquearValoresNegativos() {
         PedidoVendaRequest request = new PedidoVendaRequest(
-                UUID.randomUUID(),
                 null,
                 UUID.randomUUID(),
                 null,
@@ -225,7 +236,8 @@ class PedidoVendaServiceTest {
         PedidoVenda pedido = pedidoAtivo(empresaAtiva(), clienteAtivo());
         PedidoVendaItem item = itemPedido(pedido);
         Estoque estoque = estoqueDisponivel(pedido.getEmpresa(), item.getProduto());
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
         when(itemRepository.findByPedidoVendaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId()))
                 .thenReturn(java.util.List.of(item));
         when(estoqueRepository.findDisponiveisParaReserva(item.getProduto().getId(), pedido.getEmpresa().getId(), item.getQuantidade()))
@@ -246,7 +258,8 @@ class PedidoVendaServiceTest {
     @Test
     void deveCancelarPedido() {
         PedidoVenda pedido = pedidoAtivo(empresaAtiva(), clienteAtivo());
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
 
         PedidoVendaResponse response = service.cancelar(pedido.getId());
 
@@ -263,10 +276,11 @@ class PedidoVendaServiceTest {
         Cliente cliente = clienteAtivo();
         PedidoVenda pedido = pedidoAtivo(empresa, cliente);
         pedido.setStatus(StatusPedidoVenda.CANCELADO);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedido.getId(), empresaId))
+                .thenReturn(Optional.of(pedido));
 
         assertThatThrownBy(() -> service.atualizar(pedido.getId(),
-                request(empresa.getId(), null, cliente.getId(), null, "PV-001")))
+                request(null, cliente.getId(), null, "PV-001")))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("Pedido cancelado ou faturado nao pode ser alterado");
     }
@@ -280,15 +294,14 @@ class PedidoVendaServiceTest {
         when(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(PageRequest.class)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        service.listarComFiltros(null, null, null, null, "PV", StatusPedidoVenda.ABERTO,
+        service.listarComFiltros(null, null, null, "PV", StatusPedidoVenda.ABERTO,
                 LocalDate.now().minusDays(1), LocalDate.now(), true, PageRequest.of(0, 20));
 
         verify(repository).findAll(any(org.springframework.data.jpa.domain.Specification.class), any(PageRequest.class));
     }
 
-    private PedidoVendaRequest request(UUID empresaId, UUID filialId, UUID clienteId, UUID vendedorId, String numero) {
+    private PedidoVendaRequest request(UUID filialId, UUID clienteId, UUID vendedorId, String numero) {
         return new PedidoVendaRequest(
-                empresaId,
                 filialId,
                 clienteId,
                 vendedorId,
@@ -370,7 +383,7 @@ class PedidoVendaServiceTest {
 
     private Empresa empresaAtiva() {
         Empresa empresa = new Empresa();
-        empresa.setId(UUID.randomUUID());
+        empresa.setId(empresaId);
         empresa.setNomeFantasia("Empresa Venda");
         return empresa;
     }

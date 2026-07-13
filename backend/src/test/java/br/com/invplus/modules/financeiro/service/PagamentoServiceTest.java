@@ -36,6 +36,7 @@ import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
 import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 
@@ -57,6 +58,8 @@ class PagamentoServiceTest {
     private MovimentoFinanceiroService movimentoFinanceiroService;
     @Mock
     private ContaBancariaRepository contaBancariaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private PagamentoService service;
     private ParcelaPagar parcela;
@@ -67,7 +70,7 @@ class PagamentoServiceTest {
     void setUp() {
         service = new PagamentoService(repository, parcelaPagarRepository, formaPagamentoRepository,
                 parcelaPagarService, movimentoFinanceiroService, new PagamentoMapper(),
-                new PagamentoValidator(), contaBancariaRepository);
+                new PagamentoValidator(), contaBancariaRepository, empresaContext);
         parcela = parcela("300.00");
         formaPagamento = formaPagamento();
     }

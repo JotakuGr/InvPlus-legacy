@@ -26,6 +26,7 @@ import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -40,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-class FinanceiroDreBusinessFlowIntegrationTest {
+class FinanceiroDreBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     private static final LocalDate DATA = LocalDate.of(2098, 8, 10);
 
@@ -69,6 +70,7 @@ class FinanceiroDreBusinessFlowIntegrationTest {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.save(empresa("Empresa DRE " + sufixo, "11" + sufixo));
         Empresa outraEmpresa = empresaRepository.save(empresa("Outra Empresa DRE " + sufixo, "22" + sufixo));
+        ativarEmpresa(empresa.getId());
         Cliente cliente = clienteRepository.save(cliente("Cliente DRE " + sufixo, "33" + sufixo));
         Fornecedor fornecedor = fornecedorRepository.save(fornecedor("Fornecedor DRE " + sufixo, "44" + sufixo));
         FormaPagamento forma = formaPagamentoRepository.save(formaPagamento(sufixo));
@@ -79,21 +81,23 @@ class FinanceiroDreBusinessFlowIntegrationTest {
         PlanoConta despesa = planoContaRepository.save(plano(empresa, "4.1." + sufixo,
                 "Despesa DRE", NaturezaPlanoConta.DESPESA));
 
-        movimentoService.criarManual(movimento(empresa, forma, cliente, null, centro, receita,
+        movimentoService.criarManual(movimento(forma, cliente, null, centro, receita,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("1000.00"), "Receita principal"));
-        movimentoService.criarManual(movimento(empresa, forma, null, fornecedor, centro, despesa,
+        movimentoService.criarManual(movimento(forma, null, fornecedor, centro, despesa,
                 TipoMovimentoFinanceiro.SAIDA, new BigDecimal("300.00"), "Despesa principal"));
-        movimentoService.criarManual(movimento(empresa, forma, cliente, null, outroCentro, receita,
+        movimentoService.criarManual(movimento(forma, cliente, null, outroCentro, receita,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("200.00"), "Receita outro centro"));
-        movimentoService.criarManual(movimento(outraEmpresa, forma, cliente, null, null, null,
+        ativarEmpresa(outraEmpresa.getId());
+        movimentoService.criarManual(movimento(forma, cliente, null, null, null,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("900.00"), "Sem plano ignorado"));
-        var cancelado = movimentoService.criarManual(movimento(empresa, forma, cliente, null, centro, receita,
+        ativarEmpresa(empresa.getId());
+        var cancelado = movimentoService.criarManual(movimento(forma, cliente, null, centro, receita,
                 TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("500.00"), "Receita cancelada"));
         movimentoService.cancelar(cancelado.id());
 
-        var dreEmpresa = resumoService.gerarDre(DATA, DATA, empresa.getId(), null, null, null);
-        var dreCentro = resumoService.gerarDre(DATA, DATA, empresa.getId(), null, centro.getId(), null);
-        var drePlanoReceita = resumoService.gerarDre(DATA, DATA, empresa.getId(), null, null, receita.getId());
+        var dreEmpresa = resumoService.gerarDre(DATA, DATA, null, null, null);
+        var dreCentro = resumoService.gerarDre(DATA, DATA, null, centro.getId(), null);
+        var drePlanoReceita = resumoService.gerarDre(DATA, DATA, null, null, receita.getId());
 
         assertThat(dreEmpresa.receitaBruta()).isEqualByComparingTo("1200.00");
         assertThat(dreEmpresa.despesasOperacionais()).isEqualByComparingTo("300.00");
@@ -107,14 +111,15 @@ class FinanceiroDreBusinessFlowIntegrationTest {
         assertThat(drePlanoReceita.despesasOperacionais()).isZero();
     }
 
-    private MovimentoFinanceiroRequest movimento(Empresa empresa, FormaPagamento forma, Cliente cliente,
+    private MovimentoFinanceiroRequest movimento(FormaPagamento forma, Cliente cliente,
             Fornecedor fornecedor, CentroCusto centro, PlanoConta plano, TipoMovimentoFinanceiro tipo,
             BigDecimal valor, String descricao) {
-        return new MovimentoFinanceiroRequest(empresa.getId(), null, forma.getId(),
+        return new MovimentoFinanceiroRequest(null, forma.getId(),
                 cliente == null ? null : cliente.getId(),
                 fornecedor == null ? null : fornecedor.getId(),
                 centro == null ? null : centro.getId(),
                 plano == null ? null : plano.getId(),
+                null,
                 tipo, OrigemMovimentoFinanceiro.AJUSTE_MANUAL, UUID.randomUUID(), valor, DATA, descricao, null);
     }
 

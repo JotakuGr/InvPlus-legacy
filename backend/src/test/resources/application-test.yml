@@ -14,7 +14,7 @@ invplus:
       refresh-expiration-days: ${INVPLUS_JWT_REFRESH_EXPIRATION_DAYS:7}
   storage:
     provider: ${INVPLUS_STORAGE_PROVIDER:LOCAL}
-    local-path: ${INVPLUS_STORAGE_LOCAL_PATH:./uploads}
+    local-path: ${INVPLUS_STORAGE_LOCAL_PATH:./target/test-uploads}
     public-base-url: ${INVPLUS_STORAGE_PUBLIC_BASE_URL:http://localhost:8080/uploads}
 
   cdn:

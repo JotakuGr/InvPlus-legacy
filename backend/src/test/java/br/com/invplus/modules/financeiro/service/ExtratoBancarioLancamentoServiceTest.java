@@ -41,6 +41,8 @@ class ExtratoBancarioLancamentoServiceTest {
     private ExtratoBancarioLancamentoRepository repository;
     @Mock
     private ExtratoBancarioService extratoBancarioService;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ExtratoBancarioLancamentoService service;
     private ExtratoBancario extrato;
@@ -49,7 +51,8 @@ class ExtratoBancarioLancamentoServiceTest {
     @SuppressWarnings("unused")
     void setUp() {
         service = new ExtratoBancarioLancamentoService(repository, extratoBancarioService,
-                new ExtratoBancarioLancamentoMapper(), new ExtratoBancarioLancamentoValidator(repository));
+                new ExtratoBancarioLancamentoMapper(), new ExtratoBancarioLancamentoValidator(repository),
+                empresaContext);
         extrato = extrato();
     }
 

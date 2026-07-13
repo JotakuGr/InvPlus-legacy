@@ -9,7 +9,6 @@ import java.util.UUID;
  * Dados para criar ou atualizar um pedido de compra.
  */
 public record PedidoCompraRequest(
-        @NotNull UUID empresaId,
         UUID filialId,
         @NotNull UUID fornecedorId,
         @NotBlank String numero,

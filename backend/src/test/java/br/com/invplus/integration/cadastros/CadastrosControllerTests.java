@@ -17,6 +17,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import java.util.UUID;
 
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
+
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -34,12 +41,24 @@ class CadastrosControllerTests {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+
+    @Autowired
+    private EmpresaTestFactory empresaTestFactory;
+
+    @Autowired
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
+
     /**
      * Valida criacao e consulta de empresa usando o perfil ADMIN.
      */
     @Test
     void deveCriarEConsultarEmpresaComPermissaoDeCadastros() throws Exception {
-        String accessToken = login().get("accessToken").asString();
+        String accessToken = criarContexto().accessToken();
         String cnpj = cnpjUnico();
 
         String response = mockMvc.perform(post("/api/v1/empresas")
@@ -86,7 +105,7 @@ class CadastrosControllerTests {
      */
     @Test
     void deveOcultarEmpresaExcluidaLogicamenteNaApi() throws Exception {
-        String accessToken = login().get("accessToken").asString();
+        String accessToken = criarContexto().accessToken();
         String cnpj = cnpjUnico();
 
         String response = mockMvc.perform(post("/api/v1/empresas")
@@ -134,7 +153,9 @@ class CadastrosControllerTests {
      */
     @Test
     void deveCriarHierarquiaGeograficaEFilial() throws Exception {
-        String accessToken = login().get("accessToken").asString();
+        ContextoTeste contexto = criarContexto();
+        String accessToken = contexto.accessToken();
+        String empresaId = contexto.empresaId().toString();
         String estadoCodigoIbge = codigoIbgeEstadoUnico();
         String cidadeCodigoIbge = codigoIbgeCidadeUnico();
 
@@ -178,8 +199,6 @@ class CadastrosControllerTests {
                 .getContentAsString();
 
         String cidadeId = objectMapper.readTree(cidadeResponse).get("id").asString();
-        String empresaId = criarEmpresa(accessToken, cnpjUnico());
-
         String enderecoResponse = mockMvc.perform(post("/api/v1/cadastros/enderecos")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -210,7 +229,6 @@ class CadastrosControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "enderecoId": "%s",
                                   "codigo": "FIL-%s",
                                   "nome": "Filial %s",
@@ -218,59 +236,61 @@ class CadastrosControllerTests {
                                   "inscricaoEstadual": "ISENTO",
                                   "telefone": "71999992222",
                                   "email": "filial%s@empresa.com",
-                                  "matriz": true
+                                  "matriz": false
                                 }
-                                """.formatted(empresaId, enderecoId, uf, uf, cnpjUnico(), uf.toLowerCase())))
+                                """.formatted(enderecoId, uf, uf, cnpjUnico(), uf.toLowerCase())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.empresaId").value(empresaId))
                 .andExpect(jsonPath("$.enderecoId").value(enderecoId))
-                .andExpect(jsonPath("$.matriz").value(true));
+                .andExpect(jsonPath("$.matriz").value(false));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
+    @Test
+    void deveIsolarFiliaisPorEmpresaDoToken() throws Exception {
+        ContextoTeste contextoA = criarContexto();
+        ContextoTeste contextoB = criarContexto();
+        String sufixo = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        String response = mockMvc.perform(post("/api/v1/cadastros/filiais")
+                        .header("Authorization", "Bearer " + contextoA.accessToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "admin@invplus.com",
-                                  "senha": "admin123"
+                                  "codigo": "FIL-%s",
+                                  "nome": "Filial Isolada %s",
+                                  "cnpj": "%s",
+                                  "matriz": false
                                 }
-                                """))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                                """.formatted(sufixo, sufixo, cnpjUnico())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.empresaId").value(contextoA.empresaId().toString()))
+                .andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response);
+        String filialId = objectMapper.readTree(response).get("id").asString();
+
+        mockMvc.perform(get("/api/v1/cadastros/filiais/" + filialId)
+                        .header("Authorization", "Bearer " + contextoB.accessToken()))
+                .andExpect(status().isNotFound());
+
+        String listagemB = mockMvc.perform(get("/api/v1/cadastros/filiais")
+                        .header("Authorization", "Bearer " + contextoB.accessToken()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(listagemB).doesNotContain(filialId);
+    }
+
+    private ContextoTeste criarContexto() {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("CADASTROS:*"));
+        return new ContextoTeste(token, empresa.getId());
     }
 
     private String cnpjUnico() {
         long parte = Math.abs(System.nanoTime() % 1_000_000_000_000L);
         return "77" + "%012d".formatted(parte);
-    }
-
-    private String criarEmpresa(String accessToken, String cnpj) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Base LTDA",
-                                  "nomeFantasia": "Empresa Base",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "regimeTributario": "SIMPLES_NACIONAL",
-                                  "crt": 1,
-                                  "telefone": "71999990000",
-                                  "email": "base%s@empresa.com"
-                                }
-                                """.formatted(cnpj, cnpj.substring(2, 8))))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return objectMapper.readTree(response).get("id").asString();
     }
 
     private String codigoIso2Unico() {
@@ -323,5 +343,8 @@ class CadastrosControllerTests {
     }
 
     private record PaisCriado(String id, String codigoIso2) {
+    }
+
+    private record ContextoTeste(String accessToken, UUID empresaId) {
     }
 }

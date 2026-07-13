@@ -14,7 +14,12 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface MovimentacaoEstoqueRepository
         extends JpaRepository<MovimentacaoEstoque, UUID>, JpaSpecificationExecutor<MovimentacaoEstoque> {
 
+    Optional<MovimentacaoEstoque> findByIdAndEmpresaId(UUID id, UUID empresaId);
+
     Optional<MovimentacaoEstoque> findTopByEstoqueIdOrderByDataMovimentacaoDesc(UUID estoqueId);
 
     List<MovimentacaoEstoque> findByOrigemAndOrigemIdOrderByDataMovimentacaoDesc(MovimentacaoOrigem origem, UUID origemId);
+
+    List<MovimentacaoEstoque> findByOrigemAndOrigemIdAndEmpresaIdOrderByDataMovimentacaoDesc(
+            MovimentacaoOrigem origem, UUID origemId, UUID empresaId);
 }

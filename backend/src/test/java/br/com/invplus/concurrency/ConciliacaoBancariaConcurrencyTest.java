@@ -1,6 +1,17 @@
 package br.com.invplus.concurrency;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -26,21 +37,12 @@ import br.com.invplus.modules.financeiro.service.MovimentoFinanceiroService;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 
 /** Confirma que duas conciliacoes concorrentes nao duplicam o mesmo lancamento. */
 @SpringBootTest
 @ActiveProfiles("test")
-class ConciliacaoBancariaConcurrencyTest {
+class ConciliacaoBancariaConcurrencyTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired private ConciliacaoBancariaService conciliacaoService;
     @Autowired private ConciliacaoBancariaRepository conciliacaoRepository;
@@ -60,12 +62,15 @@ class ConciliacaoBancariaConcurrencyTest {
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var tarefa = (java.util.concurrent.Callable<Boolean>) () -> {
+                testEmpresaContext.ativarEmpresa(UUID.randomUUID(), cenario.empresaId());
                 largada.await();
                 try {
                     conciliacaoService.criar(request);
                     return true;
                 } catch (RuntimeException ex) {
                     return false;
+                } finally {
+                    testEmpresaContext.limpar();
                 }
             };
             Future<Boolean> primeira = executor.submit(tarefa);
@@ -85,11 +90,12 @@ class ConciliacaoBancariaConcurrencyTest {
         String sufixo = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa Concorrente " + sufixo,
                 "Empresa Concorrente " + sufixo, documento(sufixo), null, null, null));
+        ativarEmpresa(empresa.getId());
         FormaPagamento forma = new FormaPagamento();
         forma.atualizar("CC" + sufixo, "Forma Concorrente " + sufixo,
                 TipoFormaPagamento.PIX, false, false);
         forma = formaPagamentoRepository.saveAndFlush(forma);
-        var conta = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null,
+        var conta = contaBancariaService.criar(new ContaBancariaRequest(null,
                 "001", "Banco Concorrente", "3" + sufixo, null, "7" + sufixo, null,
                 TipoContaBancaria.CORRENTE, "Empresa Concorrente", null, null,
                 BigDecimal.ZERO, LocalDate.of(2026, 7, 10), true));
@@ -101,11 +107,11 @@ class ConciliacaoBancariaConcurrencyTest {
                 LocalDate.of(2026, 7, 10), "Credito concorrente", null,
                 TipoLancamentoBancario.CREDITO, new BigDecimal("75.00"), null,
                 "RACE-" + sufixo, CategoriaLancamentoBancario.PIX, null));
-        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(empresa.getId(), null,
-                forma.getId(), null, null, TipoMovimentoFinanceiro.ENTRADA,
+        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(null,
+                forma.getId(), null, null, null, null, null, TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.AJUSTE_MANUAL, null, new BigDecimal("75.00"),
                 LocalDate.of(2026, 7, 10), "Entrada concorrente", null));
-        return new Cenario(lancamento.id(), movimento.id());
+        return new Cenario(empresa.getId(), lancamento.id(), movimento.id());
     }
 
     private String hash(String valor) {
@@ -118,6 +124,6 @@ class ConciliacaoBancariaConcurrencyTest {
         return ("11222333000199" + numeros).substring(numeros.length());
     }
 
-    private record Cenario(UUID lancamentoId, UUID movimentoId) {
+    private record Cenario(UUID empresaId, UUID lancamentoId, UUID movimentoId) {
     }
 }

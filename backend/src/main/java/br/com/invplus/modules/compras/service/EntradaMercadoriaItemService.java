@@ -19,6 +19,7 @@ import br.com.invplus.modules.produtos.entity.Produto;
 import br.com.invplus.modules.produtos.entity.ProdutoUnidade;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoUnidadeRepository;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.util.UUID;
@@ -44,6 +45,7 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
     private final DepositoRepository depositoRepository;
     private final LocalizacaoEstoqueRepository localizacaoRepository;
     private final EntradaMercadoriaService entradaMercadoriaService;
+    private final EmpresaContext empresaContext;
 
     public EntradaMercadoriaItemService(
             EntradaMercadoriaItemRepository repository,
@@ -55,7 +57,8 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
             ProdutoUnidadeRepository produtoUnidadeRepository,
             DepositoRepository depositoRepository,
             LocalizacaoEstoqueRepository localizacaoRepository,
-            EntradaMercadoriaService entradaMercadoriaService
+            EntradaMercadoriaService entradaMercadoriaService,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Item da entrada de mercadoria");
         this.repository = repository;
@@ -68,16 +71,25 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
         this.depositoRepository = depositoRepository;
         this.localizacaoRepository = localizacaoRepository;
         this.entradaMercadoriaService = entradaMercadoriaService;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public Page<EntradaMercadoriaItemResponse> listarComFiltros(UUID entradaMercadoriaId, UUID produtoId,
                                                                 Boolean ativo, Pageable pageable) {
-        Specification<EntradaMercadoriaItem> specification = EntradaMercadoriaItemSpecification.naoDeletado()
+        Specification<EntradaMercadoriaItem> specification = EntradaMercadoriaItemSpecification
+                .pertenceEmpresa(empresaContext.getEmpresaId())
+                .and(EntradaMercadoriaItemSpecification.naoDeletado())
                 .and(EntradaMercadoriaItemSpecification.ativo(ativo))
                 .and(EntradaMercadoriaItemSpecification.entradaIgual(entradaMercadoriaId))
                 .and(EntradaMercadoriaItemSpecification.produtoIgual(produtoId));
         return repository.findAll(specification, pageable).map(mapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EntradaMercadoriaItemResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
     }
 
     @Override
@@ -97,7 +109,7 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
     @Override
     @Transactional
     public EntradaMercadoriaItemResponse atualizar(UUID id, EntradaMercadoriaItemRequest request) {
-        EntradaMercadoriaItem entity = buscarEntidade(id);
+        EntradaMercadoriaItem entity = buscarNoContexto(id);
         EntradaMercadoria entrada = buscarEntrada(request.entradaMercadoriaId());
         Deposito deposito = buscarDeposito(request.depositoId());
         LocalizacaoEstoque localizacao = buscarLocalizacao(request.localizacaoId());
@@ -111,7 +123,7 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
     @Override
     @Transactional
     public void excluir(UUID id) {
-        EntradaMercadoriaItem entity = buscarEntidade(id);
+        EntradaMercadoriaItem entity = buscarNoContexto(id);
         EntradaMercadoria entrada = entity.getEntradaMercadoria();
         entrada.validarEditavel();
         entity.excluirLogicamente();
@@ -129,7 +141,8 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
     }
 
     private EntradaMercadoria buscarEntrada(UUID id) {
-        return entradaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return entradaRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Entrada de mercadoria nao encontrada"));
     }
 
@@ -137,7 +150,8 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
         if (id == null) {
             return null;
         }
-        return pedidoCompraItemRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return pedidoCompraItemRepository.findByIdAndPedidoCompraEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Item do pedido de compra nao encontrado"));
     }
 
@@ -155,12 +169,20 @@ public class EntradaMercadoriaItemService extends BaseCrudService<EntradaMercado
     }
 
     private Deposito buscarDeposito(UUID id) {
-        return depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Deposito nao encontrado"));
     }
 
     private LocalizacaoEstoque buscarLocalizacao(UUID id) {
-        return localizacaoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return localizacaoRepository.findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Localizacao de estoque nao encontrada"));
+    }
+
+    private EntradaMercadoriaItem buscarNoContexto(UUID id) {
+        return repository.findByIdAndEntradaMercadoriaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Item da entrada de mercadoria nao encontrado"));
     }
 }

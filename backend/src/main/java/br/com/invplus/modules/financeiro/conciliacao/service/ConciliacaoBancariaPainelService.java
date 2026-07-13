@@ -15,11 +15,12 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import br.com.invplus.security.context.EmpresaContext;
-import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /** Compoe a visao operacional da conciliacao sem persistir estado derivado. */
 @Service
 public class ConciliacaoBancariaPainelService {
+
+    private static final String CAMPO_IMPORTADO_EM = "importadoEm";
 
     private final ExtratoBancarioRepository extratoRepository;
     private final ExtratoBancarioLancamentoRepository lancamentoRepository;
@@ -41,9 +42,10 @@ public class ConciliacaoBancariaPainelService {
     }
 
     @Transactional(readOnly = true)
-    public PainelConciliacaoBancariaResponse buscarPainel(UUID empresaId, UUID contaId,
+    public PainelConciliacaoBancariaResponse buscarPainel(UUID contaId,
             LocalDate inicio, LocalDate fim) {
-        empresaId = resolverEmpresa(empresaId); validarPeriodo(inicio, fim);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validarPeriodo(inicio, fim);
         validarConta(empresaId, contaId);
         var extratos = extratoRepository.indicadoresPainel(empresaId, contaId, inicio, fim);
         var lancamentos = lancamentoRepository.indicadoresPainel(empresaId, contaId, inicio, fim);
@@ -58,7 +60,7 @@ public class ConciliacaoBancariaPainelService {
                 valor(lancamentos == null ? null : lancamentos.getValorTotalCreditosPendentes()),
                 valor(lancamentos == null ? null : lancamentos.getValorTotalDebitosPendentes()),
                 calcularPercentual(conciliados, total));
-        Pageable recentes = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "importadoEm"));
+        Pageable recentes = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, CAMPO_IMPORTADO_EM));
         List<ExtratoPendenteResponse> resumos = extratoRepository
                 .buscarResumoExtratos(empresaId, contaId, null, inicio, fim, false, recentes)
                 .stream().map(this::mapearExtrato).toList();
@@ -66,21 +68,22 @@ public class ConciliacaoBancariaPainelService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ExtratoPendenteResponse> buscarExtratosPendentes(UUID empresaId, UUID contaId,
+    public Page<ExtratoPendenteResponse> buscarExtratosPendentes(UUID contaId,
             StatusExtratoBancario status, LocalDate inicio, LocalDate fim, Pageable pageable) {
-        empresaId = resolverEmpresa(empresaId); validarPeriodo(inicio, fim);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validarPeriodo(inicio, fim);
         validarConta(empresaId, contaId);
         boolean explicito = status != null;
         return extratoRepository.buscarResumoExtratos(empresaId, contaId, status, inicio, fim,
                 explicito, limitar(pageable)).map(this::mapearExtrato);
     }
-
     @Transactional(readOnly = true)
-    public Page<LancamentoPendenteResponse> buscarPendencias(UUID empresaId, UUID extratoId,
+    public Page<LancamentoPendenteResponse> buscarPendencias(UUID extratoId,
             UUID contaId, TipoLancamentoBancario tipo, CategoriaLancamentoBancario categoria,
             LocalDate inicio, LocalDate fim, Boolean possuiSugestao,
             NivelConfiancaConciliacao nivel, Pageable pageable) {
-        empresaId = resolverEmpresa(empresaId); validarPeriodo(inicio, fim);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validarPeriodo(inicio, fim);
         validarConta(empresaId, contaId);
         validarExtrato(empresaId, extratoId);
         Page<ExtratoBancarioLancamento> pagina = lancamentoRepository.buscarPendencias(
@@ -96,7 +99,6 @@ public class ConciliacaoBancariaPainelService {
         long total = possuiSugestao != null || nivel != null ? respostas.size() : pagina.getTotalElements();
         return new PageImpl<>(respostas, pagina.getPageable(), total);
     }
-
     private LancamentoPendenteResponse mapearLancamento(ExtratoBancarioLancamento l,
             Map<ChaveCandidatos, List<br.com.invplus.modules.financeiro.entity.MovimentoFinanceiro>> cache) {
         var conta = l.getExtratoBancario().getContaBancaria();
@@ -146,18 +148,14 @@ public class ConciliacaoBancariaPainelService {
 
     private void validarConta(UUID empresaId, UUID contaId) {
         if (contaId == null) return;
-        var conta = contaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(contaId)
+        contaRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(contaId, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
-        if (!conta.getEmpresa().getId().equals(empresaId))
-            throw new ResourceNotFoundException("Conta bancaria nao encontrada");
     }
 
     private void validarExtrato(UUID empresaId, UUID extratoId) {
         if (extratoId == null) return;
-        var extrato = extratoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(extratoId)
+        extratoRepository.findByIdAndContaBancariaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(extratoId, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Extrato bancario nao encontrado"));
-        if (!extrato.getContaBancaria().getEmpresa().getId().equals(empresaId))
-            throw new ResourceNotFoundException("Extrato bancario nao encontrado");
     }
 
     private Pageable limitar(Pageable pageable) {
@@ -166,18 +164,6 @@ public class ConciliacaoBancariaPainelService {
     }
 
     private BigDecimal valor(BigDecimal valor) { return valor == null ? BigDecimal.ZERO : valor; }
-
-    private UUID resolverEmpresa(UUID recebida) {
-        if (empresaContext == null) return recebida;
-        try {
-            UUID contexto=empresaContext.getEmpresaId();
-            if(recebida!=null&&!contexto.equals(recebida))throw new AcessoEmpresaNegadoException();
-            return contexto;
-        } catch (org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) {
-            if(recebida!=null)return recebida;
-            throw ex;
-        }
-    }
 
     private record ChaveCandidatos(UUID contaId, UUID empresaId, TipoMovimentoFinanceiro tipo,
             BigDecimal valor, LocalDate inicio, LocalDate fim) {}

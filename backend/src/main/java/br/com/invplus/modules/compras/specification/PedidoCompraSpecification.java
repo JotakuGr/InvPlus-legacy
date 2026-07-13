@@ -18,23 +18,27 @@ public final class PedidoCompraSpecification {
     }
 
     public static Specification<PedidoCompra> ativo(Boolean ativo) {
-        return ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
+        return ativo == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
     }
 
-    public static Specification<PedidoCompra> empresaIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
+    public static Specification<PedidoCompra> pertenceEmpresa(UUID id) {
+        return (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
     }
 
     public static Specification<PedidoCompra> fornecedorIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("fornecedor").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("fornecedor").get("id"), id);
     }
 
     public static Specification<PedidoCompra> statusIgual(StatusPedidoCompra status) {
-        return status == null ? null : (root, query, cb) -> cb.equal(root.get("status"), status);
+        return status == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("status"), status);
     }
 
     public static Specification<PedidoCompra> numeroContem(String numero) {
-        return numero == null || numero.isBlank() ? null
+        return numero == null || numero.isBlank() ? sempreVerdadeiro()
                 : (root, query, cb) -> cb.like(cb.lower(root.get("numero")), "%" + numero.toLowerCase() + "%");
+    }
+
+    private static Specification<PedidoCompra> sempreVerdadeiro() {
+        return (root, query, cb) -> cb.conjunction();
     }
 }

@@ -12,4 +12,6 @@ public interface CentroCustoRepository extends BaseRepository<CentroCusto> {
 
     Optional<CentroCusto> findByEmpresaIdAndCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
             UUID empresaId, String codigo);
+
+    Optional<CentroCusto> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
 }

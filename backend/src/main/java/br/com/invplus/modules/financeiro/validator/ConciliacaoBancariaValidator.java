@@ -10,7 +10,6 @@ import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.repository.ConciliacaoBancariaRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

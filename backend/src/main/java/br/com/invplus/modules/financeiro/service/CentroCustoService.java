@@ -10,6 +10,7 @@ import br.com.invplus.modules.financeiro.mapper.CentroCustoMapper;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.modules.financeiro.specification.CentroCustoSpecification;
 import br.com.invplus.modules.financeiro.validator.CentroCustoValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,10 +31,11 @@ public class CentroCustoService {
     private final EmpresaRepository empresaRepository;
     private final CentroCustoMapper mapper;
     private final CentroCustoValidator validator;
+    private final EmpresaContext empresaContext;
 
     @Transactional
     public CentroCustoResponse criar(CentroCustoRequest request) {
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        Empresa empresa = buscarEmpresa(empresaContext.getEmpresaId());
         CentroCusto pai = buscarPai(request.centroCustoPaiId());
         validator.validarCriacao(request, empresa, pai);
 
@@ -48,8 +50,9 @@ public class CentroCustoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CentroCustoResponse> listar(UUID empresaId, UUID centroCustoPaiId,
+    public Page<CentroCustoResponse> listar(UUID centroCustoPaiId,
             String codigo, String nome, TipoCentroCusto tipo, Boolean ativo, Pageable pageable) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Specification<CentroCusto> specification = CentroCustoSpecification.naoDeletado();
         specification = and(specification, CentroCustoSpecification.empresaIgual(empresaId));
         specification = and(specification, CentroCustoSpecification.paiIgual(centroCustoPaiId));
@@ -63,7 +66,7 @@ public class CentroCustoService {
     @Transactional
     public CentroCustoResponse atualizar(UUID id, CentroCustoRequest request) {
         CentroCusto entity = buscarEntidade(id);
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        Empresa empresa = buscarEmpresa(empresaContext.getEmpresaId());
         CentroCusto pai = buscarPai(request.centroCustoPaiId());
         validator.validarAtualizacao(id, request, empresa, pai);
         mapper.aplicar(entity, request, empresa, pai);
@@ -76,7 +79,8 @@ public class CentroCustoService {
     }
 
     public CentroCusto buscarEntidade(UUID id) {
-        return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Centro de custo nao encontrado"));
     }
 

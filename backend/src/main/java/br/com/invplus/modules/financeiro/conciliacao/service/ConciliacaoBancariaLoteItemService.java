@@ -22,10 +22,10 @@ public class ConciliacaoBancariaLoteItemService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ConciliacaoBancariaLoteItemResponse processar(UUID empresaId,
             ConciliacaoBancariaLoteItemRequest item) {
-        var lancamento = lancamentoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(item.lancamentoBancarioId())
+        lancamentoRepository
+                .findByIdAndExtratoBancarioContaBancariaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        item.lancamentoBancarioId(), empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lancamento bancario nao encontrado"));
-        if (!lancamento.getExtratoBancario().getContaBancaria().getEmpresa().getId().equals(empresaId))
-            throw new ResourceNotFoundException("Lancamento bancario nao encontrado");
         var response = conciliacaoService.criar(new ConciliacaoBancariaRequest(
                 item.lancamentoBancarioId(), item.movimentoFinanceiroId(),
                 TipoConciliacaoBancaria.MANUAL, item.observacao()));

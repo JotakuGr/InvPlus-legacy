@@ -1,10 +1,19 @@
 package br.com.invplus.modules.cadastros.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import br.com.invplus.modules.cadastros.dto.request.EmpresaRequest;
 import br.com.invplus.modules.cadastros.dto.response.EmpresaResponse;
@@ -14,14 +23,6 @@ import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
 import br.com.invplus.modules.cadastros.validator.EmpresaValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 
 /**
  * Testes unitarios das regras de negocio de Empresa.
@@ -35,6 +36,7 @@ class EmpresaServiceTest {
     private EmpresaService empresaService;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         EmpresaMapper mapper = new EmpresaMapper();
         EmpresaValidator validator = new EmpresaValidator(empresaRepository);

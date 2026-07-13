@@ -12,6 +12,11 @@ public final class ImportacaoExtratoSpecification {
     private ImportacaoExtratoSpecification() {
     }
 
+    public static Specification<ImportacaoExtratoBancario> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(
+                root.get("contaBancaria").get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<ImportacaoExtratoBancario> contaIgual(UUID id) {
         return id == null ? null : (root, query, cb) -> cb.equal(root.get("contaBancaria").get("id"), id);
     }

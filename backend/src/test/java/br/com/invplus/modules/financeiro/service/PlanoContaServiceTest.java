@@ -22,6 +22,7 @@ import br.com.invplus.modules.financeiro.enums.TipoPlanoConta;
 import br.com.invplus.modules.financeiro.mapper.PlanoContaMapper;
 import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.validator.PlanoContaValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 
@@ -35,6 +36,8 @@ class PlanoContaServiceTest {
     private PlanoContaRepository repository;
     @Mock
     private EmpresaRepository empresaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private PlanoContaService service;
     private Empresa empresa;
@@ -42,10 +45,11 @@ class PlanoContaServiceTest {
     @BeforeEach
     @SuppressWarnings("unused")
     void setUp() {
+        empresa = empresa("Empresa Plano");
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
         PlanoContaMapper mapper = new PlanoContaMapper();
         service = new PlanoContaService(repository, empresaRepository, mapper,
-                new PlanoContaValidator(repository));
-        empresa = empresa("Empresa Plano");
+                new PlanoContaValidator(repository), empresaContext);
     }
 
     @Test
@@ -67,7 +71,8 @@ class PlanoContaServiceTest {
     void deveCriarPlanoFilhoAnalitico() {
         PlanoConta pai = plano(empresa, null, "3", "Receitas", TipoPlanoConta.SINTETICA);
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pai.getId())).thenReturn(Optional.of(pai));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pai.getId(), empresa.getId()))
+                .thenReturn(Optional.of(pai));
         when(repository.save(any(PlanoConta.class))).thenAnswer(invocation -> {
             PlanoConta entity = invocation.getArgument(0);
             entity.setId(UUID.randomUUID());
@@ -96,7 +101,8 @@ class PlanoContaServiceTest {
         Empresa outra = empresa("Outra Empresa");
         PlanoConta pai = plano(outra, null, "1", "Ativos", TipoPlanoConta.SINTETICA);
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pai.getId())).thenReturn(Optional.of(pai));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pai.getId(), empresa.getId()))
+                .thenReturn(Optional.of(pai));
 
         assertThatThrownBy(() -> service.criar(
                 request(pai.getId(), "1.1", "Caixa", TipoPlanoConta.ANALITICA)))
@@ -108,13 +114,15 @@ class PlanoContaServiceTest {
         PlanoConta raiz = plano(empresa, null, "3", "Receitas", TipoPlanoConta.SINTETICA);
         PlanoConta filho = plano(empresa, raiz, "3.1", "Vendas", TipoPlanoConta.ANALITICA);
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(raiz.getId())).thenReturn(Optional.of(raiz));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(raiz.getId(), empresa.getId()))
+                .thenReturn(Optional.of(raiz));
 
         assertThatThrownBy(() -> service.atualizar(raiz.getId(),
                 request(raiz.getId(), "3", "Receitas", TipoPlanoConta.SINTETICA)))
                 .isInstanceOf(InvalidOperationException.class);
 
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(filho.getId())).thenReturn(Optional.of(filho));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(filho.getId(), empresa.getId()))
+                .thenReturn(Optional.of(filho));
         assertThatThrownBy(() -> service.atualizar(raiz.getId(),
                 request(filho.getId(), "3", "Receitas", TipoPlanoConta.SINTETICA)))
                 .isInstanceOf(InvalidOperationException.class);
@@ -124,7 +132,7 @@ class PlanoContaServiceTest {
     void deveDiferenciarContaAnaliticaDeSinteticaEExcluirLogicamente() {
         PlanoConta sintetica = plano(empresa, null, "3", "Receitas", TipoPlanoConta.SINTETICA);
         PlanoConta analitica = plano(empresa, sintetica, "3.1", "Vendas", TipoPlanoConta.ANALITICA);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(analitica.getId()))
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(analitica.getId(), empresa.getId()))
                 .thenReturn(Optional.of(analitica));
 
         assertThat(sintetica.permiteLancamento()).isFalse();
@@ -142,7 +150,7 @@ class PlanoContaServiceTest {
     }
 
     private PlanoContaRequest request(UUID paiId, String codigo, String nome, TipoPlanoConta tipo) {
-        return new PlanoContaRequest(empresa.getId(), paiId, codigo, nome,
+        return new PlanoContaRequest(paiId, codigo, nome,
                 "Plano de conta de teste", tipo, NaturezaPlanoConta.RECEITA);
     }
 

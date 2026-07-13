@@ -10,6 +10,8 @@ import java.util.UUID;
  */
 public interface PedidoVendaRepository extends BaseRepository<PedidoVenda> {
 
+    Optional<PedidoVenda> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     boolean existsByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String numero);
 
     Optional<PedidoVenda> findByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String numero);

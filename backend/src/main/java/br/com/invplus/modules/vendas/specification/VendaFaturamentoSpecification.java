@@ -18,31 +18,35 @@ public final class VendaFaturamentoSpecification {
     }
 
     public static Specification<VendaFaturamento> ativo(Boolean ativo) {
-        return ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
+        return ativo == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
     }
 
     public static Specification<VendaFaturamento> pedidoIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("pedidoVenda").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("pedidoVenda").get("id"), id);
     }
 
-    public static Specification<VendaFaturamento> empresaIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
+    public static Specification<VendaFaturamento> pertenceEmpresa(UUID id) {
+        return (root, query, cb) -> cb.equal(root.get("empresa").get("id"), id);
     }
 
     public static Specification<VendaFaturamento> filialIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("filial").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("filial").get("id"), id);
     }
 
     public static Specification<VendaFaturamento> clienteIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("cliente").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("cliente").get("id"), id);
     }
 
     public static Specification<VendaFaturamento> numeroContem(String numero) {
-        return numero == null || numero.isBlank() ? null
+        return numero == null || numero.isBlank() ? sempreVerdadeiro()
                 : (root, query, cb) -> cb.like(cb.lower(root.get("numero")), "%" + numero.toLowerCase() + "%");
     }
 
     public static Specification<VendaFaturamento> statusIgual(StatusVendaFaturamento status) {
-        return status == null ? null : (root, query, cb) -> cb.equal(root.get("status"), status);
+        return status == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("status"), status);
+    }
+
+    private static Specification<VendaFaturamento> sempreVerdadeiro() {
+        return (root, query, cb) -> cb.conjunction();
     }
 }

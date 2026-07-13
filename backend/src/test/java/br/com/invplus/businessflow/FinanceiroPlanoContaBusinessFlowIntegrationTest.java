@@ -40,6 +40,7 @@ import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,7 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-class FinanceiroPlanoContaBusinessFlowIntegrationTest {
+class FinanceiroPlanoContaBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     private static final LocalDate DATA = LocalDate.of(2098, 7, 9);
 
@@ -88,6 +89,7 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest {
     void deveClassificarContasPropagarMovimentosFiltrarERelatarPorPlanoConta() {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.save(empresa("Empresa PC Financeiro " + sufixo, "12" + sufixo));
+        ativarEmpresa(empresa.getId());
         Empresa outraEmpresa = empresaRepository.save(empresa("Outra Empresa PC " + sufixo, "34" + sufixo));
         Cliente cliente = clienteRepository.save(cliente("Cliente PC " + sufixo, "56" + sufixo));
         Fornecedor fornecedor = fornecedorRepository.save(fornecedor("Fornecedor PC " + sufixo, "78" + sufixo));
@@ -101,33 +103,33 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest {
                 "Outra empresa", TipoPlanoConta.ANALITICA, NaturezaPlanoConta.RECEITA));
 
         var receberResponse = contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, receita, "CR-PC-" + sufixo));
+                cliente, receita, "CR-PC-" + sufixo));
         var pagarResponse = contaPagarService.criar(contaPagarRequest(
-                empresa, fornecedor, despesa, "CP-PC-" + sufixo));
+                fornecedor, despesa, "CP-PC-" + sufixo));
 
         assertThat(receberResponse.planoContaId()).isEqualTo(receita.getId());
         assertThat(receberResponse.planoContaNatureza()).isEqualTo(NaturezaPlanoConta.RECEITA);
         assertThat(pagarResponse.planoContaId()).isEqualTo(despesa.getId());
         assertThat(pagarResponse.planoContaNatureza()).isEqualTo(NaturezaPlanoConta.DESPESA);
-        assertThat(contaReceberService.listarComFiltros(null, null, null, null, null, receita.getId(),
+        assertThat(contaReceberService.listarComFiltros(null, null, null, null, receita.getId(),
                 null, null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
-        assertThat(contaPagarService.listarComFiltros(null, null, null, null, null, despesa.getId(),
+        assertThat(contaPagarService.listarComFiltros(null, null, null, null, despesa.getId(),
                 null, null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
 
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, despesa, "CR-PC-INV-" + sufixo)))
+                cliente, despesa, "CR-PC-INV-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("RECEITA");
         assertThatThrownBy(() -> contaPagarService.criar(contaPagarRequest(
-                empresa, fornecedor, receita, "CP-PC-INV-" + sufixo)))
+                fornecedor, receita, "CP-PC-INV-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("DESPESA");
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, sintetica, "CR-PC-SIN-" + sufixo)))
+                cliente, sintetica, "CR-PC-SIN-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("ANALITICA");
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
-                empresa, cliente, outraEmpresaPlano, "CR-PC-OUT-" + sufixo)))
+                cliente, outraEmpresaPlano, "CR-PC-OUT-" + sufixo)))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("mesma empresa");
 
@@ -142,7 +144,7 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest {
 
         assertThat(entrada.getPlanoConta().getId()).isEqualTo(receita.getId());
         assertThat(saida.getPlanoConta().getId()).isEqualTo(despesa.getId());
-        assertThat(movimentoService.listarComFiltros(null, null, TipoMovimentoFinanceiro.ENTRADA,
+        assertThat(movimentoService.listarComFiltros(null, TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.RECEBIMENTO, null, null, null, null, null, receita.getId(),
                 null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
 
@@ -156,14 +158,14 @@ class FinanceiroPlanoContaBusinessFlowIntegrationTest {
     }
 
     private ContaReceberRequest contaReceberRequest(
-            Empresa empresa, Cliente cliente, PlanoConta plano, String numero) {
-        return new ContaReceberRequest(empresa.getId(), null, cliente.getId(), null, null, plano.getId(),
+            Cliente cliente, PlanoConta plano, String numero) {
+        return new ContaReceberRequest(null, cliente.getId(), null, null, plano.getId(),
                 numero, "Conta classificada", DATA, new BigDecimal("500.00"), null);
     }
 
     private ContaPagarRequest contaPagarRequest(
-            Empresa empresa, Fornecedor fornecedor, PlanoConta plano, String numero) {
-        return new ContaPagarRequest(empresa.getId(), null, fornecedor.getId(), null, null, plano.getId(),
+            Fornecedor fornecedor, PlanoConta plano, String numero) {
+        return new ContaPagarRequest(null, fornecedor.getId(), null, null, plano.getId(),
                 numero, "Conta classificada", DATA, new BigDecimal("200.00"), null);
     }
 

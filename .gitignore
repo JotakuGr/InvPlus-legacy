@@ -24,6 +24,9 @@ dist/
 logs/
 .tmp/
 
+# Storage local de desenvolvimento
+backend/uploads/
+
 # Ambiente
 .env
 .env.local

@@ -11,6 +11,7 @@ import br.com.invplus.modules.vendas.enums.StatusVendaFaturamento;
 import br.com.invplus.modules.vendas.repository.VendaFaturamentoRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,7 +31,7 @@ public class VendaFaturamentoValidator {
         this.reservaRepository = reservaRepository;
     }
 
-    public void validarFaturamento(VendaFaturamentoRequest request, PedidoVenda pedido) {
+    public void validarFaturamento(VendaFaturamentoRequest request, PedidoVenda pedido, UUID empresaId) {
         if (request.condicaoPagamentoId() == null) {
             throw new InvalidOperationException("Condicao de pagamento e obrigatoria para faturar venda");
         }
@@ -46,10 +47,12 @@ public class VendaFaturamentoValidator {
         )) {
             throw new ConflictException("Ja existe faturamento ativo com este numero para a empresa");
         }
-        boolean possuiReservaAtiva = reservaRepository.existsByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+        boolean possuiReservaAtiva = reservaRepository
+                .existsByOrigemAndOrigemIdAndStatusAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
                 MovimentacaoOrigem.VENDA,
                 pedido.getId(),
-                StatusReservaEstoque.ATIVA
+                StatusReservaEstoque.ATIVA,
+                empresaId
         );
         if (!possuiReservaAtiva) {
             throw new InvalidOperationException("Pedido de venda precisa possuir reserva ativa para ser faturado");

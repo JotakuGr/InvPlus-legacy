@@ -9,6 +9,7 @@ import br.com.invplus.modules.financeiro.conciliacao.service.*;
 import br.com.invplus.modules.financeiro.entity.*;
 import br.com.invplus.modules.financeiro.enums.*;
 import br.com.invplus.modules.financeiro.repository.*;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
@@ -25,6 +26,7 @@ class ConciliacaoBancariaPendenciasServiceTest {
     @Mock MovimentoFinanceiroRepository movimentoRepository;
     @Mock ContaBancariaRepository contaRepository;
     @Mock PontuacaoConciliacaoService pontuacaoService;
+    @Mock EmpresaContext empresaContext;
 
     @Test void deveRetornarPendenciaSemSugestao() {
         Empresa empresa = new Empresa(); empresa.setId(UUID.randomUUID());
@@ -35,13 +37,14 @@ class ConciliacaoBancariaPendenciasServiceTest {
         l.setExtratoBancario(extrato); l.setDataLancamento(LocalDate.now()); l.setDescricao("Credito");
         l.setTipo(TipoLancamentoBancario.CREDITO); l.setCategoriaBancaria(CategoriaLancamentoBancario.PIX);
         l.setValor(new BigDecimal("10.00"));
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
         when(lancamentoRepository.buscarPendencias(eq(empresa.getId()), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), any())).thenReturn(new PageImpl<>(List.of(l)));
         when(movimentoRepository.buscarCandidatosConciliacao(any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of());
         var service = new ConciliacaoBancariaPainelService(extratoRepository, lancamentoRepository,
-                movimentoRepository, contaRepository, pontuacaoService, null);
-        var pagina = service.buscarPendencias(empresa.getId(), null, null, null, null,
+                movimentoRepository, contaRepository, pontuacaoService, empresaContext);
+        var pagina = service.buscarPendencias(null, null, null, null,
                 null, null, null, null, PageRequest.of(0, 20));
         assertThat(pagina.getContent()).singleElement().satisfies(item -> {
             assertThat(item.melhorSugestao()).isNull();

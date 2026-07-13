@@ -50,11 +50,10 @@ public class FinanceiroResumoController {
     public ResponseEntity<DreFinanceiraResponse> dre(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID centroCustoId,
             @RequestParam(required = false) UUID planoContaId) {
         return ResponseEntity.ok(service.gerarDre(dataInicio, dataFim,
-                empresaId, filialId, centroCustoId, planoContaId));
+                filialId, centroCustoId, planoContaId));
     }
 }

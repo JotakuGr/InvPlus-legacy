@@ -1,32 +1,34 @@
 package br.com.invplus.integration.financeiro;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import br.com.invplus.modules.cadastros.entity.Empresa;
-import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
-import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
-import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
-import br.com.invplus.modules.financeiro.service.ContaBancariaService;
-import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
+import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
+import br.com.invplus.modules.financeiro.service.ContaBancariaService;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
+import br.com.invplus.security.repository.UsuarioRepository;
+import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.context.TestEmpresaContext;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import tools.jackson.databind.ObjectMapper;
 
 /** Testes multipart, consulta e seguranca da importacao OFX. */
@@ -37,20 +39,29 @@ class ImportacaoExtratoControllerTests {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Autowired private EmpresaRepository empresaRepository;
     @Autowired private ContaBancariaService contaBancariaService;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
+    @Autowired private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private TestEmpresaContext testEmpresaContext;
+
+    @AfterEach
+    @SuppressWarnings("unused")
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
 
     @Test
     void deveImportarConsultarEListarOfx() throws Exception {
-        String token = login().get("accessToken").asString();
-        UUID contaId = prepararConta();
-        MockMultipartFile arquivo = arquivo("extrato-valido.ofx", sufixo());
+        JsonNode login = login();
+        String token = login.get("accessToken").asString();
+        ContaFixture conta = prepararConta(UUID.fromString(login.get("contexto").get("empresaId").asString()));
+        MockMultipartFile arquivo = arquivo("extrato-valido.ofx", sufixo(), conta);
 
         String body = mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx")
-                        .file(arquivo).param("contaBancariaId", contaId.toString())
+                        .file(arquivo).param("contaBancariaId", conta.id().toString())
                         .param("observacao", "Upload REST")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isCreated())
@@ -63,7 +74,7 @@ class ImportacaoExtratoControllerTests {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id));
         mockMvc.perform(get("/api/v1/importacoes-extratos")
-                        .queryParam("contaBancariaId", contaId.toString())
+                        .queryParam("contaBancariaId", conta.id().toString())
                         .queryParam("formato", "OFX").queryParam("status", "CONCLUIDA")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(id));
@@ -71,27 +82,28 @@ class ImportacaoExtratoControllerTests {
 
     @Test
     void deveBloquearArquivoAusenteInvalidoEHashDuplicado() throws Exception {
-        String token = login().get("accessToken").asString();
-        UUID contaId = prepararConta();
-        MockMultipartFile arquivo = arquivo("extrato-valido.ofx", sufixo());
+        JsonNode login = login();
+        String token = login.get("accessToken").asString();
+        ContaFixture conta = prepararConta(UUID.fromString(login.get("contexto").get("empresaId").asString()));
+        MockMultipartFile arquivo = arquivo("extrato-valido.ofx", sufixo(), conta);
 
         mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx")
-                        .param("contaBancariaId", contaId.toString())
+                        .param("contaBancariaId", conta.id().toString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest());
 
         MockMultipartFile invalido = new MockMultipartFile("arquivo", "extrato.txt", "text/plain",
                 "conteudo invalido".getBytes(StandardCharsets.UTF_8));
         mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx").file(invalido)
-                        .param("contaBancariaId", contaId.toString())
+                        .param("contaBancariaId", conta.id().toString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx").file(arquivo)
-                        .param("contaBancariaId", contaId.toString())
+                        .param("contaBancariaId", conta.id().toString())
                         .header("Authorization", "Bearer " + token)).andExpect(status().isCreated());
         mockMvc.perform(multipart("/api/v1/extratos-bancarios/importar/ofx").file(arquivo)
-                        .param("contaBancariaId", contaId.toString())
+                        .param("contaBancariaId", conta.id().toString())
                         .header("Authorization", "Bearer " + token)).andExpect(status().isConflict());
     }
 
@@ -102,45 +114,47 @@ class ImportacaoExtratoControllerTests {
         Usuario usuario = new Usuario("Sem Importacao",
                 "sem-importacao-" + UUID.randomUUID() + "@invplus.com", passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("EXTRATO_BANCARIO:VISUALIZAR").build());
+        Empresa empresa = novaEmpresa(sufixo());
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
         mockMvc.perform(get("/api/v1/importacoes-extratos")
                         .header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
     }
 
-    private UUID prepararConta() {
-        String sufixo = sufixo();
-        Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa OFX Ctrl " + sufixo,
-                "Empresa OFX Ctrl " + sufixo, documento(sufixo), null, null, null));
-        return contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null, "001",
-                "Banco OFX Ctrl", "1234", null, "99999", "9", TipoContaBancaria.CORRENTE,
-                "Empresa OFX Ctrl", null, null, BigDecimal.ZERO, LocalDate.of(2026, 7, 1), true)).id();
+    private ContaFixture prepararConta(UUID empresaId) {
+        String numeros = UUID.randomUUID().toString().replaceAll("\\D", "") + "00000000000";
+        String banco = "8" + numeros.substring(0, 2);
+        String agencia = numeros.substring(2, 6);
+        String numero = numeros.substring(6, 11);
+        UUID id = contaBancariaService.criar(new ContaBancariaRequest(empresaId, null, banco,
+                "Banco OFX Ctrl", agencia, null, numero, "9", TipoContaBancaria.CORRENTE,
+                "Empresa OFX Ctrl", null, null, BigDecimal.ZERO, LocalDate.of(2026, 7, 1), false)).id();
+        return new ContaFixture(id, banco, agencia, numero + "-9");
     }
 
-    private MockMultipartFile arquivo(String nome, String nonce) throws Exception {
+    private MockMultipartFile arquivo(String nome, String nonce, ContaFixture conta) throws Exception {
         byte[] bytes;
         try (var stream = getClass().getResourceAsStream("/ofx/" + nome)) {
             bytes = stream.readAllBytes();
         }
-        String conteudo = new String(bytes, StandardCharsets.UTF_8) + "\n<!-- " + nonce + " -->";
+        String conteudo = new String(bytes, StandardCharsets.UTF_8)
+                .replace("<BANKID>001</BANKID>", "<BANKID>" + conta.banco() + "</BANKID>")
+                .replace("<BRANCHID>1234</BRANCHID>", "<BRANCHID>" + conta.agencia() + "</BRANCHID>")
+                .replace("<ACCTID>99999-9</ACCTID>", "<ACCTID>" + conta.numero() + "</ACCTID>")
+                + "\n<!-- " + nonce + " -->";
         return new MockMultipartFile("arquivo", nome, "application/x-ofx",
                 conteudo.getBytes(StandardCharsets.UTF_8));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .post("/api/v1/auth/login").contentType("application/json")
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private String documento(String base) {
-        String numeros = base.replaceAll("\\D", "");
-        return ("55666777000199" + numeros).substring(numeros.length());
+    private Empresa novaEmpresa(String sufixo) {
+        return empresaRepository.saveAndFlush(new Empresa("Empresa OFX Ctrl " + sufixo,
+                "Empresa OFX Ctrl " + sufixo, documento(sufixo), null, null, null));
     }
 
     private String sufixo() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    private record ContaFixture(UUID id, String banco, String agencia, String numero) {
     }
 }

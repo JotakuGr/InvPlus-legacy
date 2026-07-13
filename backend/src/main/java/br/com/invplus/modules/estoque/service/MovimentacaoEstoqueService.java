@@ -13,6 +13,7 @@ import br.com.invplus.modules.estoque.specification.MovimentacaoEstoqueSpecifica
 import br.com.invplus.modules.estoque.validator.MovimentacaoEstoqueValidator;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -32,24 +33,26 @@ public class MovimentacaoEstoqueService {
     private final EstoqueRepository estoqueRepository;
     private final MovimentacaoEstoqueMapper mapper;
     private final MovimentacaoEstoqueValidator validator;
+    private final EmpresaContext empresaContext;
 
     public MovimentacaoEstoqueService(
             MovimentacaoEstoqueRepository repository,
             EstoqueRepository estoqueRepository,
             MovimentacaoEstoqueMapper mapper,
-            MovimentacaoEstoqueValidator validator
+            MovimentacaoEstoqueValidator validator,
+            EmpresaContext empresaContext
     ) {
         this.repository = repository;
         this.estoqueRepository = estoqueRepository;
         this.mapper = mapper;
         this.validator = validator;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public Page<MovimentacaoEstoqueResponse> listarComFiltros(
             UUID estoqueId,
             UUID produtoId,
-            UUID empresaId,
             UUID depositoId,
             UUID localizacaoId,
             TipoMovimentacaoEstoque tipoMovimentacao,
@@ -58,9 +61,10 @@ public class MovimentacaoEstoqueService {
             OffsetDateTime dataFinal,
             Pageable pageable
     ) {
-        Specification<MovimentacaoEstoque> specification = MovimentacaoEstoqueSpecification.estoqueIgual(estoqueId)
+        Specification<MovimentacaoEstoque> specification = MovimentacaoEstoqueSpecification
+                .pertenceEmpresa(empresaContext.getEmpresaId())
+                .and(MovimentacaoEstoqueSpecification.estoqueIgual(estoqueId))
                 .and(MovimentacaoEstoqueSpecification.produtoIgual(produtoId))
-                .and(MovimentacaoEstoqueSpecification.empresaIgual(empresaId))
                 .and(MovimentacaoEstoqueSpecification.depositoIgual(depositoId))
                 .and(MovimentacaoEstoqueSpecification.localizacaoIgual(localizacaoId))
                 .and(MovimentacaoEstoqueSpecification.tipoIgual(tipoMovimentacao))
@@ -72,7 +76,7 @@ public class MovimentacaoEstoqueService {
 
     @Transactional(readOnly = true)
     public MovimentacaoEstoqueResponse buscar(UUID id) {
-        return repository.findById(id)
+        return repository.findByIdAndEmpresaId(id, empresaContext.getEmpresaId())
                 .map(mapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("MovimentacaoEstoque nao encontrada"));
     }
@@ -80,7 +84,8 @@ public class MovimentacaoEstoqueService {
     @Transactional
     public MovimentacaoEstoque registrarInterna(MovimentacaoEstoqueRequest request) {
         validator.validarRegistro(request);
-        Estoque estoque = estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(request.estoqueId())
+        Estoque estoque = estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        request.estoqueId(), empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Estoque nao encontrado"));
         MovimentacaoEstoque entity = mapper.toEntity(request);
         entity.vincularEstoque(estoque);

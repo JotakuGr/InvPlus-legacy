@@ -43,14 +43,13 @@ public class CentroCustoController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAnyAuthority('CENTRO_CUSTO:*', 'CENTRO_CUSTO:VISUALIZAR')")
     public ResponseEntity<Page<CentroCustoResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID centroCustoPaiId,
             @RequestParam(required = false) String codigo,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) TipoCentroCusto tipo,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        return ResponseEntity.ok(service.listar(empresaId, centroCustoPaiId, codigo, nome, tipo, ativo, pageable));
+        return ResponseEntity.ok(service.listar(centroCustoPaiId, codigo, nome, tipo, ativo, pageable));
     }
 
     @GetMapping("/{id}")

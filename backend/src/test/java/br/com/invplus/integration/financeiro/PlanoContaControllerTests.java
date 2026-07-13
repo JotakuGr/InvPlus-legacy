@@ -9,20 +9,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
+import br.com.invplus.modules.financeiro.entity.PlanoConta;
+import br.com.invplus.modules.financeiro.enums.NaturezaPlanoConta;
+import br.com.invplus.modules.financeiro.enums.TipoPlanoConta;
+import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -45,18 +50,23 @@ class PlanoContaControllerTests {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+    @Autowired
+    private PlanoContaRepository planoContaRepository;
 
     @Test
     void deveCriarFiltrarAtualizarEExcluirPlanoConta() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
-        String paiId = criar(token, empresa.getId(), null, "3-" + sufixo(),
+        String token = tokenAdmin(empresa);
+        String paiId = criar(token, null, "3-" + sufixo(),
                 "Receitas", "SINTETICA");
-        String filhoId = criar(token, empresa.getId(), UUID.fromString(paiId),
+        String filhoId = criar(token, UUID.fromString(paiId),
                 "3.1-" + sufixo(), "Vendas", "ANALITICA");
 
         mockMvc.perform(get("/api/v1/planos-contas")
-                        .queryParam("empresaId", empresa.getId().toString())
                         .queryParam("planoContaPaiId", paiId)
                         .queryParam("tipo", "ANALITICA")
                         .queryParam("natureza", "RECEITA")
@@ -68,7 +78,7 @@ class PlanoContaControllerTests {
         mockMvc.perform(put("/api/v1/planos-contas/" + filhoId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), UUID.fromString(paiId),
+                        .content(payload(UUID.fromString(paiId),
                                 "3.1.1-" + sufixo(), "Venda de Produtos", "ANALITICA")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Venda de Produtos"));
@@ -84,31 +94,33 @@ class PlanoContaControllerTests {
 
     @Test
     void deveBloquearDuplicidadePaiDeOutraEmpresaEAutorelacionamento() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
+        String token = tokenAdmin(empresa);
         Empresa outra = prepararEmpresa();
         String codigo = "DUP-" + sufixo();
-        String id = criar(token, empresa.getId(), null, codigo, "Receitas", "SINTETICA");
-        String paiOutraEmpresa = criar(token, outra.getId(), null,
-                "OUT-" + sufixo(), "Ativos", "SINTETICA");
+        String id = criar(token, null, codigo, "Receitas", "SINTETICA");
+        PlanoConta paiOutraEmpresa = new PlanoConta();
+        paiOutraEmpresa.atualizar(outra, null, "OUT-" + sufixo(), "Ativos", null,
+                TipoPlanoConta.SINTETICA, NaturezaPlanoConta.ATIVO);
+        paiOutraEmpresa = planoContaRepository.saveAndFlush(paiOutraEmpresa);
 
         mockMvc.perform(post("/api/v1/planos-contas")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), null, codigo, "Duplicado", "ANALITICA")))
+                        .content(payload(null, codigo, "Duplicado", "ANALITICA")))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/planos-contas")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), UUID.fromString(paiOutraEmpresa),
+                        .content(payload(paiOutraEmpresa.getId(),
                                 "FILHO-" + sufixo(), "Filho invalido", "ANALITICA")))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(put("/api/v1/planos-contas/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), UUID.fromString(id),
+                        .content(payload(UUID.fromString(id),
                                 codigo, "Receitas", "SINTETICA")))
                 .andExpect(status().isBadRequest());
     }
@@ -124,32 +136,29 @@ class PlanoContaControllerTests {
         Usuario usuario = new Usuario("Sem Plano Conta",
                 "sem-plano-" + UUID.randomUUID() + "@invplus.com", passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PAGAMENTO:VISUALIZAR")
-                .build());
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, prepararEmpresa());
 
         mockMvc.perform(get("/api/v1/planos-contas")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private String criar(String token, UUID empresaId, UUID paiId,
+    private String criar(String token, UUID paiId,
             String codigo, String nome, String tipo) throws Exception {
         String response = mockMvc.perform(post("/api/v1/planos-contas")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresaId, paiId, codigo, nome, tipo)))
+                        .content(payload(paiId, codigo, nome, tipo)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).get("id").asString();
     }
 
-    private String payload(UUID empresaId, UUID paiId, String codigo, String nome, String tipo) {
+    private String payload(UUID paiId, String codigo, String nome, String tipo) {
         String pai = paiId == null ? "null" : "\"" + paiId + "\"";
         return """
                 {
-                  "empresaId": "%s",
                   "planoContaPaiId": %s,
                   "codigo": "%s",
                   "nome": "%s",
@@ -157,7 +166,7 @@ class PlanoContaControllerTests {
                   "tipo": "%s",
                   "natureza": "RECEITA"
                 }
-                """.formatted(empresaId, pai, codigo, nome, tipo);
+                """.formatted(pai, codigo, nome, tipo);
     }
 
     private Empresa prepararEmpresa() {
@@ -166,12 +175,10 @@ class PlanoContaControllerTests {
                 "Empresa PC " + sufixo, documento(sufixo), null, null, null));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private String tokenAdmin(Empresa empresa) {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
     }
 
     private String documento(String base) {

@@ -18,6 +18,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /**
  * Consolida indicadores financeiros por meio de consultas agregadas no banco.
@@ -29,6 +31,7 @@ public class FinanceiroResumoService {
     private final MovimentoFinanceiroRepository movimentoRepository;
     private final ContaReceberRepository contaReceberRepository;
     private final ContaPagarRepository contaPagarRepository;
+    private final EmpresaContext empresaContext;
 
     /**
      * Calcula entradas, saidas e saldo para um intervalo inclusivo.
@@ -101,8 +104,15 @@ public class FinanceiroResumoService {
      */
     @Transactional(readOnly = true)
     public DreFinanceiraResponse gerarDre(LocalDate dataInicio, LocalDate dataFim,
+            UUID filialId, UUID centroCustoId, UUID planoContaId) {
+        return gerarDre(dataInicio, dataFim, empresaContext.getEmpresaId(), filialId, centroCustoId, planoContaId);
+    }
+
+    @Transactional(readOnly = true)
+    public DreFinanceiraResponse gerarDre(LocalDate dataInicio, LocalDate dataFim,
             UUID empresaId, UUID filialId, UUID centroCustoId, UUID planoContaId) {
         validarPeriodo(dataInicio, dataFim);
+        empresaId = resolverEmpresa(empresaId);
         List<DreLinhaResponse> receitas = toLinhas(movimentoRepository.somarReceitasPorPlanoConta(
                 dataInicio, dataFim, empresaId, filialId, centroCustoId, planoContaId));
         List<DreLinhaResponse> despesas = toLinhas(movimentoRepository.somarDespesasPorPlanoConta(
@@ -117,6 +127,9 @@ public class FinanceiroResumoService {
 
     private BigDecimal somarMovimentos(TipoMovimentoFinanceiro tipo, LocalDate inicio,
             LocalDate fim, UUID centroCustoId, UUID planoContaId) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return zeroSeNulo(movimentoRepository.somarPorEmpresaTipoPeriodo(
+                empresaId, tipo, inicio, fim, centroCustoId, planoContaId));
         BigDecimal total;
         if (centroCustoId != null && planoContaId != null) {
             total = movimentoRepository.somarPorTipoNoPeriodoECentroCustoEPlanoConta(
@@ -132,6 +145,9 @@ public class FinanceiroResumoService {
     }
 
     private BigDecimal somarContasReceber(UUID centroCustoId, UUID planoContaId) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return zeroSeNulo(contaReceberRepository.somarValorAbertoPorEmpresa(
+                empresaId, centroCustoId, planoContaId));
         if (centroCustoId != null && planoContaId != null) {
             return zeroSeNulo(contaReceberRepository.somarValorAbertoPorCentroCustoEPlanoConta(
                     centroCustoId, planoContaId));
@@ -146,6 +162,9 @@ public class FinanceiroResumoService {
     }
 
     private BigDecimal somarContasPagar(UUID centroCustoId, UUID planoContaId) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return zeroSeNulo(contaPagarRepository.somarValorAbertoPorEmpresa(
+                empresaId, centroCustoId, planoContaId));
         if (centroCustoId != null && planoContaId != null) {
             return zeroSeNulo(contaPagarRepository.somarValorAbertoPorCentroCustoEPlanoConta(
                     centroCustoId, planoContaId));
@@ -160,6 +179,9 @@ public class FinanceiroResumoService {
     }
 
     private long contarReceberVencidas(UUID centroCustoId, UUID planoContaId) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return contaReceberRepository.contarPorEmpresaStatus(
+                empresaId, StatusContaReceber.VENCIDA, centroCustoId, planoContaId);
         if (centroCustoId != null && planoContaId != null) {
             return contaReceberRepository.countByStatusAndCentroCustoIdAndPlanoContaIdAndAtivoTrueAndDeletedAtIsNull(
                     StatusContaReceber.VENCIDA, centroCustoId, planoContaId);
@@ -176,6 +198,9 @@ public class FinanceiroResumoService {
     }
 
     private long contarPagarVencidas(UUID centroCustoId, UUID planoContaId) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return contaPagarRepository.contarPorEmpresaStatus(
+                empresaId, StatusContaPagar.VENCIDA, centroCustoId, planoContaId);
         if (centroCustoId != null && planoContaId != null) {
             return contaPagarRepository.countByStatusAndCentroCustoIdAndPlanoContaIdAndAtivoTrueAndDeletedAtIsNull(
                     StatusContaPagar.VENCIDA, centroCustoId, planoContaId);
@@ -231,5 +256,20 @@ public class FinanceiroResumoService {
 
     private BigDecimal zeroSeNulo(BigDecimal valor) {
         return valor == null ? BigDecimal.ZERO : valor;
+    }
+
+    private UUID resolverEmpresa(UUID recebida) {
+        if (empresaContext == null) return recebida;
+        UUID contexto = empresaAtualOuNull();
+        if (contexto == null) return recebida;
+        if (recebida != null && !contexto.equals(recebida)) throw new AcessoEmpresaNegadoException();
+        return contexto;
+    }
+
+    private UUID empresaAtualOuNull() {
+        if (empresaContext == null) return null;
+        try { return empresaContext.getEmpresaId(); }
+        catch (br.com.invplus.security.exception.ContextoEmpresarialAusenteException
+                | org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) { return null; }
     }
 }

@@ -13,6 +13,10 @@ public final class ConciliacaoBancariaSpecification {
     private ConciliacaoBancariaSpecification() {
     }
 
+    public static Specification<ConciliacaoBancaria> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(root.get("contaBancaria").get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<ConciliacaoBancaria> lancamentoIgual(UUID id) {
         return id == null ? null : (root, query, cb) ->
                 cb.equal(root.get("extratoBancarioLancamento").get("id"), id);

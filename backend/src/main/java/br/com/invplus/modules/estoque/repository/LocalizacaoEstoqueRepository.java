@@ -10,6 +10,9 @@ import java.util.UUID;
  */
 public interface LocalizacaoEstoqueRepository extends BaseRepository<LocalizacaoEstoque> {
 
+    Optional<LocalizacaoEstoque> findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+            UUID id, UUID empresaId);
+
     boolean existsByDepositoIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(UUID depositoId, String codigo);
 
     boolean existsByDepositoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(UUID depositoId);

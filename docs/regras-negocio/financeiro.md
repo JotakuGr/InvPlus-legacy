@@ -167,3 +167,8 @@
 - A criação de extrato e lançamentos é atômica; falha em uma linha desfaz todo o domínio bancário criado.
 - O saldo final importado pertence ao extrato e não altera `ContaBancaria.saldoAtual`.
 - Todos os lançamentos entram com `conciliado = false`; conciliação permanece responsabilidade de `ConciliacaoBancaria`.
+# Contexto empresarial
+
+Conta bancaria, extrato, lancamento, importacao OFX, conciliacao e movimento financeiro sao
+recursos empresariais. Quando o token possui contexto, toda busca e agregacao inclui
+obrigatoriamente `empresa_id`. Recursos de outra empresa sao apresentados como nao encontrados.

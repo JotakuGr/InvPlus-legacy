@@ -4,8 +4,11 @@ Resultado atual:
 
 ```text
 BUILD SUCCESS
-Tests run: 669, Failures: 0, Errors: 0
+Tests run: 692, Failures: 0, Errors: 0, Skipped: 0
 ```
+
+Validacao final executada em 13/07/2026: `147` suites. O bloco adicional de concorrencia
+executou `2` testes com sucesso.
 
 ## Cobertura
 
@@ -51,3 +54,19 @@ mvn test
 ```
 
 O `mvnw.cmd` deve ser mantido funcional para permitir execução sem Maven global instalado.
+# Isolamento empresarial
+
+Os testes de seguranca cobrem o contrato de `EmpresaContext`, validacao de empresa/filial e tokens
+contextualizados. Os testes bancarios focados validam consultas por empresa, importacao OFX e
+agregacoes da central e dos relatorios.
+
+O bloco de Estoque cobre contratos sem `empresaId`, isolamento por empresa em controllers
+e services, optimistic lock e carga concorrente. Testes multithread usam `TestEmpresaContext`
+por thread para nao compartilhar contexto autenticado.
+
+O business flow de Compras cobre pedido, entrada, estoque, movimento, optimistic lock,
+entradas simultaneas, isolamento A/B, token sem empresa e acesso sem permissao.
+
+O bloco de Vendas cobre pedido e item sem `empresaId`, reserva automatica, aprovacao
+concorrente, faturamento, baixa fisica, ContaReceber e isolamento A/B. O teste
+`VendaContextoEmpresarialBusinessFlowIntegrationTest` troca o contexto e valida 404/listas vazias.

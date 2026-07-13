@@ -13,6 +13,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface ContaReceberRepository extends BaseRepository<ContaReceber> {
 
+    Optional<ContaReceber> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     boolean existsByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String numero);
 
     boolean existsByVendaFaturamentoIdAndAtivoTrueAndDeletedAtIsNull(UUID vendaFaturamentoId);
@@ -90,4 +92,27 @@ public interface ContaReceberRepository extends BaseRepository<ContaReceber> {
 
     long countByStatusAndCentroCustoIdAndPlanoContaIdAndAtivoTrueAndDeletedAtIsNull(
             br.com.invplus.modules.financeiro.enums.StatusContaReceber status, UUID centroCustoId, UUID planoContaId);
+
+    @Query("""
+            select coalesce(sum(c.valorAberto), 0) from ContaReceber c
+            where c.empresa.id = :empresaId
+              and c.status in (br.com.invplus.modules.financeiro.enums.StatusContaReceber.ABERTA,
+                br.com.invplus.modules.financeiro.enums.StatusContaReceber.PARCIALMENTE_PAGA,
+                br.com.invplus.modules.financeiro.enums.StatusContaReceber.VENCIDA)
+              and c.ativo = true and c.deletedAt is null
+              and (:centroCustoId is null or c.centroCusto.id = :centroCustoId)
+              and (:planoContaId is null or c.planoConta.id = :planoContaId)
+            """)
+    BigDecimal somarValorAbertoPorEmpresa(@Param("empresaId") UUID empresaId,
+            @Param("centroCustoId") UUID centroCustoId, @Param("planoContaId") UUID planoContaId);
+
+    @Query("""
+            select count(c) from ContaReceber c where c.empresa.id = :empresaId and c.status = :status
+              and c.ativo = true and c.deletedAt is null
+              and (:centroCustoId is null or c.centroCusto.id = :centroCustoId)
+              and (:planoContaId is null or c.planoConta.id = :planoContaId)
+            """)
+    long contarPorEmpresaStatus(@Param("empresaId") UUID empresaId,
+            @Param("status") br.com.invplus.modules.financeiro.enums.StatusContaReceber status,
+            @Param("centroCustoId") UUID centroCustoId, @Param("planoContaId") UUID planoContaId);
 }

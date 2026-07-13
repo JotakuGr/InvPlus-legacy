@@ -1,11 +1,22 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doReturn;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.AuditorAware;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.financeiro.dto.request.ConciliacaoBancariaCancelamentoRequest;
@@ -28,19 +39,10 @@ import br.com.invplus.modules.financeiro.repository.ConciliacaoBancariaRepositor
 import br.com.invplus.modules.financeiro.validator.ConciliacaoBancariaValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.AuditorAware;
 
 /** Testes unitarios das transicoes e compatibilidades da conciliacao bancaria. */
 @ExtendWith(MockitoExtension.class)
@@ -51,18 +53,22 @@ class ConciliacaoBancariaServiceTest {
     @Mock private ExtratoBancarioService extratoService;
     @Mock private MovimentoFinanceiroService movimentoService;
     @Mock private AuditorAware<UUID> auditorAware;
+    @Mock private EmpresaContext empresaContext;
 
     private ConciliacaoBancariaService service;
     private ExtratoBancarioLancamento lancamento;
     private MovimentoFinanceiro movimento;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ConciliacaoBancariaService(repository, lancamentoService, extratoService,
                 movimentoService, new ConciliacaoBancariaMapper(),
-                new ConciliacaoBancariaValidator(repository), auditorAware);
+                new ConciliacaoBancariaValidator(repository), auditorAware, empresaContext);
         lancamento = lancamento(TipoLancamentoBancario.CREDITO, new BigDecimal("100.00"));
         movimento = movimento(TipoMovimentoFinanceiro.ENTRADA, new BigDecimal("100.00"));
+        when(empresaContext.getEmpresaId()).thenReturn(
+                lancamento.getExtratoBancario().getContaBancaria().getEmpresa().getId());
     }
 
     @Test
@@ -79,12 +85,13 @@ class ConciliacaoBancariaServiceTest {
 
     @Test
     void deveBloquearLancamentoOuMovimentoInexistente() {
-        when(lancamentoService.buscarEntidade(lancamento.getId()))
+        UUID empresaId = empresaContext.getEmpresaId();
+        when(lancamentoService.buscarEntidade(lancamento.getId(), empresaId))
                 .thenThrow(new ResourceNotFoundException("Lancamento nao encontrado"));
         assertThatThrownBy(this::criar).isInstanceOf(ResourceNotFoundException.class);
 
-        doReturn(lancamento).when(lancamentoService).buscarEntidade(lancamento.getId());
-        when(movimentoService.buscarEntidade(movimento.getId()))
+        doReturn(lancamento).when(lancamentoService).buscarEntidade(lancamento.getId(), empresaId);
+        when(movimentoService.buscarEntidade(movimento.getId(), empresaId))
                 .thenThrow(new ResourceNotFoundException("Movimento nao encontrado"));
         assertThatThrownBy(this::criar).isInstanceOf(ResourceNotFoundException.class);
     }
@@ -124,7 +131,8 @@ class ConciliacaoBancariaServiceTest {
     @Test
     void deveCancelarConciliacaoERestaurarLancamento() {
         ConciliacaoBancaria entity = entidadeConciliada();
-        when(repository.findByIdAndStatus(entity.getId(), StatusConciliacaoBancaria.CONCILIADA))
+        when(repository.findByIdAndStatusAndContaBancariaEmpresaId(entity.getId(),
+                StatusConciliacaoBancaria.CONCILIADA, empresaContext.getEmpresaId()))
                 .thenReturn(Optional.of(entity));
         when(auditorAware.getCurrentAuditor()).thenReturn(Optional.of(UUID.randomUUID()));
         when(repository.saveAndFlush(entity)).thenReturn(entity);
@@ -140,7 +148,8 @@ class ConciliacaoBancariaServiceTest {
 
     @Test
     void deveBloquearCancelamentoDuplicado() {
-        when(repository.findByIdAndStatus(any(), any())).thenReturn(Optional.empty());
+        when(repository.findByIdAndStatusAndContaBancariaEmpresaId(any(), any(), any()))
+                .thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.cancelar(UUID.randomUUID(),
                 new ConciliacaoBancariaCancelamentoRequest("Cancelamento repetido")))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -163,8 +172,9 @@ class ConciliacaoBancariaServiceTest {
     }
 
     private void prepararBuscas() {
-        when(lancamentoService.buscarEntidade(lancamento.getId())).thenReturn(lancamento);
-        when(movimentoService.buscarEntidade(movimento.getId())).thenReturn(movimento);
+        UUID empresaId = empresaContext.getEmpresaId();
+        when(lancamentoService.buscarEntidade(lancamento.getId(), empresaId)).thenReturn(lancamento);
+        when(movimentoService.buscarEntidade(movimento.getId(), empresaId)).thenReturn(movimento);
     }
 
     private ConciliacaoBancaria entidadeConciliada() {

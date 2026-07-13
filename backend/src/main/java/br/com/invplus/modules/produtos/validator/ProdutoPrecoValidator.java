@@ -22,16 +22,16 @@ public class ProdutoPrecoValidator {
         this.repository = repository;
     }
 
-    public void validarCriacao(ProdutoPrecoRequest request) {
+    public void validarCriacao(UUID empresaId, ProdutoPrecoRequest request) {
         validarCampos(request);
-        validarDuplicidade(request, null);
-        validarPrincipal(request, null);
+        validarDuplicidade(empresaId, request, null);
+        validarPrincipal(empresaId, request, null);
     }
 
-    public void validarAtualizacao(ProdutoPreco atual, ProdutoPrecoRequest request) {
+    public void validarAtualizacao(UUID empresaId, ProdutoPreco atual, ProdutoPrecoRequest request) {
         validarCampos(request);
-        validarDuplicidade(request, atual.getId());
-        validarPrincipal(request, atual.getId());
+        validarDuplicidade(empresaId, request, atual.getId());
+        validarPrincipal(empresaId, request, atual.getId());
     }
 
     private void validarCampos(ProdutoPrecoRequest request) {
@@ -55,12 +55,10 @@ public class ProdutoPrecoValidator {
         }
     }
 
-    private void validarDuplicidade(ProdutoPrecoRequest request, UUID idAtual) {
-        Optional<ProdutoPreco> existente = request.empresaId() == null
-                ? repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                        request.produtoId(), request.tipoPreco(), request.vigenciaInicio())
-                : repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
-                        request.produtoId(), request.tipoPreco(), request.empresaId(), request.vigenciaInicio());
+    private void validarDuplicidade(UUID empresaId, ProdutoPrecoRequest request, UUID idAtual) {
+        Optional<ProdutoPreco> existente = repository
+                .findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
+                        request.produtoId(), request.tipoPreco(), empresaId, request.vigenciaInicio());
 
         existente.map(ProdutoPreco::getId)
                 .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
@@ -69,16 +67,14 @@ public class ProdutoPrecoValidator {
                 });
     }
 
-    private void validarPrincipal(ProdutoPrecoRequest request, UUID idAtual) {
+    private void validarPrincipal(UUID empresaId, ProdutoPrecoRequest request, UUID idAtual) {
         if (!Boolean.TRUE.equals(request.principal())) {
             return;
         }
 
-        Optional<ProdutoPreco> existente = request.empresaId() == null
-                ? repository.findByProdutoIdAndTipoPrecoAndEmpresaIsNullAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
-                        request.produtoId(), request.tipoPreco())
-                : repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
-                        request.produtoId(), request.tipoPreco(), request.empresaId());
+        Optional<ProdutoPreco> existente = repository
+                .findByProdutoIdAndTipoPrecoAndEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
+                        request.produtoId(), request.tipoPreco(), empresaId);
 
         existente.map(ProdutoPreco::getId)
                 .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))

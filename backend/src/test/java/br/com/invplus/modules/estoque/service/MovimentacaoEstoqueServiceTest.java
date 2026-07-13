@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +40,7 @@ import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Testes unitarios do historico imutavel de movimentacoes de estoque.
@@ -51,20 +53,26 @@ class MovimentacaoEstoqueServiceTest {
     private MovimentacaoEstoqueRepository repository;
     @Mock
     private EstoqueRepository estoqueRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private MovimentacaoEstoqueService service;
+    private UUID empresaId;
 
     @BeforeEach
     void setUp() {
+        empresaId = UUID.randomUUID();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         service = new MovimentacaoEstoqueService(repository, estoqueRepository,
-                new MovimentacaoEstoqueMapper(), new MovimentacaoEstoqueValidator());
+                new MovimentacaoEstoqueMapper(), new MovimentacaoEstoqueValidator(), empresaContext);
     }
 
     @Test
     void deveRegistrarEntrada() {
         Estoque estoque = estoque();
         MovimentacaoEstoqueRequest request = request(estoque, TipoMovimentacaoEstoque.ENTRADA, "10.000");
-        when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
+        when(estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId(), empresaId))
+                .thenReturn(Optional.of(estoque));
         when(repository.save(any(MovimentacaoEstoque.class))).thenAnswer(invocation -> {
             MovimentacaoEstoque entity = invocation.getArgument(0);
             entity.setId(UUID.randomUUID());
@@ -110,8 +118,9 @@ class MovimentacaoEstoqueServiceTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), TipoMovimentacaoEstoque.ENTRADA, MovimentacaoOrigem.API, null, null, PageRequest.of(0, 20));
+        service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), TipoMovimentacaoEstoque.ENTRADA, MovimentacaoOrigem.API, null, null,
+                PageRequest.of(0, 20));
 
         verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
@@ -134,7 +143,7 @@ class MovimentacaoEstoqueServiceTest {
 
     private Estoque estoque() {
         Empresa empresa = new Empresa();
-        empresa.setId(UUID.randomUUID());
+        empresa.setId(empresaId);
         empresa.atualizar("Empresa Mov", "Empresa", "12345678000199", "ISENTO", null, "NORMAL", 3, "71999990000", "empresa@teste.com");
         Deposito deposito = new Deposito();
         deposito.setId(UUID.randomUUID());

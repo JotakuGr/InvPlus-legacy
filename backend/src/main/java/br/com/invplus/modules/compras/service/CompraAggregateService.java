@@ -20,6 +20,7 @@ import br.com.invplus.modules.estoque.enums.MovimentacaoOrigem;
 import br.com.invplus.modules.estoque.mapper.MovimentacaoEstoqueMapper;
 import br.com.invplus.modules.estoque.repository.MovimentacaoEstoqueRepository;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class CompraAggregateService {
     private final PedidoCompraHistoricoMapper pedidoHistoricoMapper;
     private final EntradaMercadoriaHistoricoMapper entradaHistoricoMapper;
     private final MovimentacaoEstoqueMapper movimentacaoMapper;
+    private final EmpresaContext empresaContext;
 
     public CompraAggregateService(
             PedidoCompraRepository pedidoRepository,
@@ -60,7 +62,8 @@ public class CompraAggregateService {
             EntradaMercadoriaItemMapper entradaItemMapper,
             PedidoCompraHistoricoMapper pedidoHistoricoMapper,
             EntradaMercadoriaHistoricoMapper entradaHistoricoMapper,
-            MovimentacaoEstoqueMapper movimentacaoMapper
+            MovimentacaoEstoqueMapper movimentacaoMapper,
+            EmpresaContext empresaContext
     ) {
         this.pedidoRepository = pedidoRepository;
         this.pedidoItemRepository = pedidoItemRepository;
@@ -76,11 +79,13 @@ public class CompraAggregateService {
         this.pedidoHistoricoMapper = pedidoHistoricoMapper;
         this.entradaHistoricoMapper = entradaHistoricoMapper;
         this.movimentacaoMapper = movimentacaoMapper;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public PedidoCompraCompletoResponse buscarPedido(UUID pedidoId) {
-        PedidoCompra pedido = pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(pedidoId)
+        UUID empresaId = empresaContext.getEmpresaId();
+        PedidoCompra pedido = pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pedidoId, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido de compra nao encontrado"));
         var itens = pedidoItemRepository.findByPedidoCompraIdAndAtivoTrueAndDeletedAtIsNull(pedidoId);
         BigDecimal quantidadeTotal = itens.stream()
@@ -101,14 +106,16 @@ public class CompraAggregateService {
 
     @Transactional(readOnly = true)
     public EntradaMercadoriaCompletaResponse buscarEntrada(UUID entradaId) {
-        EntradaMercadoria entrada = entradaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(entradaId)
+        UUID empresaId = empresaContext.getEmpresaId();
+        EntradaMercadoria entrada = entradaRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entradaId, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Entrada de mercadoria nao encontrada"));
 
         return new EntradaMercadoriaCompletaResponse(
                 entradaMapper.toResponse(entrada),
                 entradaItemRepository.findByEntradaMercadoriaIdAndAtivoTrueAndDeletedAtIsNull(entradaId)
                         .stream().map(entradaItemMapper::toResponse).toList(),
-                movimentacaoRepository.findByOrigemAndOrigemIdOrderByDataMovimentacaoDesc(MovimentacaoOrigem.COMPRA, entradaId)
+                movimentacaoRepository.findByOrigemAndOrigemIdAndEmpresaIdOrderByDataMovimentacaoDesc(
+                                MovimentacaoOrigem.COMPRA, entradaId, empresaId)
                         .stream().map(movimentacaoMapper::toResponse).toList(),
                 entradaHistoricoRepository.findByEntradaMercadoriaIdOrderByDataAlteracaoDesc(entradaId)
                         .stream().map(entradaHistoricoMapper::toResponse).toList()

@@ -53,6 +53,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 AuthenticatedUserDetails base = (AuthenticatedUserDetails) userDetailsService.loadUserByUsername(username);
                 java.util.UUID empresaId = jwtService.extrairUuidClaimOpcional(token, "empresa_id");
                 java.util.UUID filialId = jwtService.extrairUuidClaimOpcional(token, "filial_id");
+                if (empresaId == null && exigeContextoEmpresarial(request)) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                            "Contexto empresarial ausente ou invalido");
+                    return;
+                }
                 if (empresaId != null) accessValidator.validarContexto(base.getId(), empresaId, filialId);
                 UserDetails userDetails = new AuthenticatedUserDetails(base.getId(), base.getUsername(),
                         base.getPassword(), base.getAuthorities(), base.isEnabled(), empresaId, filialId);
@@ -70,5 +75,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean exigeContextoEmpresarial(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/v1/cadastros/filiais")
+                || path.startsWith("/api/v1/estoques")
+                || path.startsWith("/api/v1/depositos")
+                || path.startsWith("/api/v1/localizacoes-estoque")
+                || path.startsWith("/api/v1/movimentacoes-estoque")
+                || path.startsWith("/api/v1/reservas-estoque")
+                || path.startsWith("/api/v1/pedidos-compra")
+                || path.startsWith("/api/v1/pedidos-compra-itens")
+                || path.startsWith("/api/v1/entradas-mercadoria")
+                || path.startsWith("/api/v1/entradas-mercadoria-itens")
+                || path.startsWith("/api/v1/pedidos-venda")
+                || path.startsWith("/api/v1/pedidos-venda-itens")
+                || path.startsWith("/api/v1/vendas-faturamentos")
+                || path.startsWith("/api/v1/produtos-precos")
+                || path.startsWith("/api/v1/contas-bancarias")
+                || path.startsWith("/api/v1/extratos-bancarios")
+                || path.startsWith("/api/v1/importacoes-extratos")
+                || path.startsWith("/api/v1/conciliacoes-bancarias")
+                || path.startsWith("/api/v1/movimentos-financeiros")
+                || path.startsWith("/api/v1/contas-receber")
+                || path.startsWith("/api/v1/contas-pagar")
+                || path.startsWith("/api/v1/recebimentos")
+                || path.startsWith("/api/v1/pagamentos")
+                || path.startsWith("/api/v1/financeiro/relatorios");
     }
 }

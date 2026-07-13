@@ -24,6 +24,7 @@ import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
+import br.com.invplus.security.context.EmpresaContext;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -48,6 +49,7 @@ public class ContaReceberService extends BaseCrudService<ContaReceber, ContaRece
     private final PlanoContaRepository planoContaRepository;
     private final ContaReceberMapper mapper;
     private final ContaReceberValidator validator;
+    private final EmpresaContext empresaContext;
 
     public ContaReceberService(
             ContaReceberRepository repository,
@@ -59,7 +61,8 @@ public class ContaReceberService extends BaseCrudService<ContaReceber, ContaRece
             CentroCustoRepository centroCustoRepository,
             PlanoContaRepository planoContaRepository,
             ContaReceberMapper mapper,
-            ContaReceberValidator validator
+            ContaReceberValidator validator,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Conta a receber");
         this.repository = repository;
@@ -72,12 +75,14 @@ public class ContaReceberService extends BaseCrudService<ContaReceber, ContaRece
         this.planoContaRepository = planoContaRepository;
         this.mapper = mapper;
         this.validator = validator;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
-    public Page<ContaReceberResponse> listarComFiltros(UUID empresaId, UUID filialId, UUID clienteId,
+    public Page<ContaReceberResponse> listarComFiltros(UUID filialId, UUID clienteId,
             UUID vendaFaturamentoId, UUID centroCustoId, UUID planoContaId, String numero, StatusContaReceber status, LocalDate dataEmissaoDe,
             LocalDate dataEmissaoAte, Boolean ativo, Pageable pageable) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Specification<ContaReceber> specification = ContaReceberSpecification.naoDeletado();
         specification = and(specification, ContaReceberSpecification.ativo(ativo));
         specification = and(specification, ContaReceberSpecification.empresaIgual(empresaId));
@@ -96,8 +101,9 @@ public class ContaReceberService extends BaseCrudService<ContaReceber, ContaRece
     @Override
     @Transactional
     public ContaReceberResponse criar(ContaReceberRequest request) {
-        validator.validarCriacao(request);
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarCriacao(request, empresaId);
+        Empresa empresa = buscarEmpresa(empresaId);
         Filial filial = buscarFilial(request.filialId(), empresa);
         Cliente cliente = buscarCliente(request.clienteId());
         VendaFaturamento vendaFaturamento = buscarFaturamento(request.vendaFaturamentoId());
@@ -116,8 +122,9 @@ public class ContaReceberService extends BaseCrudService<ContaReceber, ContaRece
     @Transactional
     public ContaReceberResponse atualizar(UUID id, ContaReceberRequest request) {
         ContaReceber conta = buscarEntidade(id);
-        validator.validarAtualizacao(id, conta, request);
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarAtualizacao(id, conta, request, empresaId);
+        Empresa empresa = buscarEmpresa(empresaId);
         Filial filial = buscarFilial(request.filialId(), empresa);
         Cliente cliente = buscarCliente(request.clienteId());
         VendaFaturamento vendaFaturamento = buscarFaturamento(request.vendaFaturamentoId());
@@ -194,6 +201,13 @@ public class ContaReceberService extends BaseCrudService<ContaReceber, ContaRece
     private Empresa buscarEmpresa(UUID id) {
         return empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContaReceber buscarEntidade(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Conta a receber nao encontrada"));
     }
 
     private Filial buscarFilial(UUID id, Empresa empresa) {

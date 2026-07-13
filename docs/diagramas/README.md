@@ -147,3 +147,17 @@ flowchart LR
     UE --> J[JWT ACCESS]
     J --> C[EmpresaContext]
 ```
+```mermaid
+flowchart LR
+    JWT[Access token com empresa_id] --> Contexto[EmpresaContext]
+    Contexto --> Service[Service empresarial]
+    Service --> Repository[Repository filtrado por empresa]
+    Repository --> Banco[(PostgreSQL)]
+```
+
+No fluxo de Estoque, `EmpresaContext` antecede as consultas de deposito, localizacao,
+saldo, movimentacao e reserva. Compras e Vendas continuam consumindo `EstoqueFacade`,
+sem escolher a empresa da operacao.
+
+No fluxo de Vendas, o contexto acompanha PedidoVenda -> ReservaEstoque -> VendaFaturamento
+-> ContaReceber. A troca de empresa altera todas as consultas sem receber `empresaId`.

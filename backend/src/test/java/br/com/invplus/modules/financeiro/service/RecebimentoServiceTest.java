@@ -57,6 +57,8 @@ class RecebimentoServiceTest {
     private MovimentoFinanceiroService movimentoFinanceiroService;
     @Mock
     private ContaBancariaRepository contaBancariaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private RecebimentoService service;
     private ParcelaReceber parcela;
@@ -67,7 +69,7 @@ class RecebimentoServiceTest {
     void setUp() {
         service = new RecebimentoService(repository, parcelaReceberRepository, formaPagamentoRepository,
                 parcelaReceberService, movimentoFinanceiroService, new RecebimentoMapper(),
-                new RecebimentoValidator(), contaBancariaRepository);
+                new RecebimentoValidator(), contaBancariaRepository, empresaContext);
         parcela = parcela("300.00");
         formaPagamento = formaPagamento();
     }

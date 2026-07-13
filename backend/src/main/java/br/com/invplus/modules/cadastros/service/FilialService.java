@@ -8,6 +8,7 @@ import br.com.invplus.modules.cadastros.entity.Filial;
 import br.com.invplus.modules.cadastros.mapper.FilialMapper;
 import br.com.invplus.modules.cadastros.repository.FilialRepository;
 import br.com.invplus.modules.cadastros.validator.FilialValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,16 +29,16 @@ public class FilialService {
     private final EnderecoService enderecoService;
     private final FilialMapper filialMapper;
     private final FilialValidator filialValidator;
+    private final EmpresaContext empresaContext;
 
     /**
      * Lista filiais ativas, opcionalmente por empresa, sempre com paginacao.
      */
     @Transactional(readOnly = true)
-    public Page<FilialResponse> listar(UUID empresaId, Pageable pageable) {
-        Page<Filial> filiais = empresaId == null
-                ? filialRepository.findByAtivoTrueAndDeletedAtIsNull(pageable)
-                : filialRepository.findByEmpresaIdAndAtivoTrueAndDeletedAtIsNull(empresaId, pageable);
-        return filiais.map(filialMapper::toResponse);
+    public Page<FilialResponse> listar(Pageable pageable) {
+        return filialRepository
+                .findByEmpresaIdAndAtivoTrueAndDeletedAtIsNull(empresaContext.getEmpresaId(), pageable)
+                .map(filialMapper::toResponse);
     }
 
     /**
@@ -53,9 +54,10 @@ public class FilialService {
      */
     @Transactional
     public FilialResponse criar(FilialRequest request) {
-        filialValidator.validarCriacao(request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        filialValidator.validarCriacao(empresaId, request);
         Filial filial = new Filial();
-        aplicar(filial, request);
+        aplicar(filial, request, empresaId);
         return filialMapper.toResponse(filialRepository.save(filial));
     }
 
@@ -65,7 +67,9 @@ public class FilialService {
     @Transactional
     public FilialResponse atualizar(UUID id, FilialRequest request) {
         Filial filial = buscarEntidade(id);
-        aplicar(filial, request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        filialValidator.validarAtualizacao(empresaId, id, request);
+        aplicar(filial, request, empresaId);
         return filialMapper.toResponse(filial);
     }
 
@@ -77,15 +81,16 @@ public class FilialService {
         buscarEntidade(id).excluirLogicamente();
     }
 
-    private void aplicar(Filial filial, FilialRequest request) {
-        Empresa empresa = empresaService.buscarEntidade(request.empresaId());
+    private void aplicar(Filial filial, FilialRequest request, UUID empresaId) {
+        Empresa empresa = empresaService.buscarEntidade(empresaId);
         Endereco endereco = request.enderecoId() == null ? null : enderecoService.buscarEntidade(request.enderecoId());
         filial.atualizar(empresa, endereco, request.codigo(), request.nome(), request.cnpj(),
                 request.inscricaoEstadual(), request.telefone(), request.email(), request.matriz());
     }
 
     private Filial buscarEntidade(UUID id) {
-        return filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Filial nao encontrada"));
     }
 }

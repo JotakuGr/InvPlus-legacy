@@ -20,13 +20,13 @@ public class PedidoCompraValidator {
         this.repository = repository;
     }
 
-    public void validarCriacao(PedidoCompraRequest request) {
-        validarNumeroUnico(request.empresaId(), request.numero(), null);
+    public void validarCriacao(PedidoCompraRequest request, UUID empresaId) {
+        validarNumeroUnico(empresaId, request.numero(), null);
     }
 
-    public void validarAtualizacao(PedidoCompra entity, PedidoCompraRequest request) {
+    public void validarAtualizacao(PedidoCompra entity, PedidoCompraRequest request, UUID empresaId) {
         entity.validarEditavel();
-        validarNumeroUnico(request.empresaId(), request.numero(), entity.getId());
+        validarNumeroUnico(empresaId, request.numero(), entity.getId());
     }
 
     public void validarPodeReceber(PedidoCompra pedido) {
