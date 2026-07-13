@@ -9,6 +9,8 @@ import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.modules.estoque.repository.LocalizacaoEstoqueRepository;
 import br.com.invplus.modules.estoque.specification.LocalizacaoEstoqueSpecification;
 import br.com.invplus.modules.estoque.validator.LocalizacaoEstoqueValidator;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.util.UUID;
@@ -28,18 +30,24 @@ public class LocalizacaoEstoqueService extends BaseCrudService<LocalizacaoEstoqu
     private final LocalizacaoEstoqueMapper mapper;
     private final LocalizacaoEstoqueValidator validator;
     private final DepositoRepository depositoRepository;
+    private final EmpresaContext empresaContext;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     public LocalizacaoEstoqueService(
             LocalizacaoEstoqueRepository repository,
             LocalizacaoEstoqueMapper mapper,
             LocalizacaoEstoqueValidator validator,
-            DepositoRepository depositoRepository
+            DepositoRepository depositoRepository,
+            EmpresaContext empresaContext,
+            UsuarioEmpresaAccessValidator accessValidator
     ) {
         super(repository, mapper, "LocalizacaoEstoque");
         this.repository = repository;
         this.mapper = mapper;
         this.validator = validator;
         this.depositoRepository = depositoRepository;
+        this.empresaContext = empresaContext;
+        this.accessValidator = accessValidator;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +63,9 @@ public class LocalizacaoEstoqueService extends BaseCrudService<LocalizacaoEstoqu
             Boolean ativo,
             Pageable pageable
     ) {
-        Specification<LocalizacaoEstoque> specification = LocalizacaoEstoqueSpecification.naoDeletado()
+        UUID empresaId = empresaContext.getEmpresaId();
+        Specification<LocalizacaoEstoque> specification = LocalizacaoEstoqueSpecification.pertenceEmpresa(empresaId)
+                .and(LocalizacaoEstoqueSpecification.naoDeletado())
                 .and(LocalizacaoEstoqueSpecification.ativo(ativo))
                 .and(LocalizacaoEstoqueSpecification.depositoIgual(depositoId))
                 .and(LocalizacaoEstoqueSpecification.codigoContem(codigo))
@@ -69,10 +79,16 @@ public class LocalizacaoEstoqueService extends BaseCrudService<LocalizacaoEstoqu
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public LocalizacaoEstoqueResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
+    }
+
+    @Override
     @Transactional
     public LocalizacaoEstoqueResponse criar(LocalizacaoEstoqueRequest request) {
-        validator.validarCriacao(request);
         Deposito deposito = buscarDepositoAtivo(request.depositoId());
+        validator.validarCriacao(request);
         LocalizacaoEstoque entity = mapper.toEntity(request);
         entity.setDeposito(deposito);
         return mapper.toResponse(repository.save(entity));
@@ -81,15 +97,34 @@ public class LocalizacaoEstoqueService extends BaseCrudService<LocalizacaoEstoqu
     @Override
     @Transactional
     public LocalizacaoEstoqueResponse atualizar(UUID id, LocalizacaoEstoqueRequest request) {
-        LocalizacaoEstoque entity = buscarEntidade(id);
+        LocalizacaoEstoque entity = buscarNoContexto(id);
+        Deposito deposito = buscarDepositoAtivo(request.depositoId());
         validator.validarAtualizacao(entity, request);
-        entity.setDeposito(buscarDepositoAtivo(request.depositoId()));
+        entity.setDeposito(deposito);
         mapper.updateEntity(entity, request);
         return mapper.toResponse(entity);
     }
 
+    @Override
+    @Transactional
+    public void excluir(UUID id) {
+        buscarNoContexto(id).excluirLogicamente();
+    }
+
     private Deposito buscarDepositoAtivo(UUID id) {
-        return depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        UUID empresaId = empresaContext.getEmpresaId();
+        Deposito deposito = depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Deposito nao encontrado"));
+        if (deposito.getFilial() != null) {
+            accessValidator.validarContexto(
+                    empresaContext.getUsuarioId(), empresaId, deposito.getFilial().getId());
+        }
+        return deposito;
+    }
+
+    private LocalizacaoEstoque buscarNoContexto(UUID id) {
+        return repository.findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("LocalizacaoEstoque nao encontrado"));
     }
 }

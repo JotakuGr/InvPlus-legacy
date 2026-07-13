@@ -24,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
 
 /**
  * Registra eventos de recebimento e delega a baixa financeira para ParcelaReceberService.
@@ -39,6 +41,7 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
     private final RecebimentoMapper mapper;
     private final RecebimentoValidator validator;
     private final ContaBancariaRepository contaBancariaRepository;
+    private final EmpresaContext empresaContext;
 
     public RecebimentoService(
             RecebimentoRepository repository,
@@ -48,7 +51,8 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
             MovimentoFinanceiroService movimentoFinanceiroService,
             RecebimentoMapper mapper,
             RecebimentoValidator validator,
-            ContaBancariaRepository contaBancariaRepository
+            ContaBancariaRepository contaBancariaRepository,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Recebimento");
         this.repository = repository;
@@ -59,12 +63,14 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
         this.mapper = mapper;
         this.validator = validator;
         this.contaBancariaRepository = contaBancariaRepository;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public Page<RecebimentoResponse> listarComFiltros(UUID parcelaReceberId, UUID contaReceberId,
             UUID formaPagamentoId, UUID empresaId, UUID filialId, UUID clienteId,
             LocalDate dataRecebimentoDe, LocalDate dataRecebimentoAte, Boolean ativo, Pageable pageable) {
+        empresaId = resolverEmpresa(empresaId);
         Specification<Recebimento> specification = RecebimentoSpecification.naoDeletado();
         specification = and(specification, RecebimentoSpecification.ativo(ativo));
         specification = and(specification, RecebimentoSpecification.parcelaIgual(parcelaReceberId));
@@ -124,6 +130,10 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
     }
 
     private ParcelaReceber buscarParcela(UUID id) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) return parcelaReceberRepository
+                .findByIdAndContaReceberEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Parcela a receber nao encontrada"));
         return parcelaReceberRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Parcela a receber nao encontrada"));
     }
@@ -134,10 +144,15 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
     }
 
     private ContaBancaria buscarContaBancaria(UUID id, UUID empresaId) {
+        UUID contexto = empresaAtualOuNull();
+        if (contexto != null && !contexto.equals(empresaId)) {
+            throw new ResourceNotFoundException("Parcela a receber nao encontrada");
+        }
+        UUID empresaEfetiva = contexto == null ? empresaId : contexto;
         ContaBancaria conta = id == null
-                ? contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId)
+                ? contaBancariaRepository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaEfetiva)
                         .orElse(null)
-                : contaBancariaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                : contaBancariaRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaEfetiva)
                         .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
         if (conta == null) return null;
         if (!conta.getEmpresa().getId().equals(empresaId)) {
@@ -145,6 +160,28 @@ public class RecebimentoService extends BaseCrudService<Recebimento, Recebimento
                     "Conta bancaria deve pertencer a mesma empresa do recebimento");
         }
         return conta;
+    }
+
+    @Override
+    public Recebimento buscarEntidade(UUID id) {
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId == null) return super.buscarEntidade(id);
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Recebimento nao encontrado"));
+    }
+
+    private UUID resolverEmpresa(UUID recebida) {
+        UUID contexto = empresaAtualOuNull();
+        if (contexto == null) return recebida;
+        if (recebida != null && !contexto.equals(recebida)) throw new AcessoEmpresaNegadoException();
+        return contexto;
+    }
+
+    private UUID empresaAtualOuNull() {
+        if (empresaContext == null) return null;
+        try { return empresaContext.getEmpresaId(); }
+        catch (br.com.invplus.security.exception.ContextoEmpresarialAusenteException
+                | org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) { return null; }
     }
 
     private Specification<Recebimento> and(Specification<Recebimento> base, Specification<Recebimento> filtro) {

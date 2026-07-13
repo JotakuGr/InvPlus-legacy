@@ -42,6 +42,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import br.com.invplus.security.context.EmpresaContext;
 
 /** Coordena parser, rastreamento e criacao atomica do dominio bancario. */
 @Slf4j

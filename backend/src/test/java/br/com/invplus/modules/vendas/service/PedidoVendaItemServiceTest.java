@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 
 import br.com.invplus.modules.cadastros.entity.UnidadeMedida;
+import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.produtos.entity.Produto;
 import br.com.invplus.modules.produtos.entity.ProdutoPreco;
 import br.com.invplus.modules.produtos.entity.ProdutoUnidade;
@@ -38,12 +39,15 @@ import br.com.invplus.modules.vendas.validator.PedidoVendaItemValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Testes unitarios das regras de item do pedido de venda.
  */
 @ExtendWith(MockitoExtension.class)
 class PedidoVendaItemServiceTest {
+
+    private final UUID empresaId = UUID.randomUUID();
 
     @Mock
     private PedidoVendaItemRepository repository;
@@ -66,11 +70,15 @@ class PedidoVendaItemServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private EmpresaContext empresaContext;
+
     private PedidoVendaItemService service;
 
     @BeforeEach
     @SuppressWarnings("unused")
     void setUp() {
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         service = new PedidoVendaItemService(
                 repository,
                 new PedidoVendaItemMapper(),
@@ -80,7 +88,8 @@ class PedidoVendaItemServiceTest {
                 produtoPrecoRepository,
                 produtoUnidadeRepository,
                 pedidoVendaService,
-                eventPublisher
+                eventPublisher,
+                empresaContext
         );
     }
 
@@ -110,7 +119,8 @@ class PedidoVendaItemServiceTest {
     void deveAtualizarItemERecalcularPedido() {
         var fixture = fixture(StatusPedidoVenda.ABERTO);
         PedidoVendaItem item = item(fixture);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(item.getId())).thenReturn(Optional.of(item));
+        when(repository.findByIdAndPedidoVendaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(item.getId(), empresaId))
+                .thenReturn(Optional.of(item));
         configurarBusca(fixture);
 
         PedidoVendaItemResponse response = service.atualizar(item.getId(),
@@ -124,7 +134,8 @@ class PedidoVendaItemServiceTest {
     void deveExcluirLogicamenteERecalcularPedido() {
         var fixture = fixture(StatusPedidoVenda.ABERTO);
         PedidoVendaItem item = item(fixture);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(item.getId())).thenReturn(Optional.of(item));
+        when(repository.findByIdAndPedidoVendaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(item.getId(), empresaId))
+                .thenReturn(Optional.of(item));
 
         service.excluir(item.getId());
 
@@ -136,7 +147,8 @@ class PedidoVendaItemServiceTest {
     @Test
     void deveBloquearProdutoInexistente() {
         var fixture = fixture(StatusPedidoVenda.ABERTO);
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(fixture.pedido().getId()))
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                fixture.pedido().getId(), empresaId))
                 .thenReturn(Optional.of(fixture.pedido()));
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(fixture.produto().getId()))
                 .thenReturn(Optional.empty());
@@ -213,11 +225,13 @@ class PedidoVendaItemServiceTest {
     }
 
     private void configurarBusca(Fixture fixture) {
-        when(pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(fixture.pedido().getId()))
+        when(pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                fixture.pedido().getId(), empresaId))
                 .thenReturn(Optional.of(fixture.pedido()));
         when(produtoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(fixture.produto().getId()))
                 .thenReturn(Optional.of(fixture.produto()));
-        when(produtoPrecoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(fixture.preco().getId()))
+        when(produtoPrecoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                fixture.preco().getId(), empresaId))
                 .thenReturn(Optional.of(fixture.preco()));
         when(produtoUnidadeRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(fixture.unidade().getId()))
                 .thenReturn(Optional.of(fixture.unidade()));
@@ -251,12 +265,14 @@ class PedidoVendaItemServiceTest {
         Produto produto = produto("PROD-VENDA");
         PedidoVenda pedido = new PedidoVenda();
         pedido.setId(UUID.randomUUID());
+        pedido.setEmpresa(empresa());
         pedido.setStatus(status);
         pedido.setDataEmissao(LocalDate.of(2026, 7, 7));
 
         ProdutoPreco preco = new ProdutoPreco();
         preco.setId(UUID.randomUUID());
         preco.setProduto(produto);
+        preco.setEmpresa(pedido.getEmpresa());
         preco.atualizar(TipoPrecoProduto.VENDA, BigDecimal.valueOf(10.5000), LocalDate.of(2026, 7, 1),
                 null, true, "Preco venda");
 
@@ -278,6 +294,13 @@ class PedidoVendaItemServiceTest {
         produto.setNome("Produto Venda");
         produto.setDescricao("Descricao venda");
         return produto;
+    }
+
+    private Empresa empresa() {
+        Empresa empresa = new Empresa();
+        empresa.setId(empresaId);
+        empresa.setNomeFantasia("Empresa Venda");
+        return empresa;
     }
 
     private record Fixture(PedidoVenda pedido, Produto produto, ProdutoPreco preco, ProdutoUnidade unidade) {

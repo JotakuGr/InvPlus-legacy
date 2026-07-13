@@ -21,15 +21,15 @@ public class PedidoVendaValidator {
         this.repository = repository;
     }
 
-    public void validarCriacao(PedidoVendaRequest request) {
+    public void validarCriacao(PedidoVendaRequest request, UUID empresaId) {
         validarValores(request);
-        validarNumeroUnico(request.empresaId(), request.numero(), null);
+        validarNumeroUnico(empresaId, request.numero(), null);
     }
 
-    public void validarAtualizacao(PedidoVenda entity, PedidoVendaRequest request) {
+    public void validarAtualizacao(PedidoVenda entity, PedidoVendaRequest request, UUID empresaId) {
         entity.validarEditavel();
         validarValores(request);
-        validarNumeroUnico(request.empresaId(), request.numero(), entity.getId());
+        validarNumeroUnico(empresaId, request.numero(), entity.getId());
     }
 
     private void validarValores(PedidoVendaRequest request) {

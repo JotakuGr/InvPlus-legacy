@@ -1,9 +1,19 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.entity.Filial;
@@ -15,17 +25,9 @@ import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.mapper.ContaBancariaMapper;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.validator.ContaBancariaValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras de cadastro de contas bancarias.
@@ -39,15 +41,19 @@ class ContaBancariaServiceTest {
     private EmpresaRepository empresaRepository;
     @Mock
     private FilialRepository filialRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ContaBancariaService service;
     private Empresa empresa;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ContaBancariaService(repository, empresaRepository, filialRepository,
-                new ContaBancariaMapper(), new ContaBancariaValidator(repository));
+                new ContaBancariaMapper(), new ContaBancariaValidator(repository), empresaContext);
         empresa = empresa("Empresa Banco");
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
     }
 
     @Test
@@ -123,7 +129,8 @@ class ContaBancariaServiceTest {
     void deveAtualizarMantendoPropriaContaPrincipalEExcluirLogicamente() {
         ContaBancaria entity = conta();
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresa.getId()))
+                .thenReturn(Optional.of(entity));
         when(repository.findByEmpresaIdAndBancoCodigoIgnoreCaseAndAgenciaIgnoreCaseAndNumeroContaIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
                 empresa.getId(), "001", "1234", "98765")).thenReturn(Optional.of(entity));
         when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresa.getId()))
@@ -147,7 +154,7 @@ class ContaBancariaServiceTest {
     }
 
     private ContaBancariaRequest request(UUID filialId, BigDecimal saldo, Boolean principal, String documento) {
-        return new ContaBancariaRequest(empresa.getId(), filialId, "001", "Banco do Brasil",
+        return new ContaBancariaRequest(filialId, "001", "Banco do Brasil",
                 "1234", "5", "98765", "0", TipoContaBancaria.CORRENTE,
                 "Empresa Banco", documento, "financeiro@empresa.com", saldo,
                 LocalDate.of(2026, 7, 9), principal);

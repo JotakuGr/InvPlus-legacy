@@ -10,7 +10,6 @@ import java.util.UUID;
  * Dados para criar ou atualizar um centro de custo.
  */
 public record CentroCustoRequest(
-        @NotNull UUID empresaId,
         UUID centroCustoPaiId,
         @NotBlank @Size(max = 40) String codigo,
         @NotBlank @Size(max = 120) String nome,

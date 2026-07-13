@@ -21,9 +21,8 @@ public final class DepositoSpecification {
         return (root, query, builder) -> builder.equal(root.get("ativo"), ativo == null ? Boolean.TRUE : ativo);
     }
 
-    public static Specification<Deposito> empresaIgual(UUID empresaId) {
-        return empresaId == null ? sempreVerdadeiro()
-                : (root, query, builder) -> builder.equal(root.get("empresa").get("id"), empresaId);
+    public static Specification<Deposito> pertenceEmpresa(UUID empresaId) {
+        return (root, query, builder) -> builder.equal(root.get("empresa").get("id"), empresaId);
     }
 
     public static Specification<Deposito> filialIgual(UUID filialId) {

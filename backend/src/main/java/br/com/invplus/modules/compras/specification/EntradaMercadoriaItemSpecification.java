@@ -16,15 +16,24 @@ public final class EntradaMercadoriaItemSpecification {
         return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
     }
 
+    public static Specification<EntradaMercadoriaItem> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(
+                root.get("entradaMercadoria").get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<EntradaMercadoriaItem> ativo(Boolean ativo) {
-        return ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
+        return ativo == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
     }
 
     public static Specification<EntradaMercadoriaItem> entradaIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("entradaMercadoria").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("entradaMercadoria").get("id"), id);
     }
 
     public static Specification<EntradaMercadoriaItem> produtoIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("produto").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("produto").get("id"), id);
+    }
+
+    private static Specification<EntradaMercadoriaItem> sempreVerdadeiro() {
+        return (root, query, cb) -> cb.conjunction();
     }
 }

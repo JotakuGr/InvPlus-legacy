@@ -36,6 +36,7 @@ import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Testes unitarios das regras centrais de ContaPagar.
@@ -57,18 +58,22 @@ class ContaPagarServiceTest {
     private CentroCustoRepository centroCustoRepository;
     @Mock
     private PlanoContaRepository planoContaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ContaPagarService service;
     private Empresa empresa;
     private Fornecedor fornecedor;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ContaPagarService(repository, empresaRepository, filialRepository, fornecedorRepository,
                 entradaMercadoriaRepository, centroCustoRepository, planoContaRepository,
-                new ContaPagarMapper(), new ContaPagarValidator(repository));
+                new ContaPagarMapper(), new ContaPagarValidator(repository), empresaContext);
         empresa = empresa();
         fornecedor = fornecedor();
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
     }
 
     @Test
@@ -119,7 +124,7 @@ class ContaPagarServiceTest {
         Filial filial = new Filial();
         filial.setId(UUID.randomUUID());
         filial.setEmpresa(outraEmpresa);
-        ContaPagarRequest request = new ContaPagarRequest(empresa.getId(), filial.getId(), fornecedor.getId(), null,
+        ContaPagarRequest request = new ContaPagarRequest(filial.getId(), fornecedor.getId(), null, null, null,
                 "CP-FILIAL", "Conta filial", LocalDate.of(2026, 7, 8), new BigDecimal("100.00"), null);
         when(repository.findByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
                 empresa.getId(), "CP-FILIAL")).thenReturn(Optional.empty());
@@ -155,7 +160,8 @@ class ContaPagarServiceTest {
     @Test
     void deveCancelarContaEBloquearNovaAlteracao() {
         ContaPagar conta = conta("CP-5", StatusContaPagar.ABERTA);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(conta.getId())).thenReturn(Optional.of(conta));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(conta.getId(), empresa.getId()))
+                .thenReturn(Optional.of(conta));
 
         assertThat(service.cancelar(conta.getId()).status()).isEqualTo(StatusContaPagar.CANCELADA);
         assertThatThrownBy(() -> service.atualizar(conta.getId(), request("CP-5", "150.00")))
@@ -166,7 +172,8 @@ class ContaPagarServiceTest {
     @Test
     void deveBloquearAlteracaoDeContaPaga() {
         ContaPagar conta = conta("CP-6", StatusContaPagar.PAGA);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(conta.getId())).thenReturn(Optional.of(conta));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(conta.getId(), empresa.getId()))
+                .thenReturn(Optional.of(conta));
 
         assertThatThrownBy(() -> service.atualizar(conta.getId(), request("CP-6", "150.00")))
                 .isInstanceOf(InvalidOperationException.class)
@@ -180,7 +187,7 @@ class ContaPagarServiceTest {
     }
 
     private ContaPagarRequest request(String numero, String valor) {
-        return new ContaPagarRequest(empresa.getId(), null, fornecedor.getId(), null, numero,
+        return new ContaPagarRequest(null, fornecedor.getId(), null, null, null, numero,
                 "Conta " + numero, LocalDate.of(2026, 7, 8), new BigDecimal(valor), "Observacao");
     }
 

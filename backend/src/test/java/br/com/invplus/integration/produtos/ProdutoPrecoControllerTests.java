@@ -9,19 +9,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -39,26 +39,29 @@ class ProdutoPrecoControllerTests {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioTestFactory usuarioTestFactory;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private EmpresaTestFactory empresaTestFactory;
 
     @Autowired
-    private JwtService jwtService;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
 
     /**
      * Cobre criar, buscar, listar com filtros, atualizar, excluir e ocultar preco excluido.
      */
     @Test
     void deveExecutarCrudCompletoComSoftDelete() throws Exception {
-        String token = login().get("accessToken").asString();
+        String token = loginContextual();
         String produtoId = criarProduto(token);
 
         String criado = mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, "VENDA", "19.9000", "2026-07-01", null, true, "Preco principal")))
+                        .content(payload(produtoId, "VENDA", "19.9000", "2026-07-01", null, true, "Preco principal")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.produtoId").value(produtoId))
                 .andExpect(jsonPath("$.tipoPreco").value("VENDA"))
@@ -90,7 +93,7 @@ class ProdutoPrecoControllerTests {
         mockMvc.perform(put("/api/v1/produtos-precos/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, "VENDA", "21.5000", "2026-07-01", null, true, "Preco atualizado")))
+                        .content(payload(produtoId, "VENDA", "21.5000", "2026-07-01", null, true, "Preco atualizado")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.preco").value(21.5000))
                 .andExpect(jsonPath("$.observacao").value("Preco atualizado"));
@@ -118,12 +121,12 @@ class ProdutoPrecoControllerTests {
      */
     @Test
     void deveRetornar404ParaProdutoInexistente() throws Exception {
-        String token = login().get("accessToken").asString();
+        String token = loginContextual();
 
         mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(UUID.randomUUID().toString(), null, "VENDA", "19.9000", "2026-07-01", null, false, "Preco")))
+                        .content(payload(UUID.randomUUID().toString(), "VENDA", "19.9000", "2026-07-01", null, false, "Preco")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Produto nao encontrado"));
     }
@@ -133,7 +136,7 @@ class ProdutoPrecoControllerTests {
      */
     @Test
     void naoDeveCriarPrecoDuplicado() throws Exception {
-        String token = login().get("accessToken").asString();
+        String token = loginContextual();
         String produtoId = criarProduto(token);
 
         criarPreco(token, produtoId, "VENDA", "2026-07-01", false);
@@ -141,7 +144,7 @@ class ProdutoPrecoControllerTests {
         mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, "VENDA", "20.9000", "2026-07-01", null, false, "Duplicado")))
+                        .content(payload(produtoId, "VENDA", "20.9000", "2026-07-01", null, false, "Duplicado")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Ja existe preco ativo para este produto, tipo, empresa e vigencia inicial"));
     }
@@ -151,7 +154,7 @@ class ProdutoPrecoControllerTests {
      */
     @Test
     void deveBloquearSegundoPrecoPrincipal() throws Exception {
-        String token = login().get("accessToken").asString();
+        String token = loginContextual();
         String produtoId = criarProduto(token);
 
         criarPreco(token, produtoId, "VENDA", "2026-07-01", true);
@@ -159,7 +162,7 @@ class ProdutoPrecoControllerTests {
         mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, "VENDA", "22.9000", "2026-08-01", null, true, "Segundo principal")))
+                        .content(payload(produtoId, "VENDA", "22.9000", "2026-08-01", null, true, "Segundo principal")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Produto ja possui preco principal ativo para este tipo e empresa"));
     }
@@ -169,13 +172,13 @@ class ProdutoPrecoControllerTests {
      */
     @Test
     void deveBloquearPrecoNegativo() throws Exception {
-        String token = login().get("accessToken").asString();
+        String token = loginContextual();
         String produtoId = criarProduto(token);
 
         mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, "VENDA", "-1.0000", "2026-07-01", null, false, "Negativo")))
+                        .content(payload(produtoId, "VENDA", "-1.0000", "2026-07-01", null, false, "Negativo")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -184,13 +187,13 @@ class ProdutoPrecoControllerTests {
      */
     @Test
     void deveBloquearVigenciaInvalida() throws Exception {
-        String token = login().get("accessToken").asString();
+        String token = loginContextual();
         String produtoId = criarProduto(token);
 
         mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, "VENDA", "19.9000", "2026-07-10", "2026-07-01", false, "Invalido")))
+                        .content(payload(produtoId, "VENDA", "19.9000", "2026-07-10", "2026-07-01", false, "Invalido")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Vigencia final nao pode ser anterior a inicial"));
     }
@@ -209,45 +212,70 @@ class ProdutoPrecoControllerTests {
      */
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario(
-                "Sem Permissao Produto Preco",
-                "sem-produto-preco-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123")
-        );
-        usuarioRepository.saveAndFlush(usuario);
-
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("SEGURANCA:*")
-                .build());
+        Usuario usuario = usuarioTestFactory.criarAtivoSemPerfil();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("SEGURANCA:*"));
 
         mockMvc.perform(get("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private JsonNode login() throws Exception {
+    @Test
+    void deveIsolarPrecosPorEmpresaDoToken() throws Exception {
+        ContextoTeste contextoA = criarContexto();
+        ContextoTeste contextoB = criarContexto();
+        String produtoId = criarProduto(contextoA.accessToken());
+
+        String response = mockMvc.perform(post("/api/v1/produtos-precos")
+                        .header("Authorization", "Bearer " + contextoA.accessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(produtoId, "VENDA", "31.9000", "2026-09-01", null, false,
+                                "Preco empresa A")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.empresaId").value(contextoA.empresaId().toString()))
+                .andReturn().getResponse().getContentAsString();
+        String precoId = objectMapper.readTree(response).get("id").asString();
+
+        mockMvc.perform(get("/api/v1/produtos-precos/" + precoId)
+                        .header("Authorization", "Bearer " + contextoB.accessToken()))
+                .andExpect(status().isNotFound());
+
+        String listagemB = mockMvc.perform(get("/api/v1/produtos-precos")
+                        .header("Authorization", "Bearer " + contextoB.accessToken()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(listagemB).doesNotContain(precoId);
+    }
+
+    private String loginContextual() throws Exception {
+        return criarContexto().accessToken();
+    }
+
+    private ContextoTeste criarContexto() throws Exception {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "email": "admin@invplus.com",
-                                  "senha": "admin123"
-                                }
-                                """))
+                                {"email":"%s","senha":"%s"}
+                                """.formatted(usuario.getEmail(), UsuarioTestFactory.SENHA)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        return objectMapper.readTree(response);
+        return new ContextoTeste(objectMapper.readTree(response).get("accessToken").asString(), empresa.getId());
     }
 
     private String criarPreco(String token, String produtoId, String tipoPreco, String vigenciaInicio, Boolean principal) throws Exception {
         String response = mockMvc.perform(post("/api/v1/produtos-precos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(produtoId, null, tipoPreco, "19.9000", vigenciaInicio, null, principal, "Preco")))
+                        .content(payload(produtoId, tipoPreco, "19.9000", vigenciaInicio, null, principal, "Preco")))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -327,12 +355,11 @@ class ProdutoPrecoControllerTests {
         return objectMapper.readTree(response).get("id").asString();
     }
 
-    private String payload(String produtoId, String empresaId, String tipoPreco, String preco,
+    private String payload(String produtoId, String tipoPreco, String preco,
                            String vigenciaInicio, String vigenciaFim, Boolean principal, String observacao) {
         return """
                 {
                   "produtoId": "%s",
-                  "empresaId": %s,
                   "tipoPreco": "%s",
                   "preco": %s,
                   "vigenciaInicio": "%s",
@@ -340,7 +367,7 @@ class ProdutoPrecoControllerTests {
                   "principal": %s,
                   "observacao": "%s"
                 }
-                """.formatted(produtoId, empresaId == null ? "null" : "\"" + empresaId + "\"", tipoPreco, preco,
+                """.formatted(produtoId, tipoPreco, preco,
                 vigenciaInicio, vigenciaFim == null ? "null" : "\"" + vigenciaFim + "\"", principal, observacao);
     }
 
@@ -400,5 +427,8 @@ class ProdutoPrecoControllerTests {
     }
 
     private record Referencias(String categoriaId, String marcaId, String unidadeId) {
+    }
+
+    private record ContextoTeste(String accessToken, UUID empresaId) {
     }
 }

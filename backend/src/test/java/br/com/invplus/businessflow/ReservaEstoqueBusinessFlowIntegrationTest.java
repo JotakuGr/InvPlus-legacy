@@ -5,6 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +36,31 @@ class ReservaEstoqueBusinessFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private EmpresaTestFactory empresaTestFactory;
+
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+
+    @Autowired
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
+
     @Test
     void deveReservarCancelarEBaixarNoFluxoCompleto() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
-        JsonNode deposito = criarDeposito(token, empresa.get("id").asString());
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("ESTOQUE:*"));
+        JsonNode deposito = criarDeposito(token);
         JsonNode localizacao = criarLocalizacao(token, deposito.get("id").asString());
         JsonNode categoria = criarCategoria(token);
         JsonNode unidade = criarUnidade(token);
         JsonNode produto = criarProduto(token, categoria.get("id").asString(), unidade.get("id").asString());
-        JsonNode estoque = criarEstoque(token, produto.get("id").asString(), empresa.get("id").asString(),
+        JsonNode estoque = criarEstoque(token, produto.get("id").asString(),
                 deposito.get("id").asString(), localizacao.get("id").asString());
 
         JsonNode reservaCancelada = criarReserva(token, estoque.get("id").asString(), "20.000");
@@ -88,47 +109,12 @@ class ReservaEstoqueBusinessFlowIntegrationTest {
                 .andExpect(jsonPath("$.content.length()").value(4));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarEmpresa(String token) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Reserva Fluxo %s",
-                                  "nomeFantasia": "Empresa Reserva",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "inscricaoMunicipal": "123",
-                                  "regimeTributario": "NORMAL",
-                                  "crt": 3,
-                                  "telefone": "71999990000",
-                                  "email": "empresa-reserva-fluxo-%s@teste.com"
-                                }
-                                """.formatted(UUID.randomUUID(), cnpjUnico(), UUID.randomUUID())))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarDeposito(String token, String empresaId) throws Exception {
+    private JsonNode criarDeposito(String token) throws Exception {
         String response = mockMvc.perform(post("/api/v1/depositos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "codigo": "DEP-%s",
                                   "nome": "Deposito Reserva",
                                   "descricao": "Deposito para reserva",
@@ -140,7 +126,7 @@ class ReservaEstoqueBusinessFlowIntegrationTest {
                                   "controlaEstoque": true,
                                   "bloqueado": false
                                 }
-                                """.formatted(empresaId, codigoCurto())))
+                                """.formatted(codigoCurto())))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -239,14 +225,13 @@ class ReservaEstoqueBusinessFlowIntegrationTest {
         return objectMapper.readTree(response);
     }
 
-    private JsonNode criarEstoque(String token, String produtoId, String empresaId, String depositoId, String localizacaoId) throws Exception {
+    private JsonNode criarEstoque(String token, String produtoId, String depositoId, String localizacaoId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/estoques")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "produtoId": "%s",
-                                  "empresaId": "%s",
                                   "depositoId": "%s",
                                   "localizacaoId": "%s",
                                   "quantidade": 100.000,
@@ -256,7 +241,7 @@ class ReservaEstoqueBusinessFlowIntegrationTest {
                                   "estoqueMinimo": 2.000,
                                   "estoqueMaximo": 150.000
                                 }
-                                """.formatted(produtoId, empresaId, depositoId, localizacaoId)))
+                                """.formatted(produtoId, depositoId, localizacaoId)))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -288,7 +273,4 @@ class ReservaEstoqueBusinessFlowIntegrationTest {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private String cnpjUnico() {
-        return "8%013d".formatted(Math.abs(UUID.randomUUID().getMostSignificantBits()) % 10_000_000_000_000L);
-    }
 }

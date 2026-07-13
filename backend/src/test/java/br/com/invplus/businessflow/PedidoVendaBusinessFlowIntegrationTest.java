@@ -1,6 +1,6 @@
 package br.com.invplus.businessflow;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,6 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.invplus.modules.vendas.entity.PedidoVenda;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,12 +48,23 @@ class PedidoVendaBusinessFlowIntegrationTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private EmpresaTestFactory empresaTestFactory;
+
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+
+    @Autowired
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
+
     @Test
     void deveCriarAprovarCancelarEConsultarPedidoVendaCompleto() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
+        String token = criarContexto();
         JsonNode cliente = criarCliente(token);
-        JsonNode pedido = criarPedidoVenda(token, empresa.get("id").asString(), cliente.get("id").asString());
+        JsonNode pedido = criarPedidoVenda(token, cliente.get("id").asString());
 
         mockMvc.perform(post("/api/v1/pedidos-venda/" + pedido.get("id").asString() + "/aprovar")
                         .header("Authorization", "Bearer " + token))
@@ -70,10 +87,9 @@ class PedidoVendaBusinessFlowIntegrationTest {
 
     @Test
     void deveBloquearAtualizacaoConcorrenteDePedidoVendaPorOptimisticLock() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
+        String token = criarContexto();
         JsonNode cliente = criarCliente(token);
-        JsonNode pedido = criarPedidoVenda(token, empresa.get("id").asString(), cliente.get("id").asString());
+        JsonNode pedido = criarPedidoVenda(token, cliente.get("id").asString());
         UUID pedidoId = UUID.fromString(pedido.get("id").asString());
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
 
@@ -84,39 +100,8 @@ class PedidoVendaBusinessFlowIntegrationTest {
         tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioA));
 
         usuarioB.setObservacao("Alteracao concorrente B");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioB)));
-    }
-
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarEmpresa(String token) throws Exception {
-        String cnpj = cnpjUnico();
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Fluxo Venda %s",
-                                  "nomeFantasia": "Empresa Fluxo Venda",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "regimeTributario": "NORMAL",
-                                  "crt": 3,
-                                  "telefone": "71999990000",
-                                  "email": "fluxo-venda-%s@teste.com"
-                                }
-                                """.formatted(cnpj, cnpj, cnpj)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> pedidoVendaRepository.saveAndFlush(usuarioB)))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 
     private JsonNode criarCliente(String token) throws Exception {
@@ -148,13 +133,12 @@ class PedidoVendaBusinessFlowIntegrationTest {
         return objectMapper.readTree(response);
     }
 
-    private JsonNode criarPedidoVenda(String token, String empresaId, String clienteId) throws Exception {
+    private JsonNode criarPedidoVenda(String token, String clienteId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/pedidos-venda")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "clienteId": "%s",
                                   "numero": "PV-FLUXO-%s",
                                   "dataEmissao": "2026-07-07",
@@ -163,7 +147,7 @@ class PedidoVendaBusinessFlowIntegrationTest {
                                   "acrescimo": 0,
                                   "observacao": "Pedido do fluxo de vendas"
                                 }
-                                """.formatted(empresaId, clienteId, codigoCurto())))
+                                """.formatted(clienteId, codigoCurto())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("ABERTO"))
                 .andReturn().getResponse().getContentAsString();
@@ -177,5 +161,13 @@ class PedidoVendaBusinessFlowIntegrationTest {
 
     private String codigoCurto() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    private String criarContexto() {
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        return jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("PEDIDO_VENDA:*"));
     }
 }

@@ -14,19 +14,17 @@ import br.com.invplus.modules.estoque.entity.Deposito;
 import br.com.invplus.modules.estoque.enums.TipoDeposito;
 import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -50,18 +48,18 @@ class LocalizacaoEstoqueControllerTests {
     private DepositoRepository depositoRepository;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioTestFactory usuarioTestFactory;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
 
     @Autowired
-    private JwtService jwtService;
+    private JwtTestFactory jwtTestFactory;
 
     @Test
     void deveExecutarCrudCompletoComSoftDelete() throws Exception {
-        String token = login().get("accessToken").asString();
         Deposito deposito = criarDeposito();
+        String token = token(deposito.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
 
         String criado = mockMvc.perform(post("/api/v1/localizacoes-estoque")
                         .header("Authorization", "Bearer " + token)
@@ -112,7 +110,8 @@ class LocalizacaoEstoqueControllerTests {
 
     @Test
     void deveRetornar404ParaDepositoInexistente() throws Exception {
-        String token = login().get("accessToken").asString();
+        Empresa empresa = criarEmpresa();
+        String token = token(empresa, java.util.Set.of("ESTOQUE:*"));
 
         mockMvc.perform(post("/api/v1/localizacoes-estoque")
                         .header("Authorization", "Bearer " + token)
@@ -124,8 +123,8 @@ class LocalizacaoEstoqueControllerTests {
 
     @Test
     void naoDeveCriarCodigoDuplicadoPorDeposito() throws Exception {
-        String token = login().get("accessToken").asString();
         Deposito deposito = criarDeposito();
+        String token = token(deposito.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
         criarLocalizacao(token, deposito.getId(), "A-DUP", false);
 
         mockMvc.perform(post("/api/v1/localizacoes-estoque")
@@ -138,8 +137,8 @@ class LocalizacaoEstoqueControllerTests {
 
     @Test
     void naoDeveCriarSegundaPrincipalPorDeposito() throws Exception {
-        String token = login().get("accessToken").asString();
         Deposito deposito = criarDeposito();
+        String token = token(deposito.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
         criarLocalizacao(token, deposito.getId(), "A-PRI-1", true);
 
         mockMvc.perform(post("/api/v1/localizacoes-estoque")
@@ -157,25 +156,28 @@ class LocalizacaoEstoqueControllerTests {
 
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario("Sem Localizacao",
-                "sem-localizacao-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123"));
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("SEGURANCA:*").build());
+        String token = token(criarEmpresa(), java.util.Set.of("SEGURANCA:*"));
 
         mockMvc.perform(get("/api/v1/localizacoes-estoque").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
+    @Test
+    void deveIsolarLocalizacaoPorEmpresaDoToken() throws Exception {
+        Deposito depositoA = criarDeposito();
+        Deposito depositoB = criarDeposito();
+        String tokenA = token(depositoA.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
+        String tokenB = token(depositoB.getEmpresa(), java.util.Set.of("ESTOQUE:*"));
+        String localizacaoId = criarLocalizacao(tokenA, depositoA.getId(), "A-ISO", false);
+
+        mockMvc.perform(get("/api/v1/localizacoes-estoque/" + localizacaoId)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+
+        String listagem = mockMvc.perform(get("/api/v1/localizacoes-estoque?page=0&size=50")
+                        .header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+        assertThat(listagem).doesNotContain(localizacaoId);
     }
 
     private String criarLocalizacao(String token, UUID depositoId, String codigo, Boolean principal) throws Exception {
@@ -206,16 +208,28 @@ class LocalizacaoEstoqueControllerTests {
     }
 
     private Deposito criarDeposito() {
-        Empresa empresa = new Empresa();
-        empresa.atualizar("Empresa Localizacao " + UUID.randomUUID(), "Empresa Localizacao", cnpjUnico(),
-                "ISENTO", null, "NORMAL", 3, "71999990000", "empresa-" + UUID.randomUUID() + "@teste.com");
-        empresa = empresaRepository.saveAndFlush(empresa);
+        Empresa empresa = criarEmpresa();
 
         Deposito deposito = new Deposito();
         deposito.setEmpresa(empresa);
         deposito.atualizar("DEP-" + codigoCurto(), "Deposito Localizacao", "Teste",
                 TipoDeposito.CENTRAL, false, true, true, true, true, false);
         return depositoRepository.saveAndFlush(deposito);
+    }
+
+    private Empresa criarEmpresa() {
+        Empresa empresa = new Empresa();
+        empresa.atualizar("Empresa Localizacao " + UUID.randomUUID(), "Empresa Localizacao", cnpjUnico(),
+                "ISENTO", null, "NORMAL", 3, "71999990000", "empresa-" + UUID.randomUUID() + "@teste.com");
+        return empresaRepository.saveAndFlush(empresa);
+    }
+
+    private String token(Empresa empresa, java.util.Set<String> permissoes) {
+        Usuario usuario = permissoes.contains("ESTOQUE:*")
+                ? usuarioTestFactory.criarAtivoComPerfilAdmin()
+                : usuarioTestFactory.criarAtivoSemPerfil();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        return jwtTestFactory.accessToken(usuario.getId(), usuario.getEmail(), empresa.getId(), null, permissoes);
     }
 
     private String cnpjUnico() {

@@ -34,7 +34,6 @@ public class MovimentacaoEstoqueController {
     public ResponseEntity<Page<MovimentacaoEstoqueResponse>> listar(
             @RequestParam(required = false) UUID estoqueId,
             @RequestParam(required = false) UUID produtoId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID depositoId,
             @RequestParam(required = false) UUID localizacaoId,
             @RequestParam(required = false) TipoMovimentacaoEstoque tipoMovimentacao,
@@ -43,7 +42,7 @@ public class MovimentacaoEstoqueController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime dataFinal,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(estoqueId, produtoId, empresaId, depositoId, localizacaoId,
+        return ResponseEntity.ok(service.listarComFiltros(estoqueId, produtoId, depositoId, localizacaoId,
                 tipoMovimentacao, origem, dataInicial, dataFinal, pageable));
     }
 

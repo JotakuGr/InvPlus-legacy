@@ -1,5 +1,19 @@
 package br.com.invplus.integration.financeiro;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.UUID;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,22 +23,12 @@ import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
 import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.service.JwtService;
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.context.TestEmpresaContext;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import tools.jackson.databind.ObjectMapper;
 
 /** Testes multipart, consulta e seguranca da importacao OFX. */
@@ -39,6 +43,15 @@ class ImportacaoExtratoControllerTests {
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
+    @Autowired private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private TestEmpresaContext testEmpresaContext;
+
+    @AfterEach
+    @SuppressWarnings("unused")
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
 
     @Test
     void deveImportarConsultarEListarOfx() throws Exception {
@@ -101,8 +114,9 @@ class ImportacaoExtratoControllerTests {
         Usuario usuario = new Usuario("Sem Importacao",
                 "sem-importacao-" + UUID.randomUUID() + "@invplus.com", passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("EXTRATO_BANCARIO:VISUALIZAR").build());
+        Empresa empresa = novaEmpresa(sufixo());
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
         mockMvc.perform(get("/api/v1/importacoes-extratos")
                         .header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
     }
@@ -132,12 +146,9 @@ class ImportacaoExtratoControllerTests {
                 conteudo.getBytes(StandardCharsets.UTF_8));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .post("/api/v1/auth/login").contentType("application/json")
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private Empresa novaEmpresa(String sufixo) {
+        return empresaRepository.saveAndFlush(new Empresa("Empresa OFX Ctrl " + sufixo,
+                "Empresa OFX Ctrl " + sufixo, documento(sufixo), null, null, null));
     }
 
     private String sufixo() {

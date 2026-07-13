@@ -12,6 +12,9 @@ import java.util.UUID;
  */
 public interface ParcelaReceberRepository extends BaseRepository<ParcelaReceber> {
 
+    Optional<ParcelaReceber> findByIdAndContaReceberEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+            UUID id, UUID empresaId);
+
     boolean existsByContaReceberIdAndNumeroParcelaAndAtivoTrueAndDeletedAtIsNull(UUID contaReceberId, Integer numeroParcela);
 
     Optional<ParcelaReceber> findByContaReceberIdAndNumeroParcelaAndAtivoTrueAndDeletedAtIsNull(UUID contaReceberId, Integer numeroParcela);

@@ -9,20 +9,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
+import br.com.invplus.modules.financeiro.entity.CentroCusto;
+import br.com.invplus.modules.financeiro.enums.TipoCentroCusto;
+import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -45,17 +49,22 @@ class CentroCustoControllerTests {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+    @Autowired
+    private CentroCustoRepository centroCustoRepository;
 
     @Test
     void deveCriarFiltrarAtualizarEExcluirCentroCusto() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
-        String paiId = criar(token, empresa.getId(), null, "ADM-" + sufixo(), "Administrativo");
-        String filhoId = criar(token, empresa.getId(), UUID.fromString(paiId),
+        String token = tokenAdmin(empresa);
+        String paiId = criar(token, null, "ADM-" + sufixo(), "Administrativo");
+        String filhoId = criar(token, UUID.fromString(paiId),
                 "MKT-" + sufixo(), "Marketing");
 
         mockMvc.perform(get("/api/v1/centros-custo")
-                        .queryParam("empresaId", empresa.getId().toString())
                         .queryParam("centroCustoPaiId", paiId)
                         .queryParam("tipo", "AMBOS")
                         .header("Authorization", "Bearer " + token))
@@ -67,7 +76,7 @@ class CentroCustoControllerTests {
         mockMvc.perform(put("/api/v1/centros-custo/" + filhoId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), UUID.fromString(paiId),
+                        .content(payload(UUID.fromString(paiId),
                                 "MKT-EDIT-" + sufixo(), "Marketing Digital")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Marketing Digital"));
@@ -83,30 +92,32 @@ class CentroCustoControllerTests {
 
     @Test
     void deveBloquearDuplicidadePaiDeOutraEmpresaEAutorelacionamento() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
+        String token = tokenAdmin(empresa);
         Empresa outra = prepararEmpresa();
         String codigo = "DUP-" + sufixo();
-        String id = criar(token, empresa.getId(), null, codigo, "Centro original");
-        String paiOutraEmpresa = criar(token, outra.getId(), null, "OUT-" + sufixo(), "Outra empresa");
+        String id = criar(token, null, codigo, "Centro original");
+        CentroCusto paiOutraEmpresa = new CentroCusto();
+        paiOutraEmpresa.atualizar(outra, null, "OUT-" + sufixo(), "Outra empresa", null, TipoCentroCusto.AMBOS);
+        paiOutraEmpresa = centroCustoRepository.saveAndFlush(paiOutraEmpresa);
 
         mockMvc.perform(post("/api/v1/centros-custo")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), null, codigo, "Duplicado")))
+                        .content(payload(null, codigo, "Duplicado")))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/centros-custo")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), UUID.fromString(paiOutraEmpresa),
+                        .content(payload(paiOutraEmpresa.getId(),
                                 "FILHO-" + sufixo(), "Filho invalido")))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(put("/api/v1/centros-custo/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), UUID.fromString(id), codigo, "Centro original")))
+                        .content(payload(UUID.fromString(id), codigo, "Centro original")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -121,38 +132,35 @@ class CentroCustoControllerTests {
         Usuario usuario = new Usuario("Sem Centro Custo",
                 "sem-centro-" + UUID.randomUUID() + "@invplus.com", passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PAGAMENTO:VISUALIZAR")
-                .build());
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, prepararEmpresa());
 
         mockMvc.perform(get("/api/v1/centros-custo")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private String criar(String token, UUID empresaId, UUID paiId, String codigo, String nome) throws Exception {
+    private String criar(String token, UUID paiId, String codigo, String nome) throws Exception {
         String response = mockMvc.perform(post("/api/v1/centros-custo")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresaId, paiId, codigo, nome)))
+                        .content(payload(paiId, codigo, nome)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).get("id").asString();
     }
 
-    private String payload(UUID empresaId, UUID paiId, String codigo, String nome) {
+    private String payload(UUID paiId, String codigo, String nome) {
         String pai = paiId == null ? "null" : "\"" + paiId + "\"";
         return """
                 {
-                  "empresaId": "%s",
                   "centroCustoPaiId": %s,
                   "codigo": "%s",
                   "nome": "%s",
                   "descricao": "Centro de custo de teste",
                   "tipo": "AMBOS"
                 }
-                """.formatted(empresaId, pai, codigo, nome);
+                """.formatted(pai, codigo, nome);
     }
 
     private Empresa prepararEmpresa() {
@@ -161,12 +169,10 @@ class CentroCustoControllerTests {
                 documento(sufixo), null, null, null));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private String tokenAdmin(Empresa empresa) {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
     }
 
     private String documento(String base) {

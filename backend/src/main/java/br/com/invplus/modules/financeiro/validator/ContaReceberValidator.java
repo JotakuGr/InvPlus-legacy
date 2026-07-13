@@ -25,14 +25,14 @@ public class ContaReceberValidator {
 
     private final ContaReceberRepository repository;
 
-    public void validarCriacao(ContaReceberRequest request) {
-        validarNumeroUnico(null, request.empresaId(), request.numero());
+    public void validarCriacao(ContaReceberRequest request, UUID empresaId) {
+        validarNumeroUnico(null, empresaId, request.numero());
         validarValores(request);
     }
 
-    public void validarAtualizacao(UUID id, ContaReceber conta, ContaReceberRequest request) {
+    public void validarAtualizacao(UUID id, ContaReceber conta, ContaReceberRequest request, UUID empresaId) {
         conta.validarEditavel();
-        validarNumeroUnico(id, request.empresaId(), request.numero());
+        validarNumeroUnico(id, empresaId, request.numero());
         validarValores(request);
     }
 
@@ -86,7 +86,7 @@ public class ContaReceberValidator {
     }
 
     private void validarValores(ContaReceberRequest request) {
-        if (request.valorTotal() == null || request.valorTotal().compareTo(BigDecimal.ZERO) <= 0) {
+        if (request.valorTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Valor total deve ser maior que zero");
         }
     }

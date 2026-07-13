@@ -17,14 +17,22 @@ public final class PedidoVendaItemSpecification {
     }
 
     public static Specification<PedidoVendaItem> ativo(Boolean ativo) {
-        return ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
+        return ativo == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("ativo"), ativo);
+    }
+
+    public static Specification<PedidoVendaItem> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(root.get("pedidoVenda").get("empresa").get("id"), empresaId);
     }
 
     public static Specification<PedidoVendaItem> pedidoIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("pedidoVenda").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("pedidoVenda").get("id"), id);
     }
 
     public static Specification<PedidoVendaItem> produtoIgual(UUID id) {
-        return id == null ? null : (root, query, cb) -> cb.equal(root.get("produto").get("id"), id);
+        return id == null ? sempreVerdadeiro() : (root, query, cb) -> cb.equal(root.get("produto").get("id"), id);
+    }
+
+    private static Specification<PedidoVendaItem> sempreVerdadeiro() {
+        return (root, query, cb) -> cb.conjunction();
     }
 }

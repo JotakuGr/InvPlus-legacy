@@ -5,7 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.UUID;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,11 +35,26 @@ class LocalizacaoEstoqueBusinessFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private EmpresaTestFactory empresaTestFactory;
+
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+
+    @Autowired
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
+
     @Test
     void deveCriarLocalizacaoParaDeposito() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
-        JsonNode deposito = criarDeposito(token, empresa.get("id").asString());
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("ESTOQUE:*"));
+        JsonNode deposito = criarDeposito(token);
         JsonNode localizacao = criarLocalizacao(token, deposito.get("id").asString());
 
         mockMvc.perform(get("/api/v1/localizacoes-estoque/" + localizacao.get("id").asString())
@@ -51,47 +71,12 @@ class LocalizacaoEstoqueBusinessFlowIntegrationTest {
                 .andExpect(jsonPath("$.content[0].id").value(localizacao.get("id").asString()));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarEmpresa(String token) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Localizacao Fluxo %s",
-                                  "nomeFantasia": "Empresa Localizacao",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "inscricaoMunicipal": "123",
-                                  "regimeTributario": "NORMAL",
-                                  "crt": 3,
-                                  "telefone": "71999990000",
-                                  "email": "empresa-localizacao-%s@teste.com"
-                                }
-                                """.formatted(UUID.randomUUID(), cnpjUnico(), UUID.randomUUID())))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarDeposito(String token, String empresaId) throws Exception {
+    private JsonNode criarDeposito(String token) throws Exception {
         String response = mockMvc.perform(post("/api/v1/depositos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "codigo": "DEP-%s",
                                   "nome": "Deposito Localizacao",
                                   "descricao": "Deposito para localizacoes",
@@ -103,7 +88,7 @@ class LocalizacaoEstoqueBusinessFlowIntegrationTest {
                                   "controlaEstoque": true,
                                   "bloqueado": false
                                 }
-                                """.formatted(empresaId, codigoCurto())))
+                                """.formatted(codigoCurto())))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -135,10 +120,6 @@ class LocalizacaoEstoqueBusinessFlowIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         return objectMapper.readTree(response);
-    }
-
-    private String cnpjUnico() {
-        return "16" + "%012d".formatted(Math.abs(System.nanoTime() % 1_000_000_000_000L));
     }
 
     private String codigoCurto() {

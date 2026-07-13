@@ -26,6 +26,8 @@ import br.com.invplus.modules.vendas.repository.PedidoVendaItemRepository;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
 import br.com.invplus.modules.vendas.specification.PedidoVendaSpecification;
 import br.com.invplus.modules.vendas.validator.PedidoVendaValidator;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
@@ -60,6 +62,8 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
     private final ReservaEstoqueService reservaEstoqueService;
     private final VendaHistoricoService historicoService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmpresaContext empresaContext;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     public PedidoVendaService(
             PedidoVendaRepository repository,
@@ -73,7 +77,9 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
             EstoqueRepository estoqueRepository,
             ReservaEstoqueService reservaEstoqueService,
             VendaHistoricoService historicoService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            EmpresaContext empresaContext,
+            UsuarioEmpresaAccessValidator accessValidator
     ) {
         super(repository, mapper, "Pedido de venda");
         this.repository = repository;
@@ -88,34 +94,41 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
         this.reservaEstoqueService = reservaEstoqueService;
         this.historicoService = historicoService;
         this.eventPublisher = eventPublisher;
+        this.empresaContext = empresaContext;
+        this.accessValidator = accessValidator;
     }
 
     @Transactional(readOnly = true)
-    public Page<PedidoVendaResponse> listarComFiltros(UUID empresaId, UUID filialId, UUID clienteId, UUID vendedorId,
+    public Page<PedidoVendaResponse> listarComFiltros(UUID filialId, UUID clienteId, UUID vendedorId,
                                                       String numero, StatusPedidoVenda status,
                                                       LocalDate dataEmissaoDe, LocalDate dataEmissaoAte,
                                                       Boolean ativo, Pageable pageable) {
-        Specification<PedidoVenda> specification = PedidoVendaSpecification.naoDeletado();
-        specification = and(specification, PedidoVendaSpecification.ativo(ativo));
-        specification = and(specification, PedidoVendaSpecification.empresaIgual(empresaId));
-        specification = and(specification, PedidoVendaSpecification.filialIgual(filialId));
-        specification = and(specification, PedidoVendaSpecification.clienteIgual(clienteId));
-        specification = and(specification, PedidoVendaSpecification.vendedorIgual(vendedorId));
-        specification = and(specification, PedidoVendaSpecification.numeroContem(numero));
-        specification = and(specification, PedidoVendaSpecification.statusIgual(status));
-        specification = and(specification, PedidoVendaSpecification.dataEmissaoMaiorOuIgual(dataEmissaoDe));
-        specification = and(specification, PedidoVendaSpecification.dataEmissaoMenorOuIgual(dataEmissaoAte));
+        UUID empresaId = empresaContext.getEmpresaId();
+        if (filialId != null) {
+            buscarFilial(filialId, empresaId);
+        }
+        Specification<PedidoVenda> specification = PedidoVendaSpecification.pertenceEmpresa(empresaId)
+                .and(PedidoVendaSpecification.naoDeletado())
+                .and(PedidoVendaSpecification.ativo(ativo))
+                .and(PedidoVendaSpecification.filialIgual(filialId))
+                .and(PedidoVendaSpecification.clienteIgual(clienteId))
+                .and(PedidoVendaSpecification.vendedorIgual(vendedorId))
+                .and(PedidoVendaSpecification.numeroContem(numero))
+                .and(PedidoVendaSpecification.statusIgual(status))
+                .and(PedidoVendaSpecification.dataEmissaoMaiorOuIgual(dataEmissaoDe))
+                .and(PedidoVendaSpecification.dataEmissaoMenorOuIgual(dataEmissaoAte));
         return repository.findAll(specification, pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional
     public PedidoVendaResponse criar(PedidoVendaRequest request) {
-        validator.validarCriacao(request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarCriacao(request, empresaId);
         PedidoVenda entity = mapper.toEntity(request);
         entity.setStatus(StatusPedidoVenda.ABERTO);
         entity.atualizarValorTotal(null);
-        associar(entity, request);
+        associar(entity, request, empresaId);
         PedidoVenda salvo = repository.save(entity);
         historicoService.registrarPedido(salvo, null, salvo.getStatus(), "Pedido de venda criado");
         eventPublisher.publishEvent(new PedidoVendaCriadoEvent(
@@ -131,9 +144,10 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
     @Transactional
     public PedidoVendaResponse atualizar(UUID id, PedidoVendaRequest request) {
         PedidoVenda entity = buscarEntidade(id);
-        validator.validarAtualizacao(entity, request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarAtualizacao(entity, request, empresaId);
         mapper.updateEntity(entity, request);
-        associar(entity, request);
+        associar(entity, request, empresaId);
         return mapper.toResponse(entity);
     }
 
@@ -199,10 +213,9 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
         pedido.atualizarValorTotal(total);
     }
 
-    private void associar(PedidoVenda entity, PedidoVendaRequest request) {
-        Empresa empresa = buscarEmpresa(request.empresaId());
-        Filial filial = buscarFilial(request.filialId());
-        validarFilialDaEmpresa(filial, empresa);
+    private void associar(PedidoVenda entity, PedidoVendaRequest request, UUID empresaId) {
+        Empresa empresa = buscarEmpresa(empresaId);
+        Filial filial = buscarFilial(request.filialId(), empresaId);
         entity.setEmpresa(empresa);
         entity.setFilial(filial);
         entity.setCliente(buscarCliente(request.clienteId()));
@@ -214,12 +227,14 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
     }
 
-    private Filial buscarFilial(UUID id) {
+    private Filial buscarFilial(UUID id, UUID empresaId) {
         if (id == null) {
             return null;
         }
-        return filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        Filial filial = filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filial nao encontrada"));
+        accessValidator.validarContexto(empresaContext.getUsuarioId(), empresaId, id);
+        return filial;
     }
 
     private Cliente buscarCliente(UUID id) {
@@ -235,10 +250,17 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
                 .orElseThrow(() -> new ResourceNotFoundException("Vendedor nao encontrado"));
     }
 
-    private void validarFilialDaEmpresa(Filial filial, Empresa empresa) {
-        if (filial != null && !filial.getEmpresa().getId().equals(empresa.getId())) {
-            throw new InvalidOperationException("Filial nao pertence a empresa informada");
-        }
+    @Override
+    @Transactional(readOnly = true)
+    public PedidoVendaResponse buscar(UUID id) {
+        return mapper.toResponse(buscarEntidade(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PedidoVenda buscarEntidade(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido de venda nao encontrado"));
     }
 
     private void reservarItens(PedidoVenda pedido) {
@@ -279,10 +301,6 @@ public class PedidoVendaService extends BaseCrudService<PedidoVenda, PedidoVenda
             throw new InvalidOperationException("Produto sem estoque disponivel para reserva");
         }
         return estoques.getFirst();
-    }
-
-    private Specification<PedidoVenda> and(Specification<PedidoVenda> base, Specification<PedidoVenda> filtro) {
-        return filtro == null ? base : base.and(filtro);
     }
 
     private record ReservaPlanejada(Estoque estoque, BigDecimal quantidade) {

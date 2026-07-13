@@ -13,6 +13,7 @@ import br.com.invplus.modules.produtos.entity.Produto;
 import br.com.invplus.modules.produtos.entity.ProdutoUnidade;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoUnidadeRepository;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.util.UUID;
@@ -35,6 +36,7 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
     private final ProdutoRepository produtoRepository;
     private final ProdutoUnidadeRepository produtoUnidadeRepository;
     private final PedidoCompraService pedidoCompraService;
+    private final EmpresaContext empresaContext;
 
     public PedidoCompraItemService(
             PedidoCompraItemRepository repository,
@@ -43,7 +45,8 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
             PedidoCompraRepository pedidoRepository,
             ProdutoRepository produtoRepository,
             ProdutoUnidadeRepository produtoUnidadeRepository,
-            PedidoCompraService pedidoCompraService
+            PedidoCompraService pedidoCompraService,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "Item do pedido de compra");
         this.repository = repository;
@@ -53,15 +56,24 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
         this.produtoRepository = produtoRepository;
         this.produtoUnidadeRepository = produtoUnidadeRepository;
         this.pedidoCompraService = pedidoCompraService;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public Page<PedidoCompraItemResponse> listarComFiltros(UUID pedidoCompraId, UUID produtoId, Boolean ativo, Pageable pageable) {
-        Specification<PedidoCompraItem> specification = PedidoCompraItemSpecification.naoDeletado()
+        Specification<PedidoCompraItem> specification = PedidoCompraItemSpecification
+                .pertenceEmpresa(empresaContext.getEmpresaId())
+                .and(PedidoCompraItemSpecification.naoDeletado())
                 .and(PedidoCompraItemSpecification.ativo(ativo))
                 .and(PedidoCompraItemSpecification.pedidoIgual(pedidoCompraId))
                 .and(PedidoCompraItemSpecification.produtoIgual(produtoId));
         return repository.findAll(specification, pageable).map(mapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PedidoCompraItemResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
     }
 
     @Override
@@ -79,7 +91,7 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
     @Override
     @Transactional
     public PedidoCompraItemResponse atualizar(UUID id, PedidoCompraItemRequest request) {
-        PedidoCompraItem entity = buscarEntidade(id);
+        PedidoCompraItem entity = buscarNoContexto(id);
         PedidoCompra pedido = buscarPedido(request.pedidoCompraId());
         validator.validar(pedido, request.quantidade(), request.valorUnitario());
         mapper.updateEntity(entity, request);
@@ -91,7 +103,7 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
     @Override
     @Transactional
     public void excluir(UUID id) {
-        PedidoCompraItem entity = buscarEntidade(id);
+        PedidoCompraItem entity = buscarNoContexto(id);
         PedidoCompra pedido = entity.getPedidoCompra();
         pedido.validarEditavel();
         entity.excluirLogicamente();
@@ -105,7 +117,8 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
     }
 
     private PedidoCompra buscarPedido(UUID id) {
-        return pedidoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return pedidoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido de compra nao encontrado"));
     }
 
@@ -120,5 +133,11 @@ public class PedidoCompraItemService extends BaseCrudService<PedidoCompraItem, P
         }
         return produtoUnidadeRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Unidade do produto nao encontrada"));
+    }
+
+    private PedidoCompraItem buscarNoContexto(UUID id) {
+        return repository.findByIdAndPedidoCompraEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Item do pedido de compra nao encontrado"));
     }
 }

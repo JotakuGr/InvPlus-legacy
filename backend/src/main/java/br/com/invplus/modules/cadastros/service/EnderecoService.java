@@ -5,6 +5,7 @@ import br.com.invplus.modules.cadastros.dto.response.EnderecoResponse;
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.entity.Endereco;
 import br.com.invplus.modules.cadastros.repository.EnderecoRepository;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,16 +24,16 @@ public class EnderecoService {
     private final EnderecoRepository enderecoRepository;
     private final EmpresaService empresaService;
     private final CidadeService cidadeService;
+    private final EmpresaContext empresaContext;
 
     /**
-     * Lista enderecos ativos ou filtra por empresa quando informado, sempre com paginacao.
+     * Lista enderecos ativos da empresa contextualizada.
      */
     @Transactional(readOnly = true)
-    public Page<EnderecoResponse> listar(UUID empresaId, Pageable pageable) {
-        Page<Endereco> enderecos = empresaId == null
-                ? enderecoRepository.findByAtivoTrueAndDeletedAtIsNull(pageable)
-                : enderecoRepository.findByEmpresaIdAndAtivoTrueAndDeletedAtIsNull(empresaId, pageable);
-        return enderecos.map(EnderecoResponse::from);
+    public Page<EnderecoResponse> listar(Pageable pageable) {
+        return enderecoRepository
+                .findByEmpresaIdAndAtivoTrueAndDeletedAtIsNull(empresaContext.getEmpresaId(), pageable)
+                .map(EnderecoResponse::from);
     }
 
     /**
@@ -72,7 +73,7 @@ public class EnderecoService {
     }
 
     private void aplicar(Endereco endereco, EnderecoRequest request) {
-        Empresa empresa = request.empresaId() == null ? null : empresaService.buscarEntidade(request.empresaId());
+        Empresa empresa = empresaService.buscarEntidade(empresaContext.getEmpresaId());
         var cidadeCadastro = request.cidadeId() == null ? null : cidadeService.buscarEntidade(request.cidadeId());
         endereco.atualizar(empresa, cidadeCadastro, request.tipo(), request.logradouro(), request.numero(), request.complemento(),
                 request.bairro(), request.cidade(), request.uf(), request.cep(), request.principal());
@@ -83,7 +84,8 @@ public class EnderecoService {
      */
     @Transactional(readOnly = true)
     public Endereco buscarEntidade(UUID id) {
-        return enderecoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return enderecoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Endereco nao encontrado"));
     }
 }

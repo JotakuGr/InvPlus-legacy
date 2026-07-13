@@ -11,6 +11,7 @@ import br.com.invplus.modules.financeiro.mapper.PlanoContaMapper;
 import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.specification.PlanoContaSpecification;
 import br.com.invplus.modules.financeiro.validator.PlanoContaValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +32,11 @@ public class PlanoContaService {
     private final EmpresaRepository empresaRepository;
     private final PlanoContaMapper mapper;
     private final PlanoContaValidator validator;
+    private final EmpresaContext empresaContext;
 
     @Transactional
     public PlanoContaResponse criar(PlanoContaRequest request) {
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        Empresa empresa = buscarEmpresa(empresaContext.getEmpresaId());
         PlanoConta pai = buscarPai(request.planoContaPaiId());
         validator.validarCriacao(request, empresa, pai);
 
@@ -49,9 +51,10 @@ public class PlanoContaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<PlanoContaResponse> listar(UUID empresaId, UUID planoContaPaiId,
+    public Page<PlanoContaResponse> listar(UUID planoContaPaiId,
             String codigo, String nome, TipoPlanoConta tipo, NaturezaPlanoConta natureza,
             Boolean ativo, Pageable pageable) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Specification<PlanoConta> specification = PlanoContaSpecification.naoDeletado();
         specification = and(specification, PlanoContaSpecification.empresaIgual(empresaId));
         specification = and(specification, PlanoContaSpecification.paiIgual(planoContaPaiId));
@@ -66,7 +69,7 @@ public class PlanoContaService {
     @Transactional
     public PlanoContaResponse atualizar(UUID id, PlanoContaRequest request) {
         PlanoConta entity = buscarEntidade(id);
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        Empresa empresa = buscarEmpresa(empresaContext.getEmpresaId());
         PlanoConta pai = buscarPai(request.planoContaPaiId());
         validator.validarAtualizacao(id, request, empresa, pai);
         mapper.aplicar(entity, request, empresa, pai);
@@ -79,7 +82,8 @@ public class PlanoContaService {
     }
 
     public PlanoConta buscarEntidade(UUID id) {
-        return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Plano de conta nao encontrado"));
     }
 

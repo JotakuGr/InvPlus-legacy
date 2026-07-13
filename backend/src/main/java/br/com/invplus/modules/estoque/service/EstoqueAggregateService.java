@@ -12,6 +12,7 @@ import br.com.invplus.modules.estoque.repository.EstoqueRepository;
 import br.com.invplus.modules.estoque.repository.MovimentacaoEstoqueRepository;
 import br.com.invplus.modules.estoque.repository.ReservaEstoqueRepository;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import br.com.invplus.security.context.EmpresaContext;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class EstoqueAggregateService {
     private final EstoqueMapper estoqueMapper;
     private final MovimentacaoEstoqueMapper movimentacaoMapper;
     private final ReservaEstoqueMapper reservaMapper;
+    private final EmpresaContext empresaContext;
 
     public EstoqueAggregateService(
             EstoqueRepository estoqueRepository,
@@ -36,7 +38,8 @@ public class EstoqueAggregateService {
             ReservaEstoqueRepository reservaRepository,
             EstoqueMapper estoqueMapper,
             MovimentacaoEstoqueMapper movimentacaoMapper,
-            ReservaEstoqueMapper reservaMapper
+            ReservaEstoqueMapper reservaMapper,
+            EmpresaContext empresaContext
     ) {
         this.estoqueRepository = estoqueRepository;
         this.movimentacaoRepository = movimentacaoRepository;
@@ -44,6 +47,7 @@ public class EstoqueAggregateService {
         this.estoqueMapper = estoqueMapper;
         this.movimentacaoMapper = movimentacaoMapper;
         this.reservaMapper = reservaMapper;
+        this.empresaContext = empresaContext;
     }
 
     /**
@@ -72,11 +76,11 @@ public class EstoqueAggregateService {
      * Retorna apenas os numeros de saldo para chamadas frequentes de PDV e Vendas.
      */
     @Transactional(readOnly = true)
-    public EstoqueDisponivelResponse buscarDisponivel(UUID produtoId, UUID empresaId, UUID depositoId, UUID localizacaoId) {
+    public EstoqueDisponivelResponse buscarDisponivel(UUID produtoId, UUID depositoId, UUID localizacaoId) {
         Estoque estoque = estoqueRepository
                 .findByProdutoIdAndEmpresaIdAndDepositoIdAndLocalizacaoIdAndAtivoTrueAndDeletedAtIsNull(
                         produtoId,
-                        empresaId,
+                        empresaContext.getEmpresaId(),
                         depositoId,
                         localizacaoId
                 )
@@ -85,7 +89,8 @@ public class EstoqueAggregateService {
     }
 
     private Estoque buscarEstoqueAtivo(UUID estoqueId) {
-        return estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoqueId)
+        return estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        estoqueId, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Estoque nao encontrado"));
     }
 

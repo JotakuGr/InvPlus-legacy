@@ -12,7 +12,6 @@ import java.util.UUID;
  */
 public record ProdutoPrecoRequest(
         @NotNull UUID produtoId,
-        UUID empresaId,
         @NotNull TipoPrecoProduto tipoPreco,
         @NotNull @PositiveOrZero BigDecimal preco,
         @NotNull LocalDate vigenciaInicio,

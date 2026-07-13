@@ -1,9 +1,20 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -18,10 +29,10 @@ import br.com.invplus.modules.financeiro.enums.OrigemMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.StatusMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.mapper.MovimentoFinanceiroMapper;
-import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
-import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
+import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
+import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.validator.MovimentoFinanceiroValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -31,16 +42,8 @@ import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras e integracoes internas de MovimentoFinanceiro.
@@ -66,6 +69,8 @@ class MovimentoFinanceiroServiceTest {
     private PlanoContaRepository planoContaRepository;
     @Mock
     private ContaBancariaRepository contaBancariaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private MovimentoFinanceiroService service;
     private Empresa empresa;
@@ -74,12 +79,14 @@ class MovimentoFinanceiroServiceTest {
     private Fornecedor fornecedor;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new MovimentoFinanceiroService(repository, empresaRepository, filialRepository,
                 formaPagamentoRepository, clienteRepository, fornecedorRepository,
                 new MovimentoFinanceiroMapper(), new MovimentoFinanceiroValidator(), centroCustoRepository,
-                planoContaRepository, contaBancariaRepository);
+                planoContaRepository, contaBancariaRepository, empresaContext);
         empresa = empresa();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
         formaPagamento = formaPagamento();
         cliente = cliente();
         fornecedor = fornecedor();
@@ -198,8 +205,8 @@ class MovimentoFinanceiroServiceTest {
 
     private MovimentoFinanceiroRequest request(TipoMovimentoFinanceiro tipo, OrigemMovimentoFinanceiro origem,
             UUID clienteId, UUID fornecedorId, String valor) {
-        return new MovimentoFinanceiroRequest(empresa.getId(), null, formaPagamento.getId(), clienteId,
-                fornecedorId, tipo, origem, UUID.randomUUID(), new BigDecimal(valor),
+        return new MovimentoFinanceiroRequest(null, formaPagamento.getId(), clienteId,
+                fornecedorId, null, null, null, tipo, origem, UUID.randomUUID(), new BigDecimal(valor),
                 LocalDate.of(2026, 7, 8), "Movimento de teste", null);
     }
 

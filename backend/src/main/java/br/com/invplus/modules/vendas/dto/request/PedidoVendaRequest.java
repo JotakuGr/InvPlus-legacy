@@ -11,7 +11,6 @@ import java.util.UUID;
  * Dados de cabecalho para criar ou atualizar um pedido de venda.
  */
 public record PedidoVendaRequest(
-        @NotNull UUID empresaId,
         UUID filialId,
         @NotNull UUID clienteId,
         UUID vendedorId,

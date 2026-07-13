@@ -1,9 +1,20 @@
 package br.com.invplus.businessflow;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
+import br.com.invplus.modules.financeiro.conciliacao.service.ConciliacaoBancariaSugestaoService;
 import br.com.invplus.modules.financeiro.dto.request.ConciliacaoBancariaCancelamentoRequest;
 import br.com.invplus.modules.financeiro.dto.request.ConciliacaoBancariaRequest;
 import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
@@ -26,19 +37,11 @@ import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioLancamentoService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioService;
 import br.com.invplus.modules.financeiro.service.MovimentoFinanceiroService;
-import br.com.invplus.modules.financeiro.conciliacao.service.ConciliacaoBancariaSugestaoService;
-import br.com.invplus.shared.domain.exception.ConflictException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import br.com.invplus.shared.domain.exception.ConflictException;
+import br.com.invplus.support.context.TestEmpresaContext;
 
 /** Valida o ciclo MovimentoFinanceiro <-> Conciliacao <-> Lancamento bancario. */
 @SpringBootTest
@@ -55,18 +58,20 @@ class SugestaoConciliacaoBusinessFlowIntegrationTest {
     @Autowired private FormaPagamentoRepository formaPagamentoRepository;
     @Autowired private ExtratoBancarioRepository extratoRepository;
     @Autowired private ExtratoBancarioLancamentoRepository lancamentoRepository;
+    @Autowired private TestEmpresaContext testEmpresaContext;
 
     @Test
     void deveConciliarAtualizarExtratoECancelarPreservandoHistorico() {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa Fluxo Conc " + sufixo,
                 "Empresa Fluxo Conc " + sufixo, documento(sufixo), null, null, null));
+        testEmpresaContext.ativarEmpresa(UUID.randomUUID(), empresa.getId());
         FormaPagamento forma = new FormaPagamento();
         forma.atualizar("CF" + sufixo, "Forma Fluxo Conc " + sufixo,
                 TipoFormaPagamento.PIX, false, false);
         forma = formaPagamentoRepository.saveAndFlush(forma);
 
-        var conta = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null,
+        var conta = contaBancariaService.criar(new ContaBancariaRequest(null,
                 "001", "Banco Fluxo", "2" + sufixo, null, "8" + sufixo, null,
                 TipoContaBancaria.CORRENTE, "Empresa Fluxo", null, null,
                 BigDecimal.ZERO, LocalDate.of(2026, 7, 10), true));
@@ -78,7 +83,7 @@ class SugestaoConciliacaoBusinessFlowIntegrationTest {
                 LocalDate.of(2026, 7, 10), "Credito do recebimento", null,
                 TipoLancamentoBancario.CREDITO, new BigDecimal("200.00"), null,
                 "FLOW-" + sufixo, CategoriaLancamentoBancario.PIX, null));
-        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(empresa.getId(), null,
+        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(null,
                 forma.getId(), null, null, null, null, conta.id(), TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.AJUSTE_MANUAL, null, new BigDecimal("200.00"),
                 LocalDate.of(2026, 7, 10), "Entrada financeira", null));
@@ -103,6 +108,12 @@ class SugestaoConciliacaoBusinessFlowIntegrationTest {
         assertThat(lancamentoRepository.findById(lancamento.id()).orElseThrow().getConciliado()).isFalse();
         assertThat(extratoRepository.findById(extrato.id()).orElseThrow().getStatus())
                 .isEqualTo(StatusExtratoBancario.IMPORTADO);
+    }
+
+    @AfterEach
+    @SuppressWarnings("unused")
+    void limparContexto() {
+        testEmpresaContext.limpar();
     }
 
     private String hash(String valor) {

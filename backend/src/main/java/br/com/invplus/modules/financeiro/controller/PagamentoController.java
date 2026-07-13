@@ -45,7 +45,6 @@ public class PagamentoController extends BaseCrudController {
             @RequestParam(required = false) UUID parcelaPagarId,
             @RequestParam(required = false) UUID contaPagarId,
             @RequestParam(required = false) UUID formaPagamentoId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID fornecedorId,
             @RequestParam(required = false) StatusPagamentoFinanceiro status,
@@ -55,7 +54,7 @@ public class PagamentoController extends BaseCrudController {
             Pageable pageable
     ) {
         return ResponseEntity.ok(service.listarComFiltros(parcelaPagarId, contaPagarId, formaPagamentoId,
-                empresaId, filialId, fornecedorId, status, dataPagamentoDe, dataPagamentoAte, ativo, pageable));
+                null, filialId, fornecedorId, status, dataPagamentoDe, dataPagamentoAte, ativo, pageable));
     }
 
     @GetMapping("/{id}")

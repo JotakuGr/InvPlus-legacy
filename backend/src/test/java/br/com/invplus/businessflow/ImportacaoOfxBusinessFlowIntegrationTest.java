@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,7 +37,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 /** Valida OFX -> extrato -> lancamento -> movimento -> conciliacao. */
 @SpringBootTest
 @ActiveProfiles("test")
-class ImportacaoOfxBusinessFlowIntegrationTest {
+class ImportacaoOfxBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired private ImportacaoExtratoService importacaoService;
     @Autowired private ConciliacaoBancariaService conciliacaoService;
@@ -63,8 +64,8 @@ class ImportacaoOfxBusinessFlowIntegrationTest {
         var importacao = importacaoService.importarOfx(arquivo(sufixo), contaId, "Fluxo completo");
         var lancamento = lancamentoRepository.findByExtratoBancarioIdAndAtivoTrueAndDeletedAtIsNull(
                 importacao.extratoBancarioId()).getFirst();
-        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(empresa.getId(), null,
-                forma.getId(), null, null, TipoMovimentoFinanceiro.ENTRADA,
+        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(null,
+                forma.getId(), null, null, null, null, null, TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.AJUSTE_MANUAL, null, new BigDecimal("150.00"),
                 LocalDate.of(2026, 7, 10), "Recebimento OFX", null));
         var conciliacao = conciliacaoService.criar(new ConciliacaoBancariaRequest(lancamento.getId(),

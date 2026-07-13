@@ -11,7 +11,6 @@ import java.util.UUID;
  * Dados para criar ou atualizar uma conta do plano.
  */
 public record PlanoContaRequest(
-        @NotNull UUID empresaId,
         UUID planoContaPaiId,
         @NotBlank @Size(max = 40) String codigo,
         @NotBlank @Size(max = 120) String nome,

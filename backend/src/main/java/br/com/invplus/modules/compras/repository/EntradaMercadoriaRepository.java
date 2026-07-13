@@ -11,6 +11,8 @@ import java.util.UUID;
  */
 public interface EntradaMercadoriaRepository extends BaseRepository<EntradaMercadoria> {
 
+    Optional<EntradaMercadoria> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     boolean existsByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String numero);
 
     Optional<EntradaMercadoria> findByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String numero);

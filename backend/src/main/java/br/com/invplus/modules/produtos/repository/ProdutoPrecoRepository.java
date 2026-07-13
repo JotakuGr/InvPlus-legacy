@@ -17,6 +17,11 @@ public interface ProdutoPrecoRepository extends BaseRepository<ProdutoPreco> {
 
     List<ProdutoPreco> findByProdutoIdAndAtivoTrueAndDeletedAtIsNull(UUID produtoId);
 
+    List<ProdutoPreco> findByProdutoIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+            UUID produtoId, UUID empresaId);
+
+    Optional<ProdutoPreco> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     Optional<ProdutoPreco> findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
             UUID produtoId,
             TipoPrecoProduto tipoPreco,
@@ -46,15 +51,16 @@ public interface ProdutoPrecoRepository extends BaseRepository<ProdutoPreco> {
             from ProdutoPreco p
             where p.produto.id = :produtoId
               and p.tipoPreco = :tipoPreco
-              and p.empresa is null
+              and p.empresa.id = :empresaId
               and p.ativo = true
               and p.deletedAt is null
               and p.vigenciaInicio <= :data
               and (p.vigenciaFim is null or p.vigenciaFim >= :data)
             order by p.principal desc, p.vigenciaInicio desc
             """)
-    List<ProdutoPreco> buscarPrecosVigentesGlobais(
+    List<ProdutoPreco> buscarPrecosVigentes(
             @Param("produtoId") UUID produtoId,
+            @Param("empresaId") UUID empresaId,
             @Param("tipoPreco") TipoPrecoProduto tipoPreco,
             @Param("data") LocalDate data
     );

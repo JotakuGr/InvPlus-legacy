@@ -40,7 +40,6 @@ public class EstoqueController extends BaseCrudController {
     @PreAuthorize("hasAuthority('ESTOQUE_SALDO:VISUALIZAR') or hasAuthority('ESTOQUE_SALDO:*') or hasAuthority('ESTOQUE:*')")
     public ResponseEntity<Page<EstoqueResponse>> listar(
             @RequestParam(required = false) UUID produtoId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID depositoId,
             @RequestParam(required = false) UUID localizacaoId,
@@ -51,7 +50,7 @@ public class EstoqueController extends BaseCrudController {
             @RequestParam(required = false) Boolean semSaldo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(produtoId, empresaId, filialId, depositoId,
+        return ResponseEntity.ok(service.listarComFiltros(produtoId, filialId, depositoId,
                 localizacaoId, ativo, estoqueBaixo, estoqueZerado, comSaldo, semSaldo, pageable));
     }
 
@@ -59,22 +58,20 @@ public class EstoqueController extends BaseCrudController {
     @PreAuthorize("hasAuthority('ESTOQUE_SALDO:VISUALIZAR') or hasAuthority('ESTOQUE_SALDO:*') or hasAuthority('ESTOQUE:*')")
     public ResponseEntity<EstoqueResponse> buscarSaldo(
             @RequestParam UUID produtoId,
-            @RequestParam UUID empresaId,
             @RequestParam UUID depositoId,
             @RequestParam UUID localizacaoId
     ) {
-        return ResponseEntity.ok(service.buscarSaldo(produtoId, empresaId, depositoId, localizacaoId));
+        return ResponseEntity.ok(service.buscarSaldo(produtoId, depositoId, localizacaoId));
     }
 
     @GetMapping("/disponivel")
     @PreAuthorize("hasAuthority('ESTOQUE_SALDO:VISUALIZAR') or hasAuthority('ESTOQUE_SALDO:*') or hasAuthority('ESTOQUE:*')")
     public ResponseEntity<EstoqueDisponivelResponse> buscarDisponivel(
             @RequestParam UUID produtoId,
-            @RequestParam UUID empresaId,
             @RequestParam UUID depositoId,
             @RequestParam UUID localizacaoId
     ) {
-        return ResponseEntity.ok(aggregateService.buscarDisponivel(produtoId, empresaId, depositoId, localizacaoId));
+        return ResponseEntity.ok(aggregateService.buscarDisponivel(produtoId, depositoId, localizacaoId));
     }
 
     @GetMapping("/{id}")

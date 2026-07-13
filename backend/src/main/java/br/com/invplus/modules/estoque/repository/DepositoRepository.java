@@ -10,6 +10,8 @@ import java.util.UUID;
  */
 public interface DepositoRepository extends BaseRepository<Deposito> {
 
+    Optional<Deposito> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     boolean existsByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(UUID empresaId, String codigo);
 
     boolean existsByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(UUID empresaId);

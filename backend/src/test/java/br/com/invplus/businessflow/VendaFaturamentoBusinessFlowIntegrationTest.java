@@ -1,6 +1,15 @@
 package br.com.invplus.businessflow;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Categoria;
@@ -45,13 +54,7 @@ import br.com.invplus.modules.vendas.enums.StatusPedidoVenda;
 import br.com.invplus.modules.vendas.enums.StatusVendaFaturamento;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
 import br.com.invplus.modules.vendas.service.VendaFaturamentoService;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import br.com.invplus.support.context.TestEmpresaContext;
 
 /**
  * Prova o fluxo PedidoVenda aprovado -> Faturamento -> baixa de ReservaEstoque -> MovimentacaoEstoque.
@@ -94,10 +97,13 @@ class VendaFaturamentoBusinessFlowIntegrationTest {
     private ContaReceberRepository contaReceberRepository;
     @Autowired
     private ParcelaReceberRepository parcelaReceberRepository;
+    @Autowired
+    private TestEmpresaContext testEmpresaContext;
 
     @Test
     void deveFaturarPedidoAprovadoBaixandoReservaEAtualizandoSaldo() {
         PedidoVenda pedido = criarPedidoAprovado();
+        testEmpresaContext.ativarEmpresa(UUID.randomUUID(), pedido.getEmpresa().getId());
         Estoque estoque = criarEstoque(pedido.getEmpresa());
         reservaService.criar(new ReservaEstoqueRequest(
                 estoque.getId(),
@@ -240,5 +246,11 @@ class VendaFaturamentoBusinessFlowIntegrationTest {
 
     private String cnpjUnico(String prefixo) {
         return prefixo + "%012d".formatted(Math.abs(UUID.randomUUID().getMostSignificantBits()) % 1_000_000_000_000L);
+    }
+
+    @AfterEach
+    @SuppressWarnings("unused")
+    void limparContexto() {
+        testEmpresaContext.limpar();
     }
 }

@@ -8,7 +8,6 @@ import java.util.UUID;
  * Payload para criar ou atualizar enderecos.
  */
 public record EnderecoRequest(
-        UUID empresaId,
         UUID cidadeId,
         @Size(max = 40) String tipo,
         @NotBlank @Size(max = 160) String logradouro,

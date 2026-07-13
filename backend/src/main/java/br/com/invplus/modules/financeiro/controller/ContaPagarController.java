@@ -48,7 +48,6 @@ public class ContaPagarController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('CONTA_PAGAR:VISUALIZAR') or hasAuthority('CONTA_PAGAR:*')")
     public ResponseEntity<Page<ContaPagarResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID fornecedorId,
             @RequestParam(required = false) UUID entradaMercadoriaId,
@@ -61,7 +60,7 @@ public class ContaPagarController extends BaseCrudController {
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(empresaId, filialId, fornecedorId, entradaMercadoriaId,
+        return ResponseEntity.ok(service.listarComFiltros(filialId, fornecedorId, entradaMercadoriaId,
                 centroCustoId, planoContaId, numero, status, dataEmissaoDe, dataEmissaoAte, ativo, pageable));
     }
 

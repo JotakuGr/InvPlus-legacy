@@ -1,9 +1,17 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -13,15 +21,9 @@ import br.com.invplus.modules.financeiro.enums.TipoCentroCusto;
 import br.com.invplus.modules.financeiro.mapper.CentroCustoMapper;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.modules.financeiro.validator.CentroCustoValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras hierarquicas de CentroCusto.
@@ -33,16 +35,20 @@ class CentroCustoServiceTest {
     private CentroCustoRepository repository;
     @Mock
     private EmpresaRepository empresaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private CentroCustoService service;
     private Empresa empresa;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
+        empresa = empresa("Empresa Centro");
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
         CentroCustoMapper mapper = new CentroCustoMapper();
         service = new CentroCustoService(repository, empresaRepository, mapper,
-                new CentroCustoValidator(repository));
-        empresa = empresa("Empresa Centro");
+                new CentroCustoValidator(repository), empresaContext);
     }
 
     @Test
@@ -64,7 +70,8 @@ class CentroCustoServiceTest {
     void deveCriarCentroFilhoComCaminhoCompleto() {
         CentroCusto pai = centro(empresa, null, "ADM", "Administrativo");
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pai.getId())).thenReturn(Optional.of(pai));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pai.getId(), empresa.getId()))
+                .thenReturn(Optional.of(pai));
         when(repository.save(any(CentroCusto.class))).thenAnswer(invocation -> {
             CentroCusto entity = invocation.getArgument(0);
             entity.setId(UUID.randomUUID());
@@ -92,7 +99,8 @@ class CentroCustoServiceTest {
         Empresa outra = empresa("Outra Empresa");
         CentroCusto pai = centro(outra, null, "OUT", "Outro");
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(pai.getId())).thenReturn(Optional.of(pai));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(pai.getId(), empresa.getId()))
+                .thenReturn(Optional.of(pai));
 
         assertThatThrownBy(() -> service.criar(request(pai.getId(), "FILHO", "Filho")))
                 .isInstanceOf(InvalidOperationException.class);
@@ -102,14 +110,16 @@ class CentroCustoServiceTest {
     void deveBloquearAutorelacionamentoECicloIndireto() {
         CentroCusto raiz = centro(empresa, null, "RAIZ", "Raiz");
         CentroCusto filho = centro(empresa, raiz, "FILHO", "Filho");
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(raiz.getId())).thenReturn(Optional.of(raiz));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(raiz.getId(), empresa.getId()))
+                .thenReturn(Optional.of(raiz));
         prepararEmpresa();
 
         assertThatThrownBy(() -> service.atualizar(raiz.getId(),
                 request(raiz.getId(), "RAIZ", "Raiz")))
                 .isInstanceOf(InvalidOperationException.class);
 
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(filho.getId())).thenReturn(Optional.of(filho));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(filho.getId(), empresa.getId()))
+                .thenReturn(Optional.of(filho));
         assertThatThrownBy(() -> service.atualizar(raiz.getId(),
                 request(filho.getId(), "RAIZ", "Raiz")))
                 .isInstanceOf(InvalidOperationException.class);
@@ -118,7 +128,8 @@ class CentroCustoServiceTest {
     @Test
     void deveExcluirLogicamente() {
         CentroCusto entity = centro(empresa, null, "ADM", "Administrativo");
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresa.getId()))
+                .thenReturn(Optional.of(entity));
 
         service.excluir(entity.getId());
 
@@ -132,7 +143,7 @@ class CentroCustoServiceTest {
     }
 
     private CentroCustoRequest request(UUID paiId, String codigo, String nome) {
-        return new CentroCustoRequest(empresa.getId(), paiId, codigo, nome,
+        return new CentroCustoRequest(paiId, codigo, nome,
                 "Centro de custo de teste", TipoCentroCusto.AMBOS);
     }
 

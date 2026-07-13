@@ -1,10 +1,22 @@
 package br.com.invplus.modules.estoque.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import br.com.invplus.modules.estoque.dto.request.LocalizacaoEstoqueRequest;
 import br.com.invplus.modules.estoque.dto.response.LocalizacaoEstoqueResponse;
@@ -14,18 +26,10 @@ import br.com.invplus.modules.estoque.mapper.LocalizacaoEstoqueMapper;
 import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.modules.estoque.repository.LocalizacaoEstoqueRepository;
 import br.com.invplus.modules.estoque.validator.LocalizacaoEstoqueValidator;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Testes unitarios das regras de LocalizacaoEstoque.
@@ -39,13 +43,24 @@ class LocalizacaoEstoqueServiceTest {
     @Mock
     private DepositoRepository depositoRepository;
 
+    @Mock
+    private EmpresaContext empresaContext;
+
+    @Mock
+    private UsuarioEmpresaAccessValidator accessValidator;
+
     private LocalizacaoEstoqueService service;
+    private UUID empresaId;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
+        empresaId = UUID.randomUUID();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         LocalizacaoEstoqueMapper mapper = new LocalizacaoEstoqueMapper();
         LocalizacaoEstoqueValidator validator = new LocalizacaoEstoqueValidator(repository);
-        service = new LocalizacaoEstoqueService(repository, mapper, validator, depositoRepository);
+        service = new LocalizacaoEstoqueService(
+                repository, mapper, validator, depositoRepository, empresaContext, accessValidator);
     }
 
     @Test
@@ -56,7 +71,8 @@ class LocalizacaoEstoqueServiceTest {
                 .thenReturn(Optional.empty());
         when(repository.findByDepositoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(deposito.getId()))
                 .thenReturn(Optional.empty());
-        when(depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(deposito.getId())).thenReturn(Optional.of(deposito));
+        when(depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(deposito.getId(), empresaId))
+                .thenReturn(Optional.of(deposito));
         when(repository.save(any(LocalizacaoEstoque.class))).thenAnswer(invocation -> {
             LocalizacaoEstoque entity = invocation.getArgument(0);
             entity.setId(UUID.randomUUID());
@@ -75,9 +91,8 @@ class LocalizacaoEstoqueServiceTest {
     void deveBloquearDepositoInexistente() {
         UUID depositoId = UUID.randomUUID();
         LocalizacaoEstoqueRequest request = request(depositoId, "A-01", false);
-        when(repository.findByDepositoIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(depositoId, "A-01"))
+        when(depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(depositoId, empresaId))
                 .thenReturn(Optional.empty());
-        when(depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(depositoId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.criar(request))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -88,6 +103,8 @@ class LocalizacaoEstoqueServiceTest {
     void deveBloquearCodigoDuplicadoPorDeposito() {
         LocalizacaoEstoque existente = localizacaoAtiva();
         LocalizacaoEstoqueRequest request = request(existente.getDeposito().getId(), existente.getCodigo(), false);
+        when(depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), empresaId))
+                .thenReturn(Optional.of(existente.getDeposito()));
         when(repository.findByDepositoIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), request.codigo()))
                 .thenReturn(Optional.of(existente));
 
@@ -100,6 +117,8 @@ class LocalizacaoEstoqueServiceTest {
     void deveBloquearSegundaLocalizacaoPrincipal() {
         LocalizacaoEstoque existente = localizacaoAtiva();
         LocalizacaoEstoqueRequest request = request(existente.getDeposito().getId(), "B-01", true);
+        when(depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), empresaId))
+                .thenReturn(Optional.of(existente.getDeposito()));
         when(repository.findByDepositoIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), request.codigo()))
                 .thenReturn(Optional.empty());
         when(repository.findByDepositoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.depositoId()))
@@ -126,12 +145,14 @@ class LocalizacaoEstoqueServiceTest {
     void deveAtualizarMantendoProprioCodigoEPrincipal() {
         LocalizacaoEstoque entity = localizacaoAtiva();
         LocalizacaoEstoqueRequest request = request(entity.getDeposito().getId(), entity.getCodigo(), true);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
+        when(repository.findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresaId))
+                .thenReturn(Optional.of(entity));
         when(repository.findByDepositoIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), request.codigo()))
                 .thenReturn(Optional.of(entity));
         when(repository.findByDepositoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.depositoId()))
                 .thenReturn(Optional.of(entity));
-        when(depositoRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(request.depositoId())).thenReturn(Optional.of(entity.getDeposito()));
+        when(depositoRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), empresaId))
+                .thenReturn(Optional.of(entity.getDeposito()));
 
         LocalizacaoEstoqueResponse response = service.atualizar(entity.getId(), request);
 
@@ -142,7 +163,8 @@ class LocalizacaoEstoqueServiceTest {
     @Test
     void deveExcluirLogicamente() {
         LocalizacaoEstoque entity = localizacaoAtiva();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
+        when(repository.findByIdAndDepositoEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresaId))
+                .thenReturn(Optional.of(entity));
 
         service.excluir(entity.getId());
 

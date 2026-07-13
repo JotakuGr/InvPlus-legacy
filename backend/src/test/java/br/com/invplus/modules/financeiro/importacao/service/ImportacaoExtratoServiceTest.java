@@ -1,5 +1,12 @@
 package br.com.invplus.modules.financeiro.importacao.service;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
@@ -33,6 +40,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest
 @ActiveProfiles("test")
 class ImportacaoExtratoServiceTest {
+
+    @AfterEach
+    @SuppressWarnings("unused")
+    void limparContexto() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Autowired private ImportacaoExtratoService service;
     @Autowired private ContaBancariaService contaBancariaService;

@@ -25,9 +25,8 @@ public final class MovimentacaoEstoqueSpecification {
                 : (root, query, builder) -> builder.equal(root.get("produto").get("id"), produtoId);
     }
 
-    public static Specification<MovimentacaoEstoque> empresaIgual(UUID empresaId) {
-        return empresaId == null ? sempreVerdadeiro()
-                : (root, query, builder) -> builder.equal(root.get("empresa").get("id"), empresaId);
+    public static Specification<MovimentacaoEstoque> pertenceEmpresa(UUID empresaId) {
+        return (root, query, builder) -> builder.equal(root.get("empresa").get("id"), empresaId);
     }
 
     public static Specification<MovimentacaoEstoque> depositoIgual(UUID depositoId) {

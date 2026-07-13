@@ -1,10 +1,22 @@
 package br.com.invplus.modules.estoque.service;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import br.com.invplus.modules.cadastros.entity.Categoria;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -26,21 +38,11 @@ import br.com.invplus.modules.produtos.entity.Produto;
 import br.com.invplus.modules.produtos.enums.NaturezaProduto;
 import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.EstoqueDomainService;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Testes unitarios do fluxo de estado de ReservaEstoque.
@@ -54,21 +56,29 @@ class ReservaEstoqueServiceTest {
     private EstoqueRepository estoqueRepository;
     @Mock
     private EstoqueDomainService estoqueDomainService;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ReservaEstoqueService service;
+    private UUID empresaId;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
+        empresaId = UUID.randomUUID();
+        when(empresaContext.getEmpresaId()).thenReturn(empresaId);
         ReservaEstoqueMapper mapper = new ReservaEstoqueMapper();
         ReservaEstoqueValidator validator = new ReservaEstoqueValidator(repository);
-        service = new ReservaEstoqueService(repository, estoqueRepository, mapper, validator, estoqueDomainService);
+        service = new ReservaEstoqueService(
+                repository, estoqueRepository, mapper, validator, estoqueDomainService, empresaContext);
     }
 
     @Test
     void deveCriarReservaComSucesso() {
         Estoque estoque = estoque("100.000", "0.000");
         UUID origemId = UUID.randomUUID();
-        when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
+        when(estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId(), empresaId))
+                .thenReturn(Optional.of(estoque));
         when(repository.existsByEstoqueIdAndOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
                 estoque.getId(), MovimentacaoOrigem.VENDA, origemId, StatusReservaEstoque.ATIVA)).thenReturn(false);
         when(repository.save(any(ReservaEstoque.class))).thenAnswer(invocation -> {
@@ -88,7 +98,8 @@ class ReservaEstoqueServiceTest {
     @Test
     void deveBloquearReservaAcimaDoDisponivel() {
         Estoque estoque = estoque("10.000", "3.000");
-        when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
+        when(estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId(), empresaId))
+                .thenReturn(Optional.of(estoque));
 
         assertThatThrownBy(() -> service.criar(request(estoque.getId(), "8.000", UUID.randomUUID())))
                 .isInstanceOf(BusinessException.class)
@@ -98,7 +109,8 @@ class ReservaEstoqueServiceTest {
     @Test
     void deveBloquearQuantidadeZero() {
         Estoque estoque = estoque("10.000", "0.000");
-        when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
+        when(estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId(), empresaId))
+                .thenReturn(Optional.of(estoque));
 
         assertThatThrownBy(() -> service.criar(request(estoque.getId(), "0.000", UUID.randomUUID())))
                 .isInstanceOf(BusinessException.class)
@@ -108,7 +120,8 @@ class ReservaEstoqueServiceTest {
     @Test
     void deveBloquearEstoqueInexistente() {
         UUID estoqueId = UUID.randomUUID();
-        when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoqueId)).thenReturn(Optional.empty());
+        when(estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(estoqueId, empresaId))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.criar(request(estoqueId, "1.000", UUID.randomUUID())))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -119,7 +132,8 @@ class ReservaEstoqueServiceTest {
     void deveBloquearOrigemDuplicadaAtiva() {
         Estoque estoque = estoque("10.000", "0.000");
         UUID origemId = UUID.randomUUID();
-        when(estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId())).thenReturn(Optional.of(estoque));
+        when(estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId(), empresaId))
+                .thenReturn(Optional.of(estoque));
         when(repository.existsByEstoqueIdAndOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
                 estoque.getId(), MovimentacaoOrigem.VENDA, origemId, StatusReservaEstoque.ATIVA)).thenReturn(true);
 
@@ -131,7 +145,8 @@ class ReservaEstoqueServiceTest {
     @Test
     void deveCancelarReservaAtiva() {
         ReservaEstoque reserva = reservaAtiva("5.000");
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId())).thenReturn(Optional.of(reserva));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId(), empresaId))
+                .thenReturn(Optional.of(reserva));
 
         ReservaEstoqueResponse response = service.cancelar(reserva.getId());
 
@@ -144,7 +159,8 @@ class ReservaEstoqueServiceTest {
     @Test
     void deveBaixarReservaAtiva() {
         ReservaEstoque reserva = reservaAtiva("5.000");
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId())).thenReturn(Optional.of(reserva));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId(), empresaId))
+                .thenReturn(Optional.of(reserva));
 
         ReservaEstoqueResponse response = service.baixar(reserva.getId());
 
@@ -158,7 +174,8 @@ class ReservaEstoqueServiceTest {
     void deveBloquearBaixaDeReservaCancelada() {
         ReservaEstoque reserva = reservaAtiva("5.000");
         reserva.cancelar();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId())).thenReturn(Optional.of(reserva));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId(), empresaId))
+                .thenReturn(Optional.of(reserva));
 
         assertThatThrownBy(() -> service.baixar(reserva.getId()))
                 .isInstanceOf(BusinessException.class)
@@ -169,7 +186,8 @@ class ReservaEstoqueServiceTest {
     void deveBloquearCancelamentoDeReservaBaixada() {
         ReservaEstoque reserva = reservaAtiva("5.000");
         reserva.baixar();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId())).thenReturn(Optional.of(reserva));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(reserva.getId(), empresaId))
+                .thenReturn(Optional.of(reserva));
 
         assertThatThrownBy(() -> service.cancelar(reserva.getId()))
                 .isInstanceOf(BusinessException.class)
@@ -182,7 +200,7 @@ class ReservaEstoqueServiceTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+        service.listarComFiltros(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), StatusReservaEstoque.ATIVA, MovimentacaoOrigem.VENDA,
                 UUID.randomUUID(), true, PageRequest.of(0, 20));
 
@@ -205,7 +223,7 @@ class ReservaEstoqueServiceTest {
 
     private Estoque estoque(String quantidade, String reservada) {
         Empresa empresa = new Empresa();
-        empresa.setId(UUID.randomUUID());
+        empresa.setId(empresaId);
         empresa.atualizar("Empresa Reserva", "Empresa", "12345678000199", "ISENTO", null, "NORMAL", 3,
                 "71999990000", "empresa@teste.com");
 

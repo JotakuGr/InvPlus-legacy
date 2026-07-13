@@ -10,8 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
 import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,11 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -43,19 +44,22 @@ class ContaBancariaControllerTests {
     @Autowired
     private UsuarioRepository usuarioRepository;
     @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
 
     @Test
     void deveCriarFiltrarAtualizarEExcluirContaBancaria() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
+        String token = tokenAdmin(empresa);
         String sufixo = sufixo();
-        String id = criar(token, empresa.getId(), "001", "1234" + sufixo, "98765", true);
+        String id = criar(token, "001", "1234" + sufixo, "98765", true);
 
         mockMvc.perform(get("/api/v1/contas-bancarias")
-                        .queryParam("empresaId", empresa.getId().toString())
                         .queryParam("bancoCodigo", "001")
                         .queryParam("tipoConta", "CORRENTE")
                         .queryParam("principal", "true")
@@ -67,7 +71,7 @@ class ContaBancariaControllerTests {
         mockMvc.perform(put("/api/v1/contas-bancarias/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), "237", "2222" + sufixo, "12345", false, BigDecimal.ZERO)))
+                        .content(payload("237", "2222" + sufixo, "12345", false, BigDecimal.ZERO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bancoCodigo").value("237"))
                 .andExpect(jsonPath("$.principal").value(false));
@@ -83,27 +87,27 @@ class ContaBancariaControllerTests {
 
     @Test
     void deveBloquearDuplicidadeSegundaPrincipalEDocumentoInvalido() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
+        String token = tokenAdmin(empresa);
         String sufixo = sufixo();
-        criar(token, empresa.getId(), "001", "3333" + sufixo, "98765", true);
+        criar(token, "001", "3333" + sufixo, "98765", true);
 
         mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), "001", "3333" + sufixo, "98765", false, BigDecimal.ZERO)))
+                        .content(payload("001", "3333" + sufixo, "98765", false, BigDecimal.ZERO)))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), "104", "4444" + sufixo, "22222", true, BigDecimal.ZERO)))
+                        .content(payload("104", "4444" + sufixo, "22222", true, BigDecimal.ZERO)))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payloadComDocumento(empresa.getId(), "341", "5555" + sufixo, "33333", "12345")))
+                        .content(payloadComDocumento("341", "5555" + sufixo, "33333", "12345")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -119,32 +123,30 @@ class ContaBancariaControllerTests {
                 "sem-conta-bancaria-" + UUID.randomUUID() + "@invplus.com",
                 passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PAGAMENTO:VISUALIZAR")
-                .build());
+        Empresa empresa = prepararEmpresa();
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
 
         mockMvc.perform(get("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private String criar(String token, UUID empresaId, String bancoCodigo,
+    private String criar(String token, String bancoCodigo,
             String agencia, String numeroConta, Boolean principal) throws Exception {
         String response = mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresaId, bancoCodigo, agencia, numeroConta, principal, new BigDecimal("100.00"))))
+                        .content(payload(bancoCodigo, agencia, numeroConta, principal, new BigDecimal("100.00"))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).get("id").asString();
     }
 
-    private String payload(UUID empresaId, String bancoCodigo, String agencia,
+    private String payload(String bancoCodigo, String agencia,
             String numeroConta, Boolean principal, BigDecimal saldoInicial) {
         return """
                 {
-                  "empresaId": "%s",
                   "bancoCodigo": "%s",
                   "bancoNome": "Banco Teste",
                   "agencia": "%s",
@@ -159,15 +161,14 @@ class ContaBancariaControllerTests {
                   "dataSaldoInicial": "2026-07-09",
                   "principal": %s
                 }
-                """.formatted(empresaId, bancoCodigo, agencia, numeroConta,
+                """.formatted(bancoCodigo, agencia, numeroConta,
                 saldoInicial.toPlainString(), principal);
     }
 
-    private String payloadComDocumento(UUID empresaId, String bancoCodigo,
+    private String payloadComDocumento(String bancoCodigo,
             String agencia, String numeroConta, String documento) {
         return """
                 {
-                  "empresaId": "%s",
                   "bancoCodigo": "%s",
                   "bancoNome": "Banco Teste",
                   "agencia": "%s",
@@ -177,7 +178,7 @@ class ContaBancariaControllerTests {
                   "documentoTitular": "%s",
                   "principal": false
                 }
-                """.formatted(empresaId, bancoCodigo, agencia, numeroConta, documento);
+                """.formatted(bancoCodigo, agencia, numeroConta, documento);
     }
 
     private Empresa prepararEmpresa() {
@@ -186,12 +187,10 @@ class ContaBancariaControllerTests {
                 "Empresa CB " + sufixo, documento(sufixo), null, null, null));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private String tokenAdmin(Empresa empresa) throws Exception {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
     }
 
     private String documento(String base) {

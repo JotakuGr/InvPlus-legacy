@@ -718,3 +718,15 @@ Se este projeto foi útil para você:
 *Modern ERP Platform*
 
 </div>
+> **Contexto empresarial:** os fluxos bancarios e relatorios financeiros usam a empresa ativa do
+> access token. Consultas por UUID e agregacoes sao isoladas por empresa no backend.
+> O frontend ja suporta login, refresh token e selecao de empresa/filial.
+> O modulo Estoque tambem usa exclusivamente a empresa do token; seus requests operacionais
+> nao aceitam `empresaId`.
+
+O mesmo contrato contextual se aplica aos cadastros e ao Financeiro: a empresa ativa vem
+exclusivamente do access token, e recursos de outra empresa nao sao expostos por UUID.
+> Compras segue o mesmo contrato para pedidos, entradas e itens, preservando a empresa
+> autenticada ao movimentar o estoque.
+> Vendas resolve pedido, itens e faturamento pela empresa do access token e preserva o
+> contexto ao reservar/baixar estoque e gerar a ContaReceber.

@@ -40,7 +40,6 @@ public class PedidoVendaController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('PEDIDO_VENDA:VISUALIZAR') or hasAuthority('PEDIDO_VENDA:*')")
     public ResponseEntity<Page<PedidoVendaResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID clienteId,
             @RequestParam(required = false) UUID vendedorId,
@@ -52,7 +51,6 @@ public class PedidoVendaController extends BaseCrudController {
             Pageable pageable
     ) {
         return ResponseEntity.ok(service.listarComFiltros(
-                empresaId,
                 filialId,
                 clienteId,
                 vendedorId,

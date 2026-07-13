@@ -14,6 +14,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface EstoqueRepository extends BaseRepository<Estoque> {
 
+    Optional<Estoque> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     boolean existsByProdutoIdAndEmpresaIdAndDepositoIdAndLocalizacaoIdAndAtivoTrueAndDeletedAtIsNull(
             UUID produtoId,
             UUID empresaId,

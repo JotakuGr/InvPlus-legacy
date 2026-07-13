@@ -23,6 +23,7 @@ import br.com.invplus.modules.produtos.enums.NaturezaProduto;
 import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
+import br.com.invplus.support.context.TestEmpresaContext;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,10 +62,14 @@ class EstoqueLoadTest {
     private DepositoRepository depositoRepository;
     @Autowired
     private LocalizacaoEstoqueRepository localizacaoRepository;
+    @Autowired
+    private TestEmpresaContext testEmpresaContext;
 
     @Test
     void deveManterSaldoConsistenteComReservasSimultaneas() throws Exception {
         Estoque estoque = criarEstoque("100.000");
+        UUID usuarioId = UUID.randomUUID();
+        UUID empresaId = estoque.getEmpresa().getId();
         ExecutorService executor = Executors.newFixedThreadPool(50);
         CountDownLatch inicio = new CountDownLatch(1);
         AtomicInteger sucessos = new AtomicInteger();
@@ -73,8 +78,9 @@ class EstoqueLoadTest {
         try {
             for (int i = 0; i < 100; i++) {
                 futures.add(executor.submit(() -> {
-                    inicio.await(10, TimeUnit.SECONDS);
                     try {
+                        testEmpresaContext.ativarEmpresa(usuarioId, empresaId);
+                        inicio.await(10, TimeUnit.SECONDS);
                         reservaService.criar(new ReservaEstoqueRequest(
                                 estoque.getId(),
                                 BigDecimal.ONE,
@@ -86,6 +92,8 @@ class EstoqueLoadTest {
                         sucessos.incrementAndGet();
                     } catch (RuntimeException ignored) {
                         // Em concorrencia real, algumas transacoes podem perder pelo versionamento otimista.
+                    } finally {
+                        testEmpresaContext.limpar();
                     }
                     return null;
                 }));
