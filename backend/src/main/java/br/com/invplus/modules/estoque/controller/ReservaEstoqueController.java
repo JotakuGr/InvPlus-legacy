@@ -37,7 +37,6 @@ public class ReservaEstoqueController extends BaseCrudController {
     public ResponseEntity<Page<ReservaEstoqueResponse>> listar(
             @RequestParam(required = false) UUID estoqueId,
             @RequestParam(required = false) UUID produtoId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID depositoId,
             @RequestParam(required = false) UUID localizacaoId,
@@ -47,7 +46,7 @@ public class ReservaEstoqueController extends BaseCrudController {
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(estoqueId, produtoId, empresaId, filialId,
+        return ResponseEntity.ok(service.listarComFiltros(estoqueId, produtoId, filialId,
                 depositoId, localizacaoId, status, origem, origemId, ativo, pageable));
     }
 

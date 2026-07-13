@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.invplus.security.context.EmpresaContext;
 
 /** Orquestra conciliacao e cancelamento como operacoes financeiras atomicas. */
 @Service
@@ -33,11 +34,13 @@ public class ConciliacaoBancariaService {
     private final ConciliacaoBancariaMapper mapper;
     private final ConciliacaoBancariaValidator validator;
     private final AuditorAware<UUID> auditorAware;
+    private final EmpresaContext empresaContext;
 
     public ConciliacaoBancariaService(ConciliacaoBancariaRepository repository,
             ExtratoBancarioLancamentoService lancamentoService, ExtratoBancarioService extratoService,
             MovimentoFinanceiroService movimentoService, ConciliacaoBancariaMapper mapper,
-            ConciliacaoBancariaValidator validator, AuditorAware<UUID> auditorAware) {
+            ConciliacaoBancariaValidator validator, AuditorAware<UUID> auditorAware,
+            EmpresaContext empresaContext) {
         this.repository = repository;
         this.lancamentoService = lancamentoService;
         this.extratoService = extratoService;
@@ -45,14 +48,17 @@ public class ConciliacaoBancariaService {
         this.mapper = mapper;
         this.validator = validator;
         this.auditorAware = auditorAware;
+        this.empresaContext = empresaContext;
     }
 
     /** Concilia exatamente uma linha bancaria com um movimento ativo. */
     @Transactional
     public ConciliacaoBancariaResponse criar(ConciliacaoBancariaRequest request) {
-        ExtratoBancarioLancamento lancamento = lancamentoService
-                .buscarEntidade(request.extratoBancarioLancamentoId());
-        MovimentoFinanceiro movimento = movimentoService.buscarEntidade(request.movimentoFinanceiroId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        ExtratoBancarioLancamento lancamento =
+                lancamentoService.buscarEntidade(request.extratoBancarioLancamentoId(), empresaId);
+        MovimentoFinanceiro movimento =
+                movimentoService.buscarEntidade(request.movimentoFinanceiroId(), empresaId);
         validator.validar(lancamento, movimento);
 
         ConciliacaoBancaria entity = new ConciliacaoBancaria();
@@ -73,6 +79,8 @@ public class ConciliacaoBancariaService {
             TipoConciliacaoBancaria tipo, StatusConciliacaoBancaria status,
             OffsetDateTime conciliadoEmDe, OffsetDateTime conciliadoEmAte, Pageable pageable) {
         Specification<ConciliacaoBancaria> specification = (root, query, cb) -> cb.conjunction();
+        UUID empresaId = empresaContext.getEmpresaId();
+        specification = and(specification, ConciliacaoBancariaSpecification.pertenceEmpresa(empresaId));
         specification = and(specification, ConciliacaoBancariaSpecification.lancamentoIgual(lancamentoId));
         specification = and(specification, ConciliacaoBancariaSpecification.movimentoIgual(movimentoId));
         specification = and(specification, ConciliacaoBancariaSpecification.contaIgual(contaBancariaId));
@@ -86,7 +94,9 @@ public class ConciliacaoBancariaService {
     /** Cancela a conciliacao e restaura os estados derivados sem remover historico. */
     @Transactional
     public ConciliacaoBancariaResponse cancelar(UUID id, ConciliacaoBancariaCancelamentoRequest request) {
-        ConciliacaoBancaria entity = repository.findByIdAndStatus(id, StatusConciliacaoBancaria.CONCILIADA)
+        UUID empresaId = empresaContext.getEmpresaId();
+        ConciliacaoBancaria entity = repository.findByIdAndStatusAndContaBancariaEmpresaId(
+                        id, StatusConciliacaoBancaria.CONCILIADA, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conciliacao bancaria ativa nao encontrada"));
         entity.cancelar(request.motivoCancelamento(), usuarioAtual());
         repository.saveAndFlush(entity);
@@ -98,7 +108,8 @@ public class ConciliacaoBancariaService {
     }
 
     private ConciliacaoBancaria buscarEntidade(UUID id) {
-        return repository.findById(id)
+        UUID empresaId = empresaContext.getEmpresaId();
+        return repository.findByIdAndContaBancariaEmpresaId(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conciliacao bancaria nao encontrada"));
     }
 

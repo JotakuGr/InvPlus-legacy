@@ -14,4 +14,6 @@ public interface ImportacaoExtratoRepository extends JpaRepository<ImportacaoExt
     boolean existsByArquivoHashIgnoreCaseAndStatusNot(String hash, StatusImportacaoExtrato status);
 
     Optional<ImportacaoExtratoBancario> findByArquivoHashIgnoreCase(String hash);
+
+    Optional<ImportacaoExtratoBancario> findByIdAndContaBancariaEmpresaId(UUID id, UUID empresaId);
 }

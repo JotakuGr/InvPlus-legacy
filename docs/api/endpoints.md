@@ -93,6 +93,10 @@ POST /api/v1/reservas-estoque/{id}/cancelar
 POST /api/v1/reservas-estoque/{id}/baixar
 ```
 
+Todos os endpoints de estoque usam a empresa do claim `empresa_id` do access token.
+Requests e filtros de deposito, localizacao, saldo, movimentacao e reserva nao aceitam
+`empresaId`. Consultas por UUID de outra empresa retornam `404`.
+
 ## Compras
 
 | Recurso | Endpoint base |
@@ -103,6 +107,10 @@ POST /api/v1/reservas-estoque/{id}/baixar
 | Entradas de mercadoria | `/api/v1/entradas-mercadoria` |
 | Entrada completa | `/api/v1/entradas-mercadoria/{id}/completo` |
 | Itens de entrada | `/api/v1/entradas-mercadoria-itens` |
+
+Todos os endpoints de Compras usam a empresa do claim `empresa_id` do access token.
+Pedidos, entradas e seus itens nao aceitam `empresaId`; consultas por UUID de outra
+empresa retornam `404`.
 
 ## Vendas
 
@@ -123,6 +131,10 @@ POST /api/v1/vendas-faturamentos/faturar
 
 O faturamento recebe `pedidoVendaId`, `condicaoPagamentoId`, `numero`, `descricaoFinanceira` e `observacao`.
 Ao faturar, o backend baixa reservas, cria a ContaReceber e gera as ParcelasReceber pela condição informada.
+
+Todos os endpoints de Vendas usam a empresa do claim `empresa_id` do access token.
+Pedidos, itens, faturamentos e filtros publicos nao aceitam `empresaId`. Um UUID que
+pertenca a outra empresa e tratado como recurso inexistente (`404`).
 
 ## Pagamentos
 
@@ -183,7 +195,7 @@ Movimentos com origem `RECEBIMENTO` ou `PAGAMENTO` são gerados exclusivamente p
 | PUT | `/api/v1/contas-bancarias/{id}` | Atualizar dados cadastrais e saldo inicial |
 | DELETE | `/api/v1/contas-bancarias/{id}` | Excluir logicamente |
 
-Os filtros disponíveis são `empresaId`, `filialId`, `bancoCodigo`, `bancoNome`,
+Os filtros disponíveis são `filialId`, `bancoCodigo`, `bancoNome`,
 `tipoConta`, `principal` e `ativo`. As operações exigem `CONTA_BANCARIA:*`
 ou a permissão granular correspondente.
 
@@ -267,7 +279,7 @@ Os filtros de acompanhamento são `contaBancariaId`, `formato`, `status`,
 
 As rotas recebem `dataInicio`, `dataFim` no formato `YYYY-MM-DD` e filtros opcionais.
 `fluxo-caixa` e `dashboard` aceitam `centroCustoId` e `planoContaId`.
-`dre` aceita `empresaId`, `filialId`, `centroCustoId` e `planoContaId`.
+`dre` aceita `filialId`, `centroCustoId` e `planoContaId`.
 Elas exigem
 `RELATORIO_FINANCEIRO:VISUALIZAR` ou `RELATORIO_FINANCEIRO:*`.
 
@@ -281,7 +293,7 @@ Elas exigem
 | PUT | `/api/v1/centros-custo/{id}` | Atualizar dados e hierarquia |
 | DELETE | `/api/v1/centros-custo/{id}` | Excluir logicamente |
 
-Os filtros disponíveis são empresa, pai, código, nome, tipo e ativo.
+Os filtros disponíveis são pai, código, nome, tipo e ativo.
 
 ### Plano de contas
 
@@ -293,7 +305,7 @@ Os filtros disponíveis são empresa, pai, código, nome, tipo e ativo.
 | PUT | `/api/v1/planos-contas/{id}` | Atualizar dados e hierarquia |
 | DELETE | `/api/v1/planos-contas/{id}` | Excluir logicamente |
 
-Os filtros disponíveis são `empresaId`, `planoContaPaiId`, `codigo`, `nome`,
+Os filtros disponíveis são `planoContaPaiId`, `codigo`, `nome`,
 `tipo`, `natureza` e `ativo`. As operações exigem permissões `PLANO_CONTA:*`
 ou a permissão granular correspondente.
 
@@ -319,5 +331,22 @@ DELETE /recurso/{id}
 - `GET /api/v1/conciliacoes-bancarias/sugestoes?lancamentoBancarioId={id}&limite=10`
 - Permissao: `CONCILIACAO_BANCARIA:SUGERIR` ou `CONCILIACAO_BANCARIA:*`.
 - A consulta nao persiste sugestoes nem reserva movimentos.
+- `GET /api/v1/conciliacoes-bancarias/painel` - indicadores e extratos recentes.
+- `GET /api/v1/conciliacoes-bancarias/extratos-pendentes` - extratos paginados.
+- `GET /api/v1/conciliacoes-bancarias/pendencias` - lancamentos pendentes com melhor sugestao.
+- `POST /api/v1/conciliacoes-bancarias/confirmar-lote` - confirmacao parcial de ate 100 pares.
+
+## Contexto empresarial
+
+- `POST /api/v1/auth/contexto/selecionar` - troca selection token por tokens contextualizados.
+- `POST /api/v1/auth/contexto/trocar` - emite tokens para outra empresa/filial permitida.
+- `GET /api/v1/auth/contexto` - retorna o contexto atual.
+- `GET /api/v1/auth/contexto/empresas` - lista vinculos empresariais ativos.
 
 Operações de fluxo usam verbos de negócio, como `/aprovar`, `/cancelar`, `/baixar`, `/faturar` e `/efetivar`.
+# Contexto empresarial nos endpoints financeiros
+
+Contas bancarias, extratos, lancamentos, importacoes OFX, conciliacoes, central de conciliacao,
+movimentos e relatorios financeiros usam o claim `empresa_id` do access token. O frontend nao
+deve escolher nem enviar a empresa da operacao. O escopo empresarial e aplicado obrigatoriamente
+pelos services, repositories, specifications e consultas agregadas.

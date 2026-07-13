@@ -125,3 +125,39 @@ flowchart LR
     U --> C[Confirmacao manual]
     C --> V[Revalidacao do dominio]
 ```
+
+```mermaid
+flowchart TD
+    P[Painel sob demanda] --> E[Extratos resumidos]
+    P --> L[Pendencias paginadas]
+    L --> S[Melhores sugestoes]
+    S --> B[Confirmacao em lote]
+    B --> I1[Item REQUIRES_NEW]
+    B --> I2[Item REQUIRES_NEW]
+    I1 --> D[Servico de conciliacao]
+    I2 --> D
+```
+
+```mermaid
+flowchart LR
+    U[Usuario] --> UE[UsuarioEmpresa]
+    UE --> E[Empresa]
+    UE --> UEF[UsuarioEmpresaFilial]
+    UEF --> F[Filial]
+    UE --> J[JWT ACCESS]
+    J --> C[EmpresaContext]
+```
+```mermaid
+flowchart LR
+    JWT[Access token com empresa_id] --> Contexto[EmpresaContext]
+    Contexto --> Service[Service empresarial]
+    Service --> Repository[Repository filtrado por empresa]
+    Repository --> Banco[(PostgreSQL)]
+```
+
+No fluxo de Estoque, `EmpresaContext` antecede as consultas de deposito, localizacao,
+saldo, movimentacao e reserva. Compras e Vendas continuam consumindo `EstoqueFacade`,
+sem escolher a empresa da operacao.
+
+No fluxo de Vendas, o contexto acompanha PedidoVenda -> ReservaEstoque -> VendaFaturamento
+-> ContaReceber. A troca de empresa altera todas as consultas sem receber `empresaId`.

@@ -13,7 +13,6 @@ import java.util.UUID;
  * Dados para cadastrar ou atualizar uma conta bancaria.
  */
 public record ContaBancariaRequest(
-        @NotNull UUID empresaId,
         UUID filialId,
         @NotBlank @Size(max = 20) String bancoCodigo,
         @NotBlank @Size(max = 120) String bancoNome,

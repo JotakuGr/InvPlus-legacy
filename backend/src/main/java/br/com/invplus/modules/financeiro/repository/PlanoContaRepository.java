@@ -12,4 +12,6 @@ public interface PlanoContaRepository extends BaseRepository<PlanoConta> {
 
     Optional<PlanoConta> findByEmpresaIdAndCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
             UUID empresaId, String codigo);
+
+    Optional<PlanoConta> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
 }

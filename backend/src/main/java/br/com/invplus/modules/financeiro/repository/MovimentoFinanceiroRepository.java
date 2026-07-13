@@ -18,6 +18,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface MovimentoFinanceiroRepository extends BaseRepository<MovimentoFinanceiro> {
 
+    Optional<MovimentoFinanceiro> findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(UUID id, UUID empresaId);
+
     Optional<MovimentoFinanceiro> findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
             OrigemMovimentoFinanceiro origem,
             UUID origemId,
@@ -75,6 +77,20 @@ public interface MovimentoFinanceiroRepository extends BaseRepository<MovimentoF
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim
     );
+
+    @Query("""
+            select coalesce(sum(m.valor), 0) from MovimentoFinanceiro m
+            where m.empresa.id = :empresaId and m.tipoMovimento = :tipo
+              and m.status = br.com.invplus.modules.financeiro.enums.StatusMovimentoFinanceiro.ATIVO
+              and m.ativo = true and m.deletedAt is null
+              and m.dataMovimento between :inicio and :fim
+              and (:centroCustoId is null or m.centroCusto.id = :centroCustoId)
+              and (:planoContaId is null or m.planoConta.id = :planoContaId)
+            """)
+    BigDecimal somarPorEmpresaTipoPeriodo(@Param("empresaId") UUID empresaId,
+            @Param("tipo") TipoMovimentoFinanceiro tipo, @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim, @Param("centroCustoId") UUID centroCustoId,
+            @Param("planoContaId") UUID planoContaId);
 
     @Query("""
             select coalesce(sum(m.valor), 0)

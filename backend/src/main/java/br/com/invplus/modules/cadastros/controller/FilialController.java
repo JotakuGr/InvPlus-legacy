@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -33,12 +32,12 @@ public class FilialController {
     private final FilialService filialService;
 
     /**
-     * Lista filiais ativas, com filtro opcional por empresa.
+     * Lista filiais ativas da empresa autenticada.
      */
     @GetMapping
     @PreAuthorize("hasAnyAuthority('CADASTROS:*', 'CADASTROS:VISUALIZAR')")
-    public ResponseEntity<Page<FilialResponse>> listar(@RequestParam(required = false) UUID empresaId, Pageable pageable) {
-        return ResponseEntity.ok(filialService.listar(empresaId, pageable));
+    public ResponseEntity<Page<FilialResponse>> listar(Pageable pageable) {
+        return ResponseEntity.ok(filialService.listar(pageable));
     }
 
     /**

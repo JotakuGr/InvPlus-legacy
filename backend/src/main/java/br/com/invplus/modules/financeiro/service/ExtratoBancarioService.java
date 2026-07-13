@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Orquestra importacao, consulta e cancelamento historico de extratos bancarios.
@@ -34,6 +35,7 @@ public class ExtratoBancarioService {
     private final ContaBancariaService contaBancariaService;
     private final ExtratoBancarioMapper mapper;
     private final ExtratoBancarioValidator validator;
+    private final EmpresaContext empresaContext;
 
     @Transactional
     public ExtratoBancarioResponse importar(ExtratoBancarioRequest request) {
@@ -68,6 +70,9 @@ public class ExtratoBancarioService {
             StatusExtratoBancario status, LocalDate dataInicioDe, LocalDate dataInicioAte,
             LocalDate dataFimDe, LocalDate dataFimAte, Boolean ativo, Pageable pageable) {
         Specification<ExtratoBancario> specification = ExtratoBancarioSpecification.naoDeletado();
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) specification = and(specification,
+                ExtratoBancarioSpecification.pertenceEmpresa(empresaId));
         specification = and(specification, ExtratoBancarioSpecification.contaBancariaIgual(contaBancariaId));
         specification = and(specification, ExtratoBancarioSpecification.origemIgual(origem));
         specification = and(specification, ExtratoBancarioSpecification.statusIgual(status));
@@ -87,8 +92,20 @@ public class ExtratoBancarioService {
     }
 
     public ExtratoBancario buscarEntidade(UUID id) {
+        if (empresaContext != null) {
+            UUID empresaId = empresaAtualOuNull();
+            if (empresaId != null) return repository.findByIdAndContaBancariaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                    id, empresaId).orElseThrow(() -> new ResourceNotFoundException("Extrato bancario nao encontrado"));
+        }
         return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Extrato bancario nao encontrado"));
+    }
+
+    private UUID empresaAtualOuNull() {
+        if (empresaContext == null) return null;
+        try { return empresaContext.getEmpresaId(); }
+        catch (br.com.invplus.security.exception.ContextoEmpresarialAusenteException
+                | org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) { return null; }
     }
 
     /** Recalcula IMPORTADO, PROCESSANDO ou CONCILIADO conforme as linhas ativas. */

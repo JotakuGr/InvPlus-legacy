@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Orquestra o cadastro de contas bancarias e caixas internos por empresa.
@@ -34,9 +35,12 @@ public class ContaBancariaService {
     private final ContaBancariaMapper mapper;
     private final ContaBancariaValidator validator;
 
+    private final EmpresaContext empresaContext;
+
     @Transactional
     public ContaBancariaResponse criar(ContaBancariaRequest request) {
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        Empresa empresa = buscarEmpresa(empresaId);
         Filial filial = buscarFilial(request.filialId());
         validator.validarCriacao(request, empresa, filial);
 
@@ -51,10 +55,11 @@ public class ContaBancariaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ContaBancariaResponse> listar(UUID empresaId, UUID filialId, String bancoCodigo,
+    public Page<ContaBancariaResponse> listar(UUID filialId, String bancoCodigo,
             String bancoNome, TipoContaBancaria tipoConta, Boolean principal, Boolean ativo, Pageable pageable) {
+        UUID empresaId = empresaContext.getEmpresaId();
         Specification<ContaBancaria> specification = ContaBancariaSpecification.naoDeletado();
-        specification = and(specification, ContaBancariaSpecification.empresaIgual(empresaId));
+        specification = and(specification, ContaBancariaSpecification.pertenceEmpresa(empresaId));
         specification = and(specification, ContaBancariaSpecification.filialIgual(filialId));
         specification = and(specification, ContaBancariaSpecification.bancoCodigoContem(bancoCodigo));
         specification = and(specification, ContaBancariaSpecification.bancoNomeContem(bancoNome));
@@ -63,11 +68,11 @@ public class ContaBancariaService {
         specification = and(specification, ContaBancariaSpecification.ativo(ativo));
         return repository.findAll(specification, pageable).map(mapper::toResponse);
     }
-
     @Transactional
     public ContaBancariaResponse atualizar(UUID id, ContaBancariaRequest request) {
         ContaBancaria entity = buscarEntidade(id);
-        Empresa empresa = buscarEmpresa(request.empresaId());
+        UUID empresaId = empresaContext.getEmpresaId();
+        Empresa empresa = buscarEmpresa(empresaId);
         Filial filial = buscarFilial(request.filialId());
         validator.validarAtualizacao(id, request, empresa, filial);
         mapper.aplicar(entity, request, empresa, filial);
@@ -80,7 +85,7 @@ public class ContaBancariaService {
     }
 
     public ContaBancaria buscarEntidade(UUID id) {
-        return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Conta bancaria nao encontrada"));
     }
 

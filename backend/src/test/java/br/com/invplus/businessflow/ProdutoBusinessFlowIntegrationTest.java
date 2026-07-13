@@ -6,6 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +34,10 @@ class ProdutoBusinessFlowIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private EmpresaTestFactory empresaTestFactory;
+    @Autowired private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
 
     /**
      * Prova o fluxo completo: Pessoa -> Fornecedor -> Produto -> FornecedorPreco -> ProdutoFiscal.
@@ -54,14 +63,17 @@ class ProdutoBusinessFlowIntegrationTest {
     }
 
     private JsonNode login() throws Exception {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "admin@invplus.com",
-                                  "senha": "admin123"
+                                  "email": "%s",
+                                  "senha": "%s"
                                 }
-                                """))
+                                """.formatted(usuario.getEmail(), UsuarioTestFactory.SENHA)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()

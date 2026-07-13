@@ -10,7 +10,6 @@ import java.util.UUID;
  * Dados de entrada para criar ou atualizar Deposito.
  */
 public record DepositoRequest(
-        @NotNull UUID empresaId,
         UUID filialId,
         @NotBlank @Size(max = 30) String codigo,
         @NotBlank @Size(max = 120) String nome,

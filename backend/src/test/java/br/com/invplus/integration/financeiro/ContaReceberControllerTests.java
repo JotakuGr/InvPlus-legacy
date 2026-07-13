@@ -15,18 +15,19 @@ import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -50,14 +51,18 @@ class ContaReceberControllerTests {
     @Autowired
     private UsuarioRepository usuarioRepository;
     @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+    @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
 
     @Test
     void deveCriarListarBuscarAtualizarECancelarContaReceber() throws Exception {
-        String token = login().get("accessToken").asString();
         Dados dados = prepararDados();
+        String token = tokenAdmin(dados.empresa());
         String numero = "CR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         String response = mockMvc.perform(post("/api/v1/contas-receber")
@@ -97,8 +102,8 @@ class ContaReceberControllerTests {
 
     @Test
     void deveBloquearDuplicidadeEValorInvalido() throws Exception {
-        String token = login().get("accessToken").asString();
         Dados dados = prepararDados();
+        String token = tokenAdmin(dados.empresa());
         String numero = "DUP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         mockMvc.perform(post("/api/v1/contas-receber")
@@ -134,22 +139,13 @@ class ContaReceberControllerTests {
                 passwordEncoder.encode("admin123")
         );
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PEDIDO_VENDA:*")
-                .build());
+        Empresa empresa = prepararDados().empresa();
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
 
         mockMvc.perform(get("/api/v1/contas-receber")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
-    }
-
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
     }
 
     private Dados prepararDados() {
@@ -170,15 +166,21 @@ class ContaReceberControllerTests {
         cliente.setPessoa(pessoa);
         cliente.atualizar(java.math.BigDecimal.ZERO, null, null, null);
         cliente = clienteRepository.saveAndFlush(cliente);
-        return new Dados(empresa.getId().toString(), cliente.getId().toString());
+        return new Dados(empresa, cliente.getId().toString());
     }
 
     private String payload(Dados dados, String numero, String valor) {
         return """
-                {"empresaId":"%s","clienteId":"%s","numero":"%s","descricao":"Conta %s","dataEmissao":"2026-07-08","valorTotal":%s,"observacao":"Teste"}
-                """.formatted(dados.empresaId(), dados.clienteId(), numero, numero, valor);
+                {"clienteId":"%s","numero":"%s","descricao":"Conta %s","dataEmissao":"2026-07-08","valorTotal":%s,"observacao":"Teste"}
+                """.formatted(dados.clienteId(), numero, numero, valor);
     }
 
-    private record Dados(String empresaId, String clienteId) {
+    private String tokenAdmin(Empresa empresa) {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
+    }
+
+    private record Dados(Empresa empresa, String clienteId) {
     }
 }

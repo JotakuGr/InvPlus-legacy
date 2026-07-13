@@ -8,8 +8,16 @@ public record LoginResponse(
         String accessToken,
         String refreshToken,
         OffsetDateTime expiresAt,
-        UsuarioAutenticadoResponse usuario
+        UsuarioAutenticadoResponse usuario,
+        String status,
+        String selectionToken,
+        ContextoAtualResponse contexto,
+        List<EmpresaDisponivelResponse> empresas
 ) {
+    public LoginResponse(String tokenType, String accessToken, String refreshToken,
+            OffsetDateTime expiresAt, UsuarioAutenticadoResponse usuario) {
+        this(tokenType, accessToken, refreshToken, expiresAt, usuario, "AUTENTICADO", null, null, List.of());
+    }
     public record UsuarioAutenticadoResponse(
             String id,
             String nome,

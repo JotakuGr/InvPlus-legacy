@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Orquestra CRUD e marcacao de conciliacao dos lancamentos de extrato.
@@ -32,6 +33,7 @@ public class ExtratoBancarioLancamentoService {
     private final ExtratoBancarioService extratoBancarioService;
     private final ExtratoBancarioLancamentoMapper mapper;
     private final ExtratoBancarioLancamentoValidator validator;
+    private final EmpresaContext empresaContext;
 
     @Transactional
     public ExtratoBancarioLancamentoResponse criar(ExtratoBancarioLancamentoRequest request) {
@@ -68,6 +70,9 @@ public class ExtratoBancarioLancamentoService {
             TipoLancamentoBancario tipo, CategoriaLancamentoBancario categoriaBancaria, Boolean conciliado,
             LocalDate dataLancamentoDe, LocalDate dataLancamentoAte, Boolean ativo, Pageable pageable) {
         Specification<ExtratoBancarioLancamento> specification = ExtratoBancarioLancamentoSpecification.naoDeletado();
+        UUID empresaId = empresaAtualOuNull();
+        if (empresaId != null) specification = and(specification,
+                ExtratoBancarioLancamentoSpecification.pertenceEmpresa(empresaId));
         specification = and(specification, ExtratoBancarioLancamentoSpecification.extratoIgual(extratoBancarioId));
         specification = and(specification, ExtratoBancarioLancamentoSpecification.contaBancariaIgual(contaBancariaId));
         specification = and(specification, ExtratoBancarioLancamentoSpecification.tipoIgual(tipo));
@@ -112,7 +117,25 @@ public class ExtratoBancarioLancamentoService {
     }
 
     public ExtratoBancarioLancamento buscarEntidade(UUID id) {
+        if (empresaContext != null) {
+            UUID empresaId = empresaAtualOuNull();
+            if (empresaId != null) return repository
+                    .findByIdAndExtratoBancarioContaBancariaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Lancamento de extrato bancario nao encontrado"));
+        }
         return repository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Lancamento de extrato bancario nao encontrado"));
+    }
+
+    private UUID empresaAtualOuNull() {
+        if (empresaContext == null) return null;
+        try { return empresaContext.getEmpresaId(); }
+        catch (br.com.invplus.security.exception.ContextoEmpresarialAusenteException
+                | org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) { return null; }
+    }
+
+    public ExtratoBancarioLancamento buscarEntidade(UUID id, UUID empresaId) {
+        return repository.findByIdAndExtratoBancarioContaBancariaEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lancamento de extrato bancario nao encontrado"));
     }
 

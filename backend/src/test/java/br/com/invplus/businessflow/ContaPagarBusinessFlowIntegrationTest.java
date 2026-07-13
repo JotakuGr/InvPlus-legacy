@@ -16,6 +16,7 @@ import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class ContaPagarBusinessFlowIntegrationTest {
+class ContaPagarBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired
     private EmpresaRepository empresaRepository;
@@ -44,6 +45,7 @@ class ContaPagarBusinessFlowIntegrationTest {
         String sufixo = UUID.randomUUID().toString().substring(0, 8);
         Empresa empresa = empresaRepository.save(new Empresa("Empresa Fluxo " + sufixo,
                 "Empresa Fluxo " + sufixo, documento("11", "99"), null, null, null));
+        ativarEmpresa(empresa.getId());
 
         Pessoa pessoa = new Pessoa();
         pessoa.atualizar(TipoPessoa.JURIDICA, "Fornecedor Fluxo " + sufixo, null,
@@ -55,7 +57,7 @@ class ContaPagarBusinessFlowIntegrationTest {
         fornecedor.atualizar(null, 5, null);
         fornecedor = fornecedorRepository.save(fornecedor);
 
-        ContaPagarRequest request = new ContaPagarRequest(empresa.getId(), null, fornecedor.getId(), null,
+        ContaPagarRequest request = new ContaPagarRequest(null, fornecedor.getId(), null, null, null,
                 "CP-FLUXO-" + sufixo, "Compra de mercadorias", LocalDate.of(2026, 7, 8),
                 new BigDecimal("750.00"), "Fluxo integrado");
         ContaPagarResponse criada = contaPagarService.criar(request);

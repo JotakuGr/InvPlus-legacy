@@ -10,6 +10,7 @@ import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.repository.ContaPagarRepository;
 import br.com.invplus.modules.financeiro.repository.ContaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,6 +32,8 @@ class FinanceiroResumoServiceTest {
     private ContaReceberRepository contaReceberRepository;
     @Mock
     private ContaPagarRepository contaPagarRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private FinanceiroResumoService service;
     private final LocalDate inicio = LocalDate.of(2026, 7, 1);
@@ -38,7 +41,8 @@ class FinanceiroResumoServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FinanceiroResumoService(movimentoRepository, contaReceberRepository, contaPagarRepository);
+        service = new FinanceiroResumoService(
+                movimentoRepository, contaReceberRepository, contaPagarRepository, empresaContext);
     }
 
     @Test

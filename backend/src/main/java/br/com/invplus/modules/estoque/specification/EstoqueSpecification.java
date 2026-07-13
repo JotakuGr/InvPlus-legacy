@@ -28,9 +28,8 @@ public final class EstoqueSpecification {
                 : (root, query, builder) -> builder.equal(root.get("produto").get("id"), produtoId);
     }
 
-    public static Specification<Estoque> empresaIgual(UUID empresaId) {
-        return empresaId == null ? sempreVerdadeiro()
-                : (root, query, builder) -> builder.equal(root.get("empresa").get("id"), empresaId);
+    public static Specification<Estoque> pertenceEmpresa(UUID empresaId) {
+        return (root, query, builder) -> builder.equal(root.get("empresa").get("id"), empresaId);
     }
 
     public static Specification<Estoque> filialIgual(UUID filialId) {

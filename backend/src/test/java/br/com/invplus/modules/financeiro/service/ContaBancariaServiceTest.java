@@ -15,6 +15,7 @@ import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.mapper.ContaBancariaMapper;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.validator.ContaBancariaValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
@@ -39,6 +40,8 @@ class ContaBancariaServiceTest {
     private EmpresaRepository empresaRepository;
     @Mock
     private FilialRepository filialRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ContaBancariaService service;
     private Empresa empresa;
@@ -46,8 +49,9 @@ class ContaBancariaServiceTest {
     @BeforeEach
     void setUp() {
         service = new ContaBancariaService(repository, empresaRepository, filialRepository,
-                new ContaBancariaMapper(), new ContaBancariaValidator(repository));
+                new ContaBancariaMapper(), new ContaBancariaValidator(repository), empresaContext);
         empresa = empresa("Empresa Banco");
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
     }
 
     @Test
@@ -123,7 +127,8 @@ class ContaBancariaServiceTest {
     void deveAtualizarMantendoPropriaContaPrincipalEExcluirLogicamente() {
         ContaBancaria entity = conta();
         prepararEmpresa();
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(entity.getId())).thenReturn(Optional.of(entity));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(entity.getId(), empresa.getId()))
+                .thenReturn(Optional.of(entity));
         when(repository.findByEmpresaIdAndBancoCodigoIgnoreCaseAndAgenciaIgnoreCaseAndNumeroContaIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
                 empresa.getId(), "001", "1234", "98765")).thenReturn(Optional.of(entity));
         when(repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresa.getId()))
@@ -147,7 +152,7 @@ class ContaBancariaServiceTest {
     }
 
     private ContaBancariaRequest request(UUID filialId, BigDecimal saldo, Boolean principal, String documento) {
-        return new ContaBancariaRequest(empresa.getId(), filialId, "001", "Banco do Brasil",
+        return new ContaBancariaRequest(filialId, "001", "Banco do Brasil",
                 "1234", "5", "98765", "0", TipoContaBancaria.CORRENTE,
                 "Empresa Banco", documento, "financeiro@empresa.com", saldo,
                 LocalDate.of(2026, 7, 9), principal);

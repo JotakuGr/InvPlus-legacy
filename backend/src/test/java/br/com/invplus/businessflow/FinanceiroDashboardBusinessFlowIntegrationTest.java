@@ -24,6 +24,7 @@ import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-class FinanceiroDashboardBusinessFlowIntegrationTest {
+class FinanceiroDashboardBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     private static final LocalDate DATA = LocalDate.of(2099, 12, 30);
 
@@ -65,8 +66,9 @@ class FinanceiroDashboardBusinessFlowIntegrationTest {
     @Test
     @Transactional
     void deveConsolidarFluxoContasAbertasEVencidasIgnorandoCancelados() {
-        var antes = service.dashboard(DATA, DATA);
         Empresa empresa = empresaRepository.save(empresa());
+        ativarEmpresa(empresa.getId());
+        var antes = service.dashboard(DATA, DATA);
         FormaPagamento forma = formaPagamentoRepository.save(formaPagamento());
         Cliente cliente = clienteRepository.save(cliente());
         Fornecedor fornecedor = fornecedorRepository.save(fornecedor());

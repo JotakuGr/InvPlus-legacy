@@ -17,6 +17,8 @@ import br.com.invplus.modules.compras.specification.PedidoCompraSpecification;
 import br.com.invplus.modules.compras.validator.PedidoCompraValidator;
 import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
+import br.com.invplus.security.context.EmpresaContext;
+import br.com.invplus.security.service.UsuarioEmpresaAccessValidator;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.math.BigDecimal;
@@ -43,6 +45,8 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
     private final PedidoCompraItemRepository itemRepository;
     private final CompraHistoricoService historicoService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmpresaContext empresaContext;
+    private final UsuarioEmpresaAccessValidator accessValidator;
 
     public PedidoCompraService(
             PedidoCompraRepository repository,
@@ -53,7 +57,9 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
             FornecedorRepository fornecedorRepository,
             PedidoCompraItemRepository itemRepository,
             CompraHistoricoService historicoService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            EmpresaContext empresaContext,
+            UsuarioEmpresaAccessValidator accessValidator
     ) {
         super(repository, mapper, "Pedido de compra");
         this.repository = repository;
@@ -65,14 +71,17 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
         this.itemRepository = itemRepository;
         this.historicoService = historicoService;
         this.eventPublisher = eventPublisher;
+        this.empresaContext = empresaContext;
+        this.accessValidator = accessValidator;
     }
 
     @Transactional(readOnly = true)
-    public Page<PedidoCompraResponse> listarComFiltros(UUID empresaId, UUID fornecedorId, StatusPedidoCompra status,
+    public Page<PedidoCompraResponse> listarComFiltros(UUID fornecedorId, StatusPedidoCompra status,
                                                        String numero, Boolean ativo, Pageable pageable) {
-        Specification<PedidoCompra> specification = PedidoCompraSpecification.naoDeletado()
+        UUID empresaId = empresaContext.getEmpresaId();
+        Specification<PedidoCompra> specification = PedidoCompraSpecification.pertenceEmpresa(empresaId)
+                .and(PedidoCompraSpecification.naoDeletado())
                 .and(PedidoCompraSpecification.ativo(ativo))
-                .and(PedidoCompraSpecification.empresaIgual(empresaId))
                 .and(PedidoCompraSpecification.fornecedorIgual(fornecedorId))
                 .and(PedidoCompraSpecification.statusIgual(status))
                 .and(PedidoCompraSpecification.numeroContem(numero));
@@ -80,9 +89,16 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PedidoCompraResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
+    }
+
+    @Override
     @Transactional
     public PedidoCompraResponse criar(PedidoCompraRequest request) {
-        validator.validarCriacao(request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarCriacao(request, empresaId);
         PedidoCompra entity = mapper.toEntity(request);
         associar(entity, request);
         PedidoCompra salvo = repository.save(entity);
@@ -99,8 +115,9 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
     @Override
     @Transactional
     public PedidoCompraResponse atualizar(UUID id, PedidoCompraRequest request) {
-        PedidoCompra entity = buscarEntidade(id);
-        validator.validarAtualizacao(entity, request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        PedidoCompra entity = buscarNoContexto(id);
+        validator.validarAtualizacao(entity, request, empresaId);
         mapper.updateEntity(entity, request);
         associar(entity, request);
         return mapper.toResponse(entity);
@@ -108,7 +125,7 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
 
     @Transactional
     public PedidoCompraResponse aprovar(UUID id) {
-        PedidoCompra entity = buscarEntidade(id);
+        PedidoCompra entity = buscarNoContexto(id);
         StatusPedidoCompra anterior = entity.getStatus();
         UUID usuarioId = historicoService.usuarioAtual().orElse(null);
         entity.aprovar(usuarioId);
@@ -124,7 +141,7 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
 
     @Transactional
     public PedidoCompraResponse cancelar(UUID id) {
-        PedidoCompra entity = buscarEntidade(id);
+        PedidoCompra entity = buscarNoContexto(id);
         StatusPedidoCompra anterior = entity.getStatus();
         entity.cancelar();
         historicoService.registrarPedido(entity, anterior, entity.getStatus(), "Pedido de compra cancelado");
@@ -146,9 +163,16 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
         }
     }
 
+    @Override
+    @Transactional
+    public void excluir(UUID id) {
+        buscarNoContexto(id).excluirLogicamente();
+    }
+
     private void associar(PedidoCompra entity, PedidoCompraRequest request) {
-        entity.setEmpresa(buscarEmpresa(request.empresaId()));
-        entity.setFilial(buscarFilial(request.filialId()));
+        UUID empresaId = empresaContext.getEmpresaId();
+        entity.setEmpresa(buscarEmpresa(empresaId));
+        entity.setFilial(buscarFilial(request.filialId(), empresaId));
         entity.setFornecedor(buscarFornecedor(request.fornecedorId()));
     }
 
@@ -157,16 +181,23 @@ public class PedidoCompraService extends BaseCrudService<PedidoCompra, PedidoCom
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
     }
 
-    private Filial buscarFilial(UUID id) {
+    private Filial buscarFilial(UUID id, UUID empresaId) {
         if (id == null) {
             return null;
         }
-        return filialRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        Filial filial = filialRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filial nao encontrada"));
+        accessValidator.validarContexto(empresaContext.getUsuarioId(), empresaId, id);
+        return filial;
     }
 
     private Fornecedor buscarFornecedor(UUID id) {
         return fornecedorRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fornecedor nao encontrado"));
+    }
+
+    private PedidoCompra buscarNoContexto(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido de compra nao encontrado"));
     }
 }

@@ -42,7 +42,6 @@ public class VendaFaturamentoController extends BaseCrudController {
     @PreAuthorize("hasAuthority('VENDA_FATURAMENTO:VISUALIZAR') or hasAuthority('VENDA_FATURAMENTO:*')")
     public ResponseEntity<Page<VendaFaturamentoResponse>> listar(
             @RequestParam(required = false) UUID pedidoVendaId,
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) UUID clienteId,
             @RequestParam(required = false) String numero,
@@ -52,7 +51,6 @@ public class VendaFaturamentoController extends BaseCrudController {
     ) {
         return ResponseEntity.ok(service.listarComFiltros(
                 pedidoVendaId,
-                empresaId,
                 filialId,
                 clienteId,
                 numero,

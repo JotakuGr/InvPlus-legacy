@@ -12,9 +12,11 @@ import br.com.invplus.modules.financeiro.enums.TipoContaBancaria;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-class ContaBancariaBusinessFlowIntegrationTest {
+class ContaBancariaBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired
     private ContaBancariaService service;
@@ -35,6 +37,11 @@ class ContaBancariaBusinessFlowIntegrationTest {
     private EmpresaRepository empresaRepository;
     @Autowired
     private FilialRepository filialRepository;
+
+    @AfterEach
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
 
     @Test
     @Transactional
@@ -44,6 +51,7 @@ class ContaBancariaBusinessFlowIntegrationTest {
                 "Empresa Banco " + sufixo, documento(sufixo), null, null, null));
         Empresa outraEmpresa = empresaRepository.save(new Empresa("Outra Banco " + sufixo,
                 "Outra Banco " + sufixo, documento("99" + sufixo), null, null, null));
+        ativarEmpresa(empresa.getId());
         Filial filial = filialRepository.save(filial(empresa, "F" + sufixo.substring(0, 4)));
         Filial filialOutraEmpresa = filialRepository.save(filial(outraEmpresa, "O" + sufixo.substring(0, 4)));
 
@@ -54,7 +62,7 @@ class ContaBancariaBusinessFlowIntegrationTest {
 
         assertThat(conta.saldoAtual()).isEqualByComparingTo("250.00");
         assertThat(caixa.saldoAtual()).isZero();
-        assertThat(service.listar(empresa.getId(), filial.getId(), "001", null,
+        assertThat(service.listar(filial.getId(), "001", null,
                 TipoContaBancaria.CORRENTE, true, true, PageRequest.of(0, 10)).getContent())
                 .extracting("id")
                 .containsExactly(conta.id());
@@ -75,7 +83,7 @@ class ContaBancariaBusinessFlowIntegrationTest {
 
     private ContaBancariaRequest request(UUID empresaId, UUID filialId, String bancoCodigo,
             String agencia, String numeroConta, Boolean principal, BigDecimal saldoInicial, String documento) {
-        return new ContaBancariaRequest(empresaId, filialId, bancoCodigo, "Banco " + bancoCodigo,
+        return new ContaBancariaRequest(filialId, bancoCodigo, "Banco " + bancoCodigo,
                 agencia, "1", numeroConta, "0", TipoContaBancaria.CORRENTE,
                 "Titular " + bancoCodigo, documento, "pix-" + bancoCodigo + "@teste.com",
                 saldoInicial, LocalDate.of(2026, 7, 9), principal);

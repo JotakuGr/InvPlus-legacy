@@ -43,7 +43,6 @@ public class ContaBancariaController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAnyAuthority('CONTA_BANCARIA:*', 'CONTA_BANCARIA:VISUALIZAR')")
     public ResponseEntity<Page<ContaBancariaResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID filialId,
             @RequestParam(required = false) String bancoCodigo,
             @RequestParam(required = false) String bancoNome,
@@ -51,7 +50,7 @@ public class ContaBancariaController extends BaseCrudController {
             @RequestParam(required = false) Boolean principal,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        return ResponseEntity.ok(service.listar(empresaId, filialId, bancoCodigo, bancoNome,
+        return ResponseEntity.ok(service.listar(filialId, bancoCodigo, bancoNome,
                 tipoConta, principal, ativo, pageable));
     }
 

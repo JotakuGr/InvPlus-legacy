@@ -14,9 +14,11 @@ import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioService;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-class ExtratoBancarioBusinessFlowIntegrationTest {
+class ExtratoBancarioBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     @Autowired
     private ExtratoBancarioService extratoService;
@@ -38,12 +40,18 @@ class ExtratoBancarioBusinessFlowIntegrationTest {
     @Autowired
     private EmpresaRepository empresaRepository;
 
+    @AfterEach
+    void limparContexto() {
+        testEmpresaContext.limpar();
+    }
+
     @Test
     @Transactional
     void deveImportarFiltrarCancelarEValidarHashDoExtrato() {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.save(new Empresa("Empresa Extrato " + sufixo,
                 "Empresa Extrato " + sufixo, documento(sufixo), null, null, null));
+        ativarEmpresa(empresa.getId());
         var conta = contaBancariaService.criar(contaRequest(empresa.getId(), sufixo));
         String hash = hash(sufixo);
 
@@ -77,7 +85,7 @@ class ExtratoBancarioBusinessFlowIntegrationTest {
     }
 
     private ContaBancariaRequest contaRequest(UUID empresaId, String sufixo) {
-        return new ContaBancariaRequest(empresaId, null, "001", "Banco Fluxo",
+        return new ContaBancariaRequest(null, "001", "Banco Fluxo",
                 "12" + sufixo.substring(0, 4), "1", "98" + sufixo.substring(4),
                 "0", TipoContaBancaria.CORRENTE, "Titular Fluxo",
                 "12345678901", "pix-" + sufixo + "@teste.com", BigDecimal.ZERO,

@@ -22,7 +22,10 @@ import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -31,11 +34,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -68,11 +69,15 @@ class RecebimentoControllerTests {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
 
     @Test
     void deveCriarListarBuscarECancelarRecebimento() throws Exception {
-        String token = login().get("accessToken").asString();
         ParcelaReceber parcela = prepararParcela("300.00");
+        String token = tokenAdmin(parcela.getContaReceber().getEmpresa());
         FormaPagamento formaPagamento = prepararFormaPagamento();
 
         String response = mockMvc.perform(post("/api/v1/recebimentos")
@@ -111,8 +116,8 @@ class RecebimentoControllerTests {
 
     @Test
     void deveBloquearParcelaPagaFormaInexistenteValorInvalidoEAcimaDoSaldo() throws Exception {
-        String token = login().get("accessToken").asString();
         ParcelaReceber parcela = prepararParcela("300.00");
+        String token = tokenAdmin(parcela.getContaReceber().getEmpresa());
         FormaPagamento formaPagamento = prepararFormaPagamento();
 
         mockMvc.perform(post("/api/v1/recebimentos")
@@ -160,22 +165,19 @@ class RecebimentoControllerTests {
                 passwordEncoder.encode("admin123")
         );
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PARCELA_RECEBER:VISUALIZAR")
-                .build());
+        Empresa empresa = prepararConta("1.00").getEmpresa();
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
 
         mockMvc.perform(get("/api/v1/recebimentos")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private String tokenAdmin(Empresa empresa) {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
     }
 
     private ParcelaReceber prepararParcela(String valor) {

@@ -7,8 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -19,8 +17,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -39,21 +40,24 @@ class PedidoVendaControllerTests {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private EmpresaTestFactory empresaTestFactory;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioTestFactory usuarioTestFactory;
 
     @Autowired
-    private JwtService jwtService;
+    private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+
+    @Autowired
+    private JwtTestFactory jwtTestFactory;
 
     /**
      * Cobre CRUD do cabecalho, aprovacoes, cancelamento, filtros e leitura completa.
      */
     @Test
     void deveExecutarFluxoCompletoDePedidoVenda() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
+        ContextoTeste contexto = criarContexto();
+        String token = contexto.token();
         JsonNode cliente = criarCliente(token);
         JsonNode vendedor = criarFuncionario(token);
         String numero = "PV-" + codigoCurto();
@@ -61,7 +65,7 @@ class PedidoVendaControllerTests {
         String criado = mockMvc.perform(post("/api/v1/pedidos-venda")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.get("id").asString(), null, cliente.get("id").asString(),
+                        .content(payload(null, cliente.get("id").asString(),
                                 vendedor.get("id").asString(), numero, "Pedido inicial")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("ABERTO"))
@@ -79,8 +83,7 @@ class PedidoVendaControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id));
 
-        mockMvc.perform(get("/api/v1/pedidos-venda?empresaId=" + empresa.get("id").asString()
-                        + "&clienteId=" + cliente.get("id").asString()
+        mockMvc.perform(get("/api/v1/pedidos-venda?clienteId=" + cliente.get("id").asString()
                         + "&vendedorId=" + vendedor.get("id").asString()
                         + "&numero=" + numero
                         + "&status=ABERTO&dataEmissaoDe=2026-07-01&dataEmissaoAte=2026-07-31&page=0&size=20")
@@ -91,7 +94,7 @@ class PedidoVendaControllerTests {
         mockMvc.perform(put("/api/v1/pedidos-venda/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.get("id").asString(), null, cliente.get("id").asString(),
+                        .content(payload(null, cliente.get("id").asString(),
                                 null, numero, "Pedido atualizado")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.vendedorId").doesNotExist())
@@ -118,7 +121,7 @@ class PedidoVendaControllerTests {
         mockMvc.perform(put("/api/v1/pedidos-venda/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.get("id").asString(), null, cliente.get("id").asString(),
+                        .content(payload(null, cliente.get("id").asString(),
                                 null, numero, "Tentativa bloqueada")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Pedido cancelado ou faturado nao pode ser alterado"));
@@ -137,16 +140,15 @@ class PedidoVendaControllerTests {
      */
     @Test
     void naoDeveCriarNumeroDuplicadoNaMesmaEmpresa() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
+        String token = criarContexto().token();
         JsonNode cliente = criarCliente(token);
         String numero = "PV-DUP-" + codigoCurto();
-        criarPedido(token, empresa.get("id").asString(), cliente.get("id").asString(), numero);
+        criarPedido(token, cliente.get("id").asString(), numero);
 
         mockMvc.perform(post("/api/v1/pedidos-venda")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.get("id").asString(), null, cliente.get("id").asString(),
+                        .content(payload(null, cliente.get("id").asString(),
                                 null, numero, "Duplicado")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Ja existe pedido de venda ativo com este numero para a empresa"));
@@ -161,57 +163,44 @@ class PedidoVendaControllerTests {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void deveRetornar401ComAccessTokenSemEmpresa() throws Exception {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        String token = jwtTestFactory.accessTokenSemEmpresa(
+                usuario.getId(), usuario.getEmail(), java.util.Set.of("PEDIDO_VENDA:*"));
+
+        mockMvc.perform(get("/api/v1/pedidos-venda")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deveRetornar404AoBuscarPedidoDeOutraEmpresa() throws Exception {
+        ContextoTeste contextoA = criarContexto();
+        ContextoTeste contextoB = criarContexto();
+        JsonNode cliente = criarCliente(contextoB.token());
+        JsonNode pedidoB = criarPedido(
+                contextoB.token(), cliente.get("id").asString(), "PV-ISO-" + codigoCurto());
+
+        mockMvc.perform(get("/api/v1/pedidos-venda/" + pedidoB.get("id").asString())
+                        .header("Authorization", "Bearer " + contextoA.token()))
+                .andExpect(status().isNotFound());
+    }
+
     /**
      * Usuario autenticado sem permissao de PedidoVenda deve retornar 403.
      */
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario(
-                "Sem Pedido Venda",
-                "sem-pedido-venda-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123")
-        );
-        usuarioRepository.saveAndFlush(usuario);
-
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("SEGURANCA:*")
-                .build());
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        Usuario usuario = usuarioTestFactory.criarAtivoSemPerfil();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of());
 
         mockMvc.perform(get("/api/v1/pedidos-venda")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
-    }
-
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarEmpresa(String token) throws Exception {
-        String cnpj = cnpjUnico();
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Vendas %s",
-                                  "nomeFantasia": "Empresa Vendas",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "regimeTributario": "NORMAL",
-                                  "crt": 3,
-                                  "telefone": "71999990000",
-                                  "email": "vendas-%s@teste.com"
-                                }
-                                """.formatted(cnpj, cnpj, cnpj)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
     }
 
     private JsonNode criarCliente(String token) throws Exception {
@@ -263,19 +252,18 @@ class PedidoVendaControllerTests {
         return objectMapper.readTree(response);
     }
 
-    private JsonNode criarPedido(String token, String empresaId, String clienteId, String numero) throws Exception {
+    private JsonNode criarPedido(String token, String clienteId, String numero) throws Exception {
         String response = mockMvc.perform(post("/api/v1/pedidos-venda")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresaId, null, clienteId, null, numero, "Pedido base")))
+                        .content(payload(null, clienteId, null, numero, "Pedido base")))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response);
     }
 
-    private String payload(String empresaId, String filialId, String clienteId, String vendedorId, String numero, String observacao) {
+    private String payload(String filialId, String clienteId, String vendedorId, String numero, String observacao) {
         return """
                 {
-                  "empresaId": "%s",
                   "filialId": %s,
                   "clienteId": "%s",
                   "vendedorId": %s,
@@ -287,7 +275,6 @@ class PedidoVendaControllerTests {
                   "observacao": "%s"
                 }
                 """.formatted(
-                empresaId,
                 filialId == null ? "null" : "\"" + filialId + "\"",
                 clienteId,
                 vendedorId == null ? "null" : "\"" + vendedorId + "\"",
@@ -308,5 +295,17 @@ class PedidoVendaControllerTests {
 
     private String codigoCurto() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    private ContextoTeste criarContexto() {
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null, java.util.Set.of("PEDIDO_VENDA:*"));
+        return new ContextoTeste(token);
+    }
+
+    private record ContextoTeste(String token) {
     }
 }

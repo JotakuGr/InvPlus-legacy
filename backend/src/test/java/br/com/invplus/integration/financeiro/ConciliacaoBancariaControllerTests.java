@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
-import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
 import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
 import br.com.invplus.modules.financeiro.dto.request.ExtratoBancarioLancamentoRequest;
 import br.com.invplus.modules.financeiro.dto.request.ExtratoBancarioRequest;
@@ -25,21 +24,22 @@ import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
 import br.com.invplus.security.entity.Usuario;
-import br.com.invplus.security.repository.UsuarioRepository;
-import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.context.TestEmpresaContext;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Testes REST e de seguranca da conciliacao bancaria. */
@@ -50,20 +50,22 @@ class ConciliacaoBancariaControllerTests {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Autowired private EmpresaRepository empresaRepository;
     @Autowired private FormaPagamentoRepository formaPagamentoRepository;
     @Autowired private ContaBancariaService contaBancariaService;
     @Autowired private ExtratoBancarioService extratoService;
     @Autowired private ExtratoBancarioLancamentoService lancamentoService;
     @Autowired private MovimentoFinanceiroService movimentoService;
-    @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private JwtService jwtService;
+    @Autowired private TestEmpresaContext testEmpresaContext;
+    @Autowired private EmpresaTestFactory empresaTestFactory;
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+    @Autowired private JwtTestFactory jwtTestFactory;
 
     @Test
     void deveCriarBuscarListarFiltrarECancelar() throws Exception {
-        String token = login().get("accessToken").asString();
-        Cenario cenario = prepararCenario();
+        ContextoTeste contexto = criarContexto(true);
+        String token = contexto.token();
+        Cenario cenario = prepararCenario(contexto.empresa());
         String response = mockMvc.perform(post("/api/v1/conciliacoes-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -104,27 +106,20 @@ class ConciliacaoBancariaControllerTests {
 
     @Test
     void deveRetornar403SemPermissao() throws Exception {
-        Usuario usuario = new Usuario("Sem Conciliacao",
-                "sem-conciliacao-" + UUID.randomUUID() + "@invplus.com",
-                passwordEncoder.encode("admin123"));
-        usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash()).authorities("EXTRATO_BANCARIO:VISUALIZAR").build());
+        String token = criarContexto(false).token();
 
         mockMvc.perform(get("/api/v1/conciliacoes-bancarias")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
-    private Cenario prepararCenario() {
+    private Cenario prepararCenario(Empresa empresa) {
         String sufixo = sufixo();
-        Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa Conc " + sufixo,
-                "Empresa Conc " + sufixo, documento(sufixo), null, null, null));
         FormaPagamento forma = new FormaPagamento();
         forma.atualizar("FC" + sufixo, "Pix Conc " + sufixo, TipoFormaPagamento.PIX, false, false);
         forma = formaPagamentoRepository.saveAndFlush(forma);
 
-        var conta = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null,
+        var conta = contaBancariaService.criar(new ContaBancariaRequest(null,
                 "001", "Banco Conc", "1" + sufixo, null, "9" + sufixo, null,
                 TipoContaBancaria.CORRENTE, "Empresa Conc", null, null,
                 BigDecimal.ZERO, LocalDate.of(2026, 7, 10), true));
@@ -136,8 +131,8 @@ class ConciliacaoBancariaControllerTests {
                 LocalDate.of(2026, 7, 10), "Credito conciliavel", null,
                 TipoLancamentoBancario.CREDITO, new BigDecimal("100.00"), null,
                 "CONC-" + sufixo, CategoriaLancamentoBancario.PIX, null));
-        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(empresa.getId(), null,
-                forma.getId(), null, null, TipoMovimentoFinanceiro.ENTRADA,
+        var movimento = movimentoService.criarManual(new MovimentoFinanceiroRequest(null,
+                forma.getId(), null, null, null, null, null, TipoMovimentoFinanceiro.ENTRADA,
                 OrigemMovimentoFinanceiro.AJUSTE_MANUAL, null, new BigDecimal("100.00"),
                 LocalDate.of(2026, 7, 10), "Entrada conciliavel", null));
         return new Cenario(lancamento.id(), movimento.id());
@@ -154,12 +149,22 @@ class ConciliacaoBancariaControllerTests {
                 """.formatted(cenario.lancamentoId(), cenario.movimentoId());
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private ContextoTeste criarContexto(boolean admin) {
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        Usuario usuario = admin
+                ? usuarioTestFactory.criarAtivoComPerfilAdmin()
+                : usuarioTestFactory.criarAtivoSemPerfil();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        testEmpresaContext.ativarEmpresa(usuario.getId(), empresa.getId());
+        String token = jwtTestFactory.accessToken(
+                usuario.getId(), usuario.getEmail(), empresa.getId(), null,
+                admin ? java.util.Set.of("CONCILIACAO_BANCARIA:*") : java.util.Set.of());
+        return new ContextoTeste(token, empresa);
+    }
+
+    @AfterEach
+    void limparContexto() {
+        testEmpresaContext.limpar();
     }
 
     private String hash(String valor) {
@@ -167,15 +172,13 @@ class ConciliacaoBancariaControllerTests {
                 + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").substring(0, 64);
     }
 
-    private String documento(String valor) {
-        String numeros = valor.replaceAll("\\D", "");
-        return ("12345678000199" + numeros).substring(numeros.length());
-    }
-
     private String sufixo() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 
     private record Cenario(UUID lancamentoId, UUID movimentoId) {
+    }
+
+    private record ContextoTeste(String token, Empresa empresa) {
     }
 }

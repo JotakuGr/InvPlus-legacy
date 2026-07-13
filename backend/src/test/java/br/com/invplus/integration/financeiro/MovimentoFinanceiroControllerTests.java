@@ -11,19 +11,20 @@ import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
 import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.security.repository.UsuarioEmpresaRepository;
 import br.com.invplus.security.repository.UsuarioRepository;
 import br.com.invplus.security.service.JwtService;
+import br.com.invplus.support.JwtContextoTestSupport;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -45,14 +46,18 @@ class MovimentoFinanceiroControllerTests {
     @Autowired
     private UsuarioRepository usuarioRepository;
     @Autowired
+    private UsuarioTestFactory usuarioTestFactory;
+    @Autowired
+    private UsuarioEmpresaRepository usuarioEmpresaRepository;
+    @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtService jwtService;
 
     @Test
     void deveCriarListarFiltrarBuscarECancelarMovimentoManual() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
+        String token = tokenAdmin(empresa);
         FormaPagamento forma = prepararFormaPagamento();
 
         String response = mockMvc.perform(post("/api/v1/movimentos-financeiros")
@@ -71,8 +76,7 @@ class MovimentoFinanceiroControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id));
 
-        mockMvc.perform(get("/api/v1/movimentos-financeiros?empresaId=" + empresa.getId()
-                        + "&tipoMovimento=ENTRADA&origem=AJUSTE_MANUAL&page=0&size=10")
+        mockMvc.perform(get("/api/v1/movimentos-financeiros?tipoMovimento=ENTRADA&origem=AJUSTE_MANUAL&page=0&size=10")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(id));
@@ -85,8 +89,8 @@ class MovimentoFinanceiroControllerTests {
 
     @Test
     void deveBloquearValorInvalidoEOrigemAutomaticaManual() throws Exception {
-        String token = login().get("accessToken").asString();
         Empresa empresa = prepararEmpresa();
+        String token = tokenAdmin(empresa);
         FormaPagamento forma = prepararFormaPagamento();
 
         mockMvc.perform(post("/api/v1/movimentos-financeiros")
@@ -115,22 +119,13 @@ class MovimentoFinanceiroControllerTests {
         Usuario usuario = new Usuario("Sem Movimento", "sem-movimento-" + UUID.randomUUID() + "@invplus.com",
                 passwordEncoder.encode("admin123"));
         usuarioRepository.saveAndFlush(usuario);
-        String token = jwtService.gerarToken(User.withUsername(usuario.getEmail())
-                .password(usuario.getSenhaHash())
-                .authorities("PAGAMENTO:VISUALIZAR")
-                .build());
+        Empresa empresa = prepararEmpresa();
+        String token = JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, usuario, empresa);
 
         mockMvc.perform(get("/api/v1/movimentos-financeiros")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
-    }
-
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"admin@invplus.com\",\"senha\":\"admin123\"}"))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
     }
 
     private Empresa prepararEmpresa() {
@@ -149,7 +144,6 @@ class MovimentoFinanceiroControllerTests {
     private String payload(UUID empresaId, UUID formaId, String tipo, String valor) {
         return """
                 {
-                  "empresaId": "%s",
                   "formaPagamentoId": "%s",
                   "tipoMovimento": "%s",
                   "origem": "AJUSTE_MANUAL",
@@ -157,7 +151,13 @@ class MovimentoFinanceiroControllerTests {
                   "dataMovimento": "2026-07-08",
                   "descricao": "Ajuste financeiro manual"
                 }
-                """.formatted(empresaId, formaId, tipo, valor);
+                """.formatted(formaId, tipo, valor);
+    }
+
+    private String tokenAdmin(Empresa empresa) throws Exception {
+        Usuario admin = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        return JwtContextoTestSupport.gerarAccessToken(
+                jwtService, usuarioEmpresaRepository, admin, empresa);
     }
 
     private String documentoNumerico(String base) {

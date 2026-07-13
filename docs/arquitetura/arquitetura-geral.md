@@ -333,6 +333,11 @@ O modulo Estoque foi iniciado com `Deposito`, exposto em `/api/v1/depositos`. A 
 
 `EstoqueAggregateService` e `EstoqueFacade` completam a camada de consolidacao do estoque. O aggregate atende leituras ricas para frontend e operacoes, enquanto a facade passa a ser a API interna recomendada para Compras, Vendas, PDV e Inventario executarem entrada, saida, transferencia, ajuste, inventario, reserva, cancelamento e baixa sem conhecer repositories. Eventos de dominio `EstoqueAlteradoEvent`, `ReservaCriadaEvent`, `ReservaCanceladaEvent` e `ReservaBaixadaEvent` foram preparados para futura invalidacao de cache, auditoria, mensageria e notificacoes. A concorrencia do saldo e coberta por teste de optimistic lock e por carga simples com reservas simultaneas.
 
+O isolamento multiempresa do Estoque usa `EmpresaContext` nos services publicos. As Specifications
+de deposito, localizacao, saldo, movimentacao e reserva sempre incluem a empresa autenticada;
+buscas mutaveis usam identificador mais empresa. `empresaId` permanece apenas nas entidades,
+responses e chamadas internas derivadas do contexto, nunca como escolha do cliente.
+
 O modulo Compras foi iniciado com `PedidoCompra`, `PedidoCompraItem`, `EntradaMercadoria` e `EntradaMercadoriaItem`. `PedidoCompra`, exposto em `/api/v1/pedidos-compra`, registra a intencao de compra por empresa e fornecedor, com numero unico por empresa, status `ABERTO`, `APROVADO`, `PARCIALMENTE_RECEBIDO`, `RECEBIDO` e `CANCELADO`, valor total calculado pelos itens e acoes explicitas de aprovacao e cancelamento. Pedidos cancelados ou recebidos nao podem ser alterados.
 
 `PedidoCompraItem`, exposto em `/api/v1/pedidos-compra-itens`, representa os produtos comprados no pedido. A entidade referencia pedido, produto e unidade do produto, valida quantidade maior que zero, valor unitario nao negativo e recalcula o valor total do pedido sempre que um item e criado, atualizado ou excluido logicamente.
@@ -340,6 +345,10 @@ O modulo Compras foi iniciado com `PedidoCompra`, `PedidoCompraItem`, `EntradaMe
 `EntradaMercadoria`, exposta em `/api/v1/entradas-mercadoria`, representa o recebimento fisico da compra. Ela pode nascer vinculada a um PedidoCompra, usa status `ABERTA`, `CONFERIDA`, `EFETIVADA` e `CANCELADA`, e so movimenta estoque quando a entrada e efetivada. A efetivacao chama `EstoqueFacade.entrada(...)`, que delega ao dominio de estoque, atualiza saldo, registra `MovimentacaoEstoque` com origem `COMPRA` e preenche o historico de movimento.
 
 `EntradaMercadoriaItem`, exposto em `/api/v1/entradas-mercadoria-itens`, detalha cada produto recebido, deposito e localizacao. O service valida que a localizacao pertence ao deposito, calcula valor total por quantidade e valor unitario, e bloqueia alteracoes quando a entrada ja nao esta editavel. O fluxo integrado `ComprasBusinessFlowIntegrationTest` valida PedidoCompra -> Itens -> EntradaMercadoria -> Estoque -> MovimentacaoEstoque, provando a conversa entre Cadastros, Pessoas, Produtos, Estoque e Compras.
+
+Compras resolve a empresa exclusivamente por `EmpresaContext`. Specifications e buscas por ID
+isolam pedidos, entradas e itens; depositos e localizacoes tambem sao resolvidos na mesma empresa.
+Fornecedor e Produto continuam globais ate uma futura decisao de modelagem desses cadastros.
 
 A consolidacao de Compras segue o mesmo desenho aplicado em Produtos e Estoque. `CompraAggregateService` monta `PedidoCompraCompletoResponse` e `EntradaMercadoriaCompletaResponse`, expostos em `GET /api/v1/pedidos-compra/{id}/completo` e `GET /api/v1/entradas-mercadoria/{id}/completo`, para entregar ao frontend itens, historico, entradas vinculadas e movimentacoes geradas em uma unica chamada. `CompraFacade` passa a ser a API interna de alto nivel para outros modulos criarem pedido, aprovarem, cancelarem, registrarem entrada e efetivarem recebimento sem conhecer os services menores.
 
@@ -354,6 +363,10 @@ Ao aprovar um PedidoVenda, o service exige status `ABERTO`, exige itens e cria r
 `VendaFaturamento`, exposto em `/api/v1/vendas-faturamentos`, transforma um PedidoVenda aprovado em venda faturada. O endpoint `POST /api/v1/vendas-faturamentos/faturar` exige pedido `APROVADO`, numero unico por empresa, reservas ativas de origem `VENDA` e `condicaoPagamentoId`. O service cria o faturamento com status `FATURADO`, baixa as reservas via `ReservaEstoqueService.baixar(...)`, reduz saldo fisico, gera `MovimentacaoEstoque`, registra historico, cria `ContaReceber`, gera `ParcelasReceber` pela condicao de pagamento, vincula a conta ao faturamento, publica eventos e atualiza o PedidoVenda para `FATURADO`. Nao existe `PUT` generico para faturamento nesta fase; cancelamento possui endpoint de estado separado e nao reabre automaticamente estoque.
 
 `VendaAggregateService` agora retorna `PedidoVendaCompletoResponse` com cabecalho, itens, faturamento, reservas e historico em `GET /api/v1/pedidos-venda/{id}/completo`. `VendaFacade` centraliza criacao, aprovacao, cancelamento, faturamento e manipulacao de itens, preparando a integracao futura com Expedicao, Financeiro e Fiscal.
+
+Vendas resolve a empresa por `EmpresaContext`. Specifications e buscas por ID isolam
+PedidoVenda, itens e VendaFaturamento; ProdutoPreco, Estoque e ReservaEstoque sao validados
+na mesma empresa. Cliente, Produto e ProdutoUnidade permanecem globais no modelo atual.
 
 A primeira consolidacao de Vendas ja nasce com `PedidoVendaHistorico`, `VendaAggregateService`, `VendaFacade` e eventos de dominio `PedidoVendaCriadoEvent`, `PedidoVendaReservadoEvent`, `PedidoVendaAprovadoEvent`, `PedidoVendaCanceladoEvent`, `VendaFaturamentoCriadoEvent`, `PedidoVendaFaturadoEvent` e `ContaReceberGeradaPorVendaEvent`. `PedidoVendaBusinessFlowIntegrationTest` valida o fluxo real Empresa -> Cliente -> PedidoVenda, historico e concorrencia otimista; `PedidoVendaReservaIntegrationTest` valida PedidoVenda -> PedidoVendaItem -> ReservaEstoque -> Estoque -> MovimentacaoEstoque, incluindo cancelamento e conflito `409` em aprovacao concorrente; `VendaFaturamentoBusinessFlowIntegrationTest` valida PedidoVenda aprovado -> ReservaEstoque ativa -> VendaFaturamento -> baixa da reserva -> saldo fisico reduzido -> PedidoVenda faturado -> ContaReceber -> ParcelaReceber.
 
@@ -430,3 +443,13 @@ Criar uma aplicacao organizada, escalavel e de facil manutencao, separando respo
 
 Sugestoes de conciliacao sao calculadas sob demanda. O banco aplica os filtros eliminatorios e o Java pontua
 somente candidatos compativeis; a confirmacao continua no servico transacional de conciliacao.
+
+A central de conciliacao usa projecoes agregadas e paginas de pendencias. A confirmacao em lote delega cada par
+a um bean transacional independente, preservando sucessos quando outro item e rejeitado.
+
+O contexto empresarial liga Usuario a Empresa e Filial por entidades auditadas. O JWT carrega apenas UUIDs e o
+filtro revalida os vinculos antes de montar o principal autenticado.
+# Isolamento multiempresa
+
+O claim `empresa_id` define o tenant logico da requisicao. O isolamento e aplicado nas buscas por
+ID, Specifications, importacao bancaria, conciliacao e consultas financeiras agregadas.

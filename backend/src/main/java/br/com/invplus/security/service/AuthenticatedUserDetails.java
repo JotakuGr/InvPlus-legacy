@@ -15,6 +15,8 @@ public class AuthenticatedUserDetails implements UserDetails {
     private final String password;
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean enabled;
+    private final UUID empresaId;
+    private final UUID filialId;
 
     public AuthenticatedUserDetails(
             UUID id,
@@ -23,11 +25,19 @@ public class AuthenticatedUserDetails implements UserDetails {
             Collection<? extends GrantedAuthority> authorities,
             boolean enabled
     ) {
+        this(id, username, password, authorities, enabled, null, null);
+    }
+
+    public AuthenticatedUserDetails(UUID id, String username, String password,
+            Collection<? extends GrantedAuthority> authorities, boolean enabled,
+            UUID empresaId, UUID filialId) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.authorities = authorities;
         this.enabled = enabled;
+        this.empresaId = empresaId;
+        this.filialId = filialId;
     }
 
     /**
@@ -36,6 +46,9 @@ public class AuthenticatedUserDetails implements UserDetails {
     public UUID getId() {
         return id;
     }
+    public UUID getEmpresaId() { return empresaId; }
+    public UUID getFilialId() { return filialId; }
+    public boolean possuiContextoEmpresarial() { return empresaId != null; }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

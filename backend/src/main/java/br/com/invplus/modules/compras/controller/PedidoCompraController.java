@@ -39,14 +39,13 @@ public class PedidoCompraController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAuthority('PEDIDO_COMPRA:VISUALIZAR') or hasAuthority('PEDIDO_COMPRA:*') or hasAuthority('COMPRAS:*')")
     public ResponseEntity<Page<PedidoCompraResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID fornecedorId,
             @RequestParam(required = false) StatusPedidoCompra status,
             @RequestParam(required = false) String numero,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(service.listarComFiltros(empresaId, fornecedorId, status, numero, ativo, pageable));
+        return ResponseEntity.ok(service.listarComFiltros(fornecedorId, status, numero, ativo, pageable));
     }
 
     @GetMapping("/{id}")

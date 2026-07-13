@@ -8,6 +8,7 @@ import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,14 +18,22 @@ import org.springframework.stereotype.Component;
 public class PedidoVendaItemValidator {
 
     public void validar(PedidoVenda pedido, Produto produto, ProdutoPreco preco, ProdutoUnidade unidade,
+                        UUID empresaId,
                         BigDecimal quantidade, BigDecimal desconto, BigDecimal acrescimo) {
         pedido.validarEditavel();
         validarQuantidade(quantidade);
         validarValores(desconto, acrescimo);
         validarPrecoDoProduto(produto, preco);
+        validarPrecoDaEmpresa(preco, empresaId);
         validarUnidadeDoProduto(produto, unidade);
         validarPrecoVigente(pedido, preco);
         validarTotalNaoNegativo(quantidade, preco.getPreco(), desconto, acrescimo);
+    }
+
+    private void validarPrecoDaEmpresa(ProdutoPreco preco, UUID empresaId) {
+        if (preco.getEmpresa() == null || !preco.getEmpresa().getId().equals(empresaId)) {
+            throw new InvalidOperationException("ProdutoPreco nao pertence a empresa ativa");
+        }
     }
 
     private void validarQuantidade(BigDecimal quantidade) {

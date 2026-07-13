@@ -19,6 +19,11 @@ public final class ExtratoBancarioLancamentoSpecification {
         return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
     }
 
+    public static Specification<ExtratoBancarioLancamento> pertenceEmpresa(UUID empresaId) {
+        return (root, query, cb) -> cb.equal(root.get("extratoBancario")
+                .get("contaBancaria").get("empresa").get("id"), empresaId);
+    }
+
     public static Specification<ExtratoBancarioLancamento> extratoIgual(UUID extratoBancarioId) {
         return extratoBancarioId == null ? null
                 : (root, query, cb) -> cb.equal(root.get("extratoBancario").get("id"), extratoBancarioId);

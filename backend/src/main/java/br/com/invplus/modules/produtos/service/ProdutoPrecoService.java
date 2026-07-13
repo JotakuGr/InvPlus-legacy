@@ -12,6 +12,7 @@ import br.com.invplus.modules.produtos.repository.ProdutoPrecoRepository;
 import br.com.invplus.modules.produtos.repository.ProdutoRepository;
 import br.com.invplus.modules.produtos.specification.ProdutoPrecoSpecification;
 import br.com.invplus.modules.produtos.validator.ProdutoPrecoValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import java.time.LocalDate;
@@ -34,13 +35,15 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     private final ProdutoPrecoValidator validator;
     private final ProdutoRepository produtoRepository;
     private final EmpresaRepository empresaRepository;
+    private final EmpresaContext empresaContext;
 
     public ProdutoPrecoService(
             ProdutoPrecoRepository repository,
             ProdutoPrecoMapper mapper,
             ProdutoPrecoValidator validator,
             ProdutoRepository produtoRepository,
-            EmpresaRepository empresaRepository
+            EmpresaRepository empresaRepository,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "ProdutoPreco");
         this.repository = repository;
@@ -48,6 +51,7 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
         this.validator = validator;
         this.produtoRepository = produtoRepository;
         this.empresaRepository = empresaRepository;
+        this.empresaContext = empresaContext;
     }
 
     @Override
@@ -62,7 +66,6 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     @Transactional(readOnly = true)
     public Page<ProdutoPrecoResponse> listarComFiltros(
             UUID produtoId,
-            UUID empresaId,
             TipoPrecoProduto tipoPreco,
             Boolean principal,
             LocalDate vigenciaInicioDe,
@@ -70,10 +73,11 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
             Boolean ativo,
             Pageable pageable
     ) {
-        Specification<ProdutoPreco> specification = ProdutoPrecoSpecification.naoDeletado()
+        UUID empresaId = empresaContext.getEmpresaId();
+        Specification<ProdutoPreco> specification = ProdutoPrecoSpecification.pertenceEmpresa(empresaId)
+                .and(ProdutoPrecoSpecification.naoDeletado())
                 .and(ProdutoPrecoSpecification.ativo(ativo))
                 .and(ProdutoPrecoSpecification.produtoIgual(produtoId))
-                .and(ProdutoPrecoSpecification.empresaIgual(empresaId))
                 .and(ProdutoPrecoSpecification.tipoIgual(tipoPreco))
                 .and(ProdutoPrecoSpecification.principalIgual(principal))
                 .and(ProdutoPrecoSpecification.vigenciaInicioMaiorOuIgual(vigenciaInicioDe))
@@ -84,7 +88,7 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     @Override
     @Transactional(readOnly = true)
     public ProdutoPrecoResponse buscar(UUID id) {
-        return super.buscar(id);
+        return mapper.toResponse(buscarNoContexto(id));
     }
 
     /**
@@ -93,7 +97,8 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     @Transactional(readOnly = true)
     public Optional<ProdutoPrecoResponse> buscarPrecoVigente(UUID produtoId, TipoPrecoProduto tipoPreco, LocalDate data) {
         LocalDate dataConsulta = data == null ? LocalDate.now() : data;
-        return repository.buscarPrecosVigentesGlobais(produtoId, tipoPreco, dataConsulta)
+        return repository.buscarPrecosVigentes(
+                        produtoId, empresaContext.getEmpresaId(), tipoPreco, dataConsulta)
                 .stream()
                 .findFirst()
                 .map(mapper::toResponse);
@@ -105,9 +110,10 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     @Override
     @Transactional
     public ProdutoPrecoResponse criar(ProdutoPrecoRequest request) {
-        validator.validarCriacao(request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        validator.validarCriacao(empresaId, request);
         Produto produto = buscarProdutoAtivo(request.produtoId());
-        Empresa empresa = buscarEmpresaAtiva(request.empresaId());
+        Empresa empresa = buscarEmpresaAtiva(empresaId);
         ProdutoPreco entity = mapper.toEntity(request);
         entity.setProduto(produto);
         entity.setEmpresa(empresa);
@@ -120,10 +126,11 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     @Override
     @Transactional
     public ProdutoPrecoResponse atualizar(UUID id, ProdutoPrecoRequest request) {
-        ProdutoPreco entity = buscarEntidade(id);
-        validator.validarAtualizacao(entity, request);
+        UUID empresaId = empresaContext.getEmpresaId();
+        ProdutoPreco entity = buscarNoContexto(id);
+        validator.validarAtualizacao(empresaId, entity, request);
         entity.setProduto(buscarProdutoAtivo(request.produtoId()));
-        entity.setEmpresa(buscarEmpresaAtiva(request.empresaId()));
+        entity.setEmpresa(buscarEmpresaAtiva(empresaId));
         mapper.updateEntity(entity, request);
         return mapper.toResponse(entity);
     }
@@ -131,7 +138,7 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     @Override
     @Transactional
     public void excluir(UUID id) {
-        super.excluir(id);
+        buscarNoContexto(id).excluirLogicamente();
     }
 
     private Produto buscarProdutoAtivo(UUID id) {
@@ -140,10 +147,12 @@ public class ProdutoPrecoService extends BaseCrudService<ProdutoPreco, ProdutoPr
     }
 
     private Empresa buscarEmpresaAtiva(UUID id) {
-        if (id == null) {
-            return null;
-        }
         return empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa nao encontrada"));
+    }
+
+    private ProdutoPreco buscarNoContexto(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("ProdutoPreco nao encontrado"));
     }
 }

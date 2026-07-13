@@ -147,7 +147,7 @@ Toda a estrutura foi desenvolvida utilizando **Spring Boot**, separando claramen
 | Spring Boot | **3.x** |
 | Angular | **20** |
 | Migrations Flyway | **119+** |
-| Testes Automatizados | **657** |
+| Testes Automatizados | **669** |
 | Controllers REST | **60+** |
 | Entidades | **70+** |
 | DTOs | **200+** |
@@ -357,6 +357,12 @@ Movimento Financeiro
 
 As sugestoes de conciliacao sao calculadas sob demanda, com filtros por conta, empresa, tipo, valor e data.
 A confirmacao permanece manual e revalida todas as regras financeiras.
+
+A central bancaria apresenta indicadores, extratos e pendencias paginadas e permite confirmar pares em lote
+com resultado parcial, sem criar uma entidade de painel.
+
+O contexto empresarial permite que um usuario selecione uma empresa e filial ativa; o JWT contextualizado e
+revalidado contra os vinculos de acesso em cada requisicao.
 
 ---
 
@@ -652,7 +658,7 @@ O projeto utiliza práticas modernas de desenvolvimento para garantir qualidade,
 | Java | 25 |
 | Spring Boot | 3.x |
 | Migrations Flyway | 119+ |
-| Testes Automatizados | 657 |
+| Testes Automatizados | 669 |
 | Controllers REST | 60+ |
 | Entidades | 70+ |
 | DTOs | 200+ |
@@ -712,3 +718,15 @@ Se este projeto foi útil para você:
 *Modern ERP Platform*
 
 </div>
+> **Contexto empresarial:** os fluxos bancarios e relatorios financeiros usam a empresa ativa do
+> access token. Consultas por UUID e agregacoes sao isoladas por empresa no backend.
+> O frontend ja suporta login, refresh token e selecao de empresa/filial.
+> O modulo Estoque tambem usa exclusivamente a empresa do token; seus requests operacionais
+> nao aceitam `empresaId`.
+
+O mesmo contrato contextual se aplica aos cadastros e ao Financeiro: a empresa ativa vem
+exclusivamente do access token, e recursos de outra empresa nao sao expostos por UUID.
+> Compras segue o mesmo contrato para pedidos, entradas e itens, preservando a empresa
+> autenticada ao movimentar o estoque.
+> Vendas resolve pedido, itens e faturamento pela empresa do access token e preserva o
+> contexto ao reservar/baixar estoque e gerar a ContaReceber.

@@ -3,6 +3,7 @@ package br.com.invplus.businessflow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,7 +53,7 @@ import br.com.invplus.shared.domain.exception.InvalidOperationException;
 @SuppressWarnings("unused")
 @SpringBootTest
 @ActiveProfiles("test")
-class FinanceiroCentroCustoBusinessFlowIntegrationTest {
+class FinanceiroCentroCustoBusinessFlowIntegrationTest extends AbstractContextoEmpresarialIntegrationTest {
 
     private static final LocalDate DATA = LocalDate.of(2098, 6, 15);
 
@@ -88,6 +89,7 @@ class FinanceiroCentroCustoBusinessFlowIntegrationTest {
     void deveClassificarContasPropagarMovimentosFiltrarERelatar() {
         String sufixo = sufixo();
         Empresa empresa = empresaRepository.save(empresa("Empresa CC Financeiro " + sufixo, "12" + sufixo));
+        ativarEmpresa(empresa.getId());
         Empresa outraEmpresa = empresaRepository.save(empresa("Outra Empresa CC " + sufixo, "34" + sufixo));
         Cliente cliente = clienteRepository.save(cliente("Cliente CC " + sufixo, "56" + sufixo));
         Fornecedor fornecedor = fornecedorRepository.save(fornecedor("Fornecedor CC " + sufixo, "78" + sufixo));
@@ -105,9 +107,9 @@ class FinanceiroCentroCustoBusinessFlowIntegrationTest {
 
         assertThat(receberResponse.centroCustoId()).isEqualTo(receita.getId());
         assertThat(pagarResponse.centroCustoId()).isEqualTo(despesa.getId());
-        assertThat(contaReceberService.listarComFiltros(null, null, null, null, receita.getId(),
+        assertThat(contaReceberService.listarComFiltros(null, null, null, receita.getId(),
                 null, null, null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
-        assertThat(contaPagarService.listarComFiltros(null, null, null, null, despesa.getId(),
+        assertThat(contaPagarService.listarComFiltros(null, null, null, despesa.getId(),
                 null, null, null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
 
         assertThatThrownBy(() -> contaReceberService.criar(contaReceberRequest(
@@ -131,7 +133,7 @@ class FinanceiroCentroCustoBusinessFlowIntegrationTest {
 
         assertThat(entrada.getCentroCusto().getId()).isEqualTo(receita.getId());
         assertThat(saida.getCentroCusto().getId()).isEqualTo(despesa.getId());
-        assertThat(movimentoService.listarComFiltros(null, null, null,
+        assertThat(movimentoService.listarComFiltros(null, null,
                 OrigemMovimentoFinanceiro.RECEBIMENTO, null, null, null, null, receita.getId(),
                 null, null, null, null, null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
 
@@ -146,13 +148,13 @@ class FinanceiroCentroCustoBusinessFlowIntegrationTest {
 
     private ContaReceberRequest contaReceberRequest(
             Empresa empresa, Cliente cliente, CentroCusto centro, String numero) {
-        return new ContaReceberRequest(empresa.getId(), null, cliente.getId(), null, centro.getId(),
+        return new ContaReceberRequest(null, cliente.getId(), null, centro.getId(), null,
                 numero, "Conta classificada", DATA, new BigDecimal("500.00"), null);
     }
 
     private ContaPagarRequest contaPagarRequest(
             Empresa empresa, Fornecedor fornecedor, CentroCusto centro, String numero) {
-        return new ContaPagarRequest(empresa.getId(), null, fornecedor.getId(), null, centro.getId(),
+        return new ContaPagarRequest(null, fornecedor.getId(), null, centro.getId(), null,
                 numero, "Conta classificada", DATA, new BigDecimal("200.00"), null);
     }
 

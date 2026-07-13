@@ -34,6 +34,7 @@ import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.vendas.repository.VendaFaturamentoRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.security.context.EmpresaContext;
 
 /**
  * Testes unitarios das regras de ContaReceber.
@@ -57,6 +58,8 @@ class ContaReceberServiceTest {
     private CentroCustoRepository centroCustoRepository;
     @Mock
     private PlanoContaRepository planoContaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private ContaReceberService service;
     private Empresa empresa;
@@ -68,9 +71,10 @@ class ContaReceberServiceTest {
         ContaReceberMapper mapper = new ContaReceberMapper();
         service = new ContaReceberService(repository, empresaRepository, filialRepository, clienteRepository,
                 vendaFaturamentoRepository, parcelaReceberService, centroCustoRepository, planoContaRepository,
-                mapper, new ContaReceberValidator(repository));
+                mapper, new ContaReceberValidator(repository), empresaContext);
         empresa = empresa();
         cliente = cliente();
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
     }
 
     @Test
@@ -117,7 +121,8 @@ class ContaReceberServiceTest {
     @Test
     void deveCancelarContaAbertaEBloquearAlteracaoDeCancelada() {
         ContaReceber conta = conta("CR-2", StatusContaReceber.ABERTA);
-        when(repository.findByIdAndAtivoTrueAndDeletedAtIsNull(conta.getId())).thenReturn(Optional.of(conta));
+        when(repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(conta.getId(), empresa.getId()))
+                .thenReturn(Optional.of(conta));
 
         ContaReceberResponse response = service.cancelar(conta.getId());
 
@@ -129,9 +134,10 @@ class ContaReceberServiceTest {
 
     private ContaReceberRequest request(String numero, String valor) {
         return new ContaReceberRequest(
-                empresa.getId(),
                 null,
                 cliente.getId(),
+                null,
+                null,
                 null,
                 numero,
                 "Conta " + numero,

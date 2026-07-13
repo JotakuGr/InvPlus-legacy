@@ -44,7 +44,6 @@ public class PlanoContaController extends BaseCrudController {
     @GetMapping
     @PreAuthorize("hasAnyAuthority('PLANO_CONTA:*', 'PLANO_CONTA:VISUALIZAR')")
     public ResponseEntity<Page<PlanoContaResponse>> listar(
-            @RequestParam(required = false) UUID empresaId,
             @RequestParam(required = false) UUID planoContaPaiId,
             @RequestParam(required = false) String codigo,
             @RequestParam(required = false) String nome,
@@ -52,7 +51,7 @@ public class PlanoContaController extends BaseCrudController {
             @RequestParam(required = false) NaturezaPlanoConta natureza,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        return ResponseEntity.ok(service.listar(empresaId, planoContaPaiId, codigo,
+        return ResponseEntity.ok(service.listar(planoContaPaiId, codigo,
                 nome, tipo, natureza, ativo, pageable));
     }
 

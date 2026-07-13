@@ -9,7 +9,6 @@ import java.util.UUID;
  * Dados para criar ou atualizar uma entrada de mercadoria.
  */
 public record EntradaMercadoriaRequest(
-        @NotNull UUID empresaId,
         UUID filialId,
         @NotNull UUID fornecedorId,
         UUID pedidoCompraId,

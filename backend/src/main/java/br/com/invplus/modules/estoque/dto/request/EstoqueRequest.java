@@ -11,7 +11,6 @@ import java.util.UUID;
  */
 public record EstoqueRequest(
         @NotNull UUID produtoId,
-        @NotNull UUID empresaId,
         UUID filialId,
         @NotNull UUID depositoId,
         @NotNull UUID localizacaoId,

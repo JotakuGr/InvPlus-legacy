@@ -11,8 +11,6 @@ import java.util.UUID;
  * Payload para criar ou atualizar uma conta a pagar.
  */
 public record ContaPagarRequest(
-        @NotNull(message = "Empresa e obrigatoria")
-        UUID empresaId,
         UUID filialId,
         @NotNull(message = "Fornecedor e obrigatorio")
         UUID fornecedorId,
@@ -30,22 +28,4 @@ public record ContaPagarRequest(
         BigDecimal valorTotal,
         String observacao
 ) {
-    /**
-     * Mantem compatibilidade com chamadas internas anteriores ao CentroCusto.
-     */
-    public ContaPagarRequest(UUID empresaId, UUID filialId, UUID fornecedorId, UUID entradaMercadoriaId,
-            String numero, String descricao, LocalDate dataEmissao, BigDecimal valorTotal, String observacao) {
-        this(empresaId, filialId, fornecedorId, entradaMercadoriaId, null, null, numero, descricao,
-                dataEmissao, valorTotal, observacao);
-    }
-
-    /**
-     * Mantem compatibilidade com chamadas internas anteriores ao PlanoConta.
-     */
-    public ContaPagarRequest(UUID empresaId, UUID filialId, UUID fornecedorId, UUID entradaMercadoriaId,
-            UUID centroCustoId, String numero, String descricao, LocalDate dataEmissao,
-            BigDecimal valorTotal, String observacao) {
-        this(empresaId, filialId, fornecedorId, entradaMercadoriaId, centroCustoId, null, numero, descricao,
-                dataEmissao, valorTotal, observacao);
-    }
 }

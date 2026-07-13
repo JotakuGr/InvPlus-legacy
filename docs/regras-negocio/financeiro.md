@@ -14,6 +14,14 @@
 - Data, documento e descricao formam uma pontuacao explicavel de 0 a 100.
 - A confirmacao manual reexecuta todas as validacoes do dominio.
 - Movimentos legados sem `conta_bancaria_id` nao participam das sugestoes.
+
+## Central de conciliacao
+
+- O painel e uma composicao de consultas e nao possui entidade propria.
+- Pendencias sao paginadas e sugestoes nao sao persistidas.
+- A confirmacao em lote permite sucesso parcial e cada item usa uma transacao independente.
+- Pares repetidos no request sao erros estruturais; conflitos de dominio rejeitam somente o item.
+- O servico individual revalida conta, empresa, tipo, valor e estados antes de confirmar.
 - Cancelamento de recebimento estorna a parcela e reconsolida a conta.
 - Recebimento cancelado permanece como histórico.
 - ContaPagar inicia `ABERTA`, com `valorPago = 0` e `valorAberto = valorTotal`.
@@ -159,3 +167,8 @@
 - A criação de extrato e lançamentos é atômica; falha em uma linha desfaz todo o domínio bancário criado.
 - O saldo final importado pertence ao extrato e não altera `ContaBancaria.saldoAtual`.
 - Todos os lançamentos entram com `conciliado = false`; conciliação permanece responsabilidade de `ConciliacaoBancaria`.
+# Contexto empresarial
+
+Conta bancaria, extrato, lancamento, importacao OFX, conciliacao e movimento financeiro sao
+recursos empresariais. Quando o token possui contexto, toda busca e agregacao inclui
+obrigatoriamente `empresa_id`. Recursos de outra empresa sao apresentados como nao encontrados.

@@ -6,6 +6,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import br.com.invplus.modules.cadastros.entity.Empresa;
+import br.com.invplus.security.entity.Usuario;
+import br.com.invplus.support.security.EmpresaTestFactory;
+import br.com.invplus.support.security.JwtTestFactory;
+import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
+import br.com.invplus.support.security.UsuarioTestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,74 +36,52 @@ class DepositoBusinessFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired private UsuarioTestFactory usuarioTestFactory;
+    @Autowired private EmpresaTestFactory empresaTestFactory;
+    @Autowired private UsuarioEmpresaTestFactory usuarioEmpresaTestFactory;
+    @Autowired private JwtTestFactory jwtTestFactory;
+
     /**
      * Cria Empresa, Filial e Deposito e valida filtros principais do estoque.
      */
     @Test
     void deveCriarDepositoAVinculadoAEmpresaEFilial() throws Exception {
-        String token = login().get("accessToken").asString();
-        JsonNode empresa = criarEmpresa(token);
-        JsonNode filial = criarFilial(token, empresa.get("id").asString());
-        JsonNode deposito = criarDeposito(token, empresa.get("id").asString(), filial.get("id").asString());
+        ContextoTeste contexto = criarContexto();
+        String token = contexto.token();
+        JsonNode filial = criarFilial(token);
+        JsonNode deposito = criarDeposito(token, filial.get("id").asString());
 
         mockMvc.perform(get("/api/v1/depositos/" + deposito.get("id").asString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.empresaId").value(empresa.get("id").asString()))
+                .andExpect(jsonPath("$.empresaId").value(contexto.empresaId().toString()))
                 .andExpect(jsonPath("$.filialId").value(filial.get("id").asString()))
                 .andExpect(jsonPath("$.principal").value(true))
                 .andExpect(jsonPath("$.controlaEstoque").value(true))
                 .andExpect(jsonPath("$.bloqueado").value(false));
 
-        mockMvc.perform(get("/api/v1/depositos?empresaId=" + empresa.get("id").asString()
-                        + "&filialId=" + filial.get("id").asString()
+        mockMvc.perform(get("/api/v1/depositos?filialId=" + filial.get("id").asString()
                         + "&tipoDeposito=LOJA&principal=true&controlaEstoque=true&bloqueado=false&ativo=true&page=0&size=20")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(deposito.get("id").asString()));
     }
 
-    private JsonNode login() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "admin@invplus.com", "senha": "admin123"}
-                                """))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(response);
+    private ContextoTeste criarContexto() {
+        Usuario usuario = usuarioTestFactory.criarAtivoComPerfilAdmin();
+        Empresa empresa = empresaTestFactory.criarAtiva();
+        usuarioEmpresaTestFactory.criar(usuario, empresa, true, true);
+        String token = jwtTestFactory.accessToken(usuario.getId(), usuario.getEmail(), empresa.getId(), null,
+                java.util.Set.of("CADASTROS:*", "DEPOSITO:*", "ESTOQUE:*"));
+        return new ContextoTeste(token, empresa.getId());
     }
 
-    private JsonNode criarEmpresa(String token) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/empresas")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "razaoSocial": "Empresa Estoque Fluxo %s",
-                                  "nomeFantasia": "Empresa Estoque",
-                                  "cnpj": "%s",
-                                  "inscricaoEstadual": "ISENTO",
-                                  "inscricaoMunicipal": "123",
-                                  "regimeTributario": "NORMAL",
-                                  "crt": 3,
-                                  "telefone": "71999990000",
-                                  "email": "empresa-fluxo-%s@teste.com"
-                                }
-                                """.formatted(UUID.randomUUID(), cnpjUnico(), UUID.randomUUID())))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode criarFilial(String token, String empresaId) throws Exception {
+    private JsonNode criarFilial(String token) throws Exception {
         String response = mockMvc.perform(post("/api/v1/cadastros/filiais")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "codigo": "FIL-%s",
                                   "nome": "Filial Estoque",
                                   "cnpj": "%s",
@@ -106,7 +90,7 @@ class DepositoBusinessFlowIntegrationTest {
                                   "email": "filial-fluxo-%s@teste.com",
                                   "matriz": false
                                 }
-                                """.formatted(empresaId, codigoCurto(), cnpjUnico(), UUID.randomUUID())))
+                                """.formatted(codigoCurto(), cnpjUnico(), UUID.randomUUID())))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -114,13 +98,12 @@ class DepositoBusinessFlowIntegrationTest {
         return objectMapper.readTree(response);
     }
 
-    private JsonNode criarDeposito(String token, String empresaId, String filialId) throws Exception {
+    private JsonNode criarDeposito(String token, String filialId) throws Exception {
         String response = mockMvc.perform(post("/api/v1/depositos")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "empresaId": "%s",
                                   "filialId": "%s",
                                   "codigo": "DEP-%s",
                                   "nome": "Loja principal",
@@ -133,7 +116,7 @@ class DepositoBusinessFlowIntegrationTest {
                                   "controlaEstoque": true,
                                   "bloqueado": false
                                 }
-                                """.formatted(empresaId, filialId, codigoCurto())))
+                                """.formatted(filialId, codigoCurto())))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -147,5 +130,8 @@ class DepositoBusinessFlowIntegrationTest {
 
     private String codigoCurto() {
         return Long.toString(Math.abs(System.nanoTime()), 36).toUpperCase();
+    }
+
+    private record ContextoTeste(String token, UUID empresaId) {
     }
 }

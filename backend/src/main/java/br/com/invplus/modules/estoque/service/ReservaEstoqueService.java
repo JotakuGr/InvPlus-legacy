@@ -14,6 +14,7 @@ import br.com.invplus.modules.estoque.validator.ReservaEstoqueValidator;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import br.com.invplus.shared.domain.service.BaseCrudService;
 import br.com.invplus.shared.domain.service.EstoqueDomainService;
+import br.com.invplus.security.context.EmpresaContext;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -33,13 +34,15 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
     private final ReservaEstoqueMapper mapper;
     private final ReservaEstoqueValidator validator;
     private final EstoqueDomainService estoqueDomainService;
+    private final EmpresaContext empresaContext;
 
     public ReservaEstoqueService(
             ReservaEstoqueRepository repository,
             EstoqueRepository estoqueRepository,
             ReservaEstoqueMapper mapper,
             ReservaEstoqueValidator validator,
-            EstoqueDomainService estoqueDomainService
+            EstoqueDomainService estoqueDomainService,
+            EmpresaContext empresaContext
     ) {
         super(repository, mapper, "ReservaEstoque");
         this.repository = repository;
@@ -47,13 +50,13 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
         this.mapper = mapper;
         this.validator = validator;
         this.estoqueDomainService = estoqueDomainService;
+        this.empresaContext = empresaContext;
     }
 
     @Transactional(readOnly = true)
     public Page<ReservaEstoqueResponse> listarComFiltros(
             UUID estoqueId,
             UUID produtoId,
-            UUID empresaId,
             UUID filialId,
             UUID depositoId,
             UUID localizacaoId,
@@ -63,11 +66,12 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
             Boolean ativo,
             Pageable pageable
     ) {
-        Specification<ReservaEstoque> specification = ReservaEstoqueSpecification.naoDeletado()
+        Specification<ReservaEstoque> specification = ReservaEstoqueSpecification
+                .pertenceEmpresa(empresaContext.getEmpresaId())
+                .and(ReservaEstoqueSpecification.naoDeletado())
                 .and(ReservaEstoqueSpecification.ativo(ativo))
                 .and(ReservaEstoqueSpecification.estoqueIgual(estoqueId))
                 .and(ReservaEstoqueSpecification.produtoIgual(produtoId))
-                .and(ReservaEstoqueSpecification.empresaIgual(empresaId))
                 .and(ReservaEstoqueSpecification.filialIgual(filialId))
                 .and(ReservaEstoqueSpecification.depositoIgual(depositoId))
                 .and(ReservaEstoqueSpecification.localizacaoIgual(localizacaoId))
@@ -94,7 +98,7 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
 
     @Transactional
     public ReservaEstoqueResponse cancelar(UUID id) {
-        ReservaEstoque reserva = buscarEntidade(id);
+        ReservaEstoque reserva = buscarNoContexto(id);
         validator.validarCancelamento(reserva);
         estoqueDomainService.cancelarReserva(reserva.getEstoque(), reserva.getQuantidade(), reserva.getOrigem(), reserva.getOrigemId(),
                 null, "Cancelamento de reserva de estoque");
@@ -104,7 +108,7 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
 
     @Transactional
     public ReservaEstoqueResponse baixar(UUID id) {
-        ReservaEstoque reserva = buscarEntidade(id);
+        ReservaEstoque reserva = buscarNoContexto(id);
         validator.validarBaixa(reserva);
         estoqueDomainService.baixarReserva(reserva.getEstoque(), reserva.getQuantidade(), reserva.getOrigem(), reserva.getOrigemId(),
                 null, "Baixa de reserva de estoque");
@@ -114,10 +118,11 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
 
     @Transactional
     public List<ReservaEstoqueResponse> cancelarPorOrigem(MovimentacaoOrigem origem, UUID origemId) {
-        return repository.findByOrigemAndOrigemIdAndStatusAndAtivoTrueAndDeletedAtIsNull(
+        return repository.findByOrigemAndOrigemIdAndStatusAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
                         origem,
                         origemId,
-                        StatusReservaEstoque.ATIVA
+                        StatusReservaEstoque.ATIVA,
+                        empresaContext.getEmpresaId()
                 )
                 .stream()
                 .map(reserva -> cancelar(reserva.getId()))
@@ -125,7 +130,19 @@ public class ReservaEstoqueService extends BaseCrudService<ReservaEstoque, Reser
     }
 
     private Estoque buscarEstoqueAtivo(UUID id) {
-        return estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
+        return estoqueRepository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(
+                        id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Estoque nao encontrado"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReservaEstoqueResponse buscar(UUID id) {
+        return mapper.toResponse(buscarNoContexto(id));
+    }
+
+    private ReservaEstoque buscarNoContexto(UUID id) {
+        return repository.findByIdAndEmpresaIdAndAtivoTrueAndDeletedAtIsNull(id, empresaContext.getEmpresaId())
+                .orElseThrow(() -> new ResourceNotFoundException("ReservaEstoque nao encontrada"));
     }
 }

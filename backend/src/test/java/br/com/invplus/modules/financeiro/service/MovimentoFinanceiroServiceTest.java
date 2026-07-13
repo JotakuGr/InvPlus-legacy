@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -23,6 +24,7 @@ import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.validator.MovimentoFinanceiroValidator;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
@@ -66,6 +68,8 @@ class MovimentoFinanceiroServiceTest {
     private PlanoContaRepository planoContaRepository;
     @Mock
     private ContaBancariaRepository contaBancariaRepository;
+    @Mock
+    private EmpresaContext empresaContext;
 
     private MovimentoFinanceiroService service;
     private Empresa empresa;
@@ -78,8 +82,9 @@ class MovimentoFinanceiroServiceTest {
         service = new MovimentoFinanceiroService(repository, empresaRepository, filialRepository,
                 formaPagamentoRepository, clienteRepository, fornecedorRepository,
                 new MovimentoFinanceiroMapper(), new MovimentoFinanceiroValidator(), centroCustoRepository,
-                planoContaRepository, contaBancariaRepository);
+                planoContaRepository, contaBancariaRepository, empresaContext);
         empresa = empresa();
+        lenient().when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
         formaPagamento = formaPagamento();
         cliente = cliente();
         fornecedor = fornecedor();
@@ -198,8 +203,8 @@ class MovimentoFinanceiroServiceTest {
 
     private MovimentoFinanceiroRequest request(TipoMovimentoFinanceiro tipo, OrigemMovimentoFinanceiro origem,
             UUID clienteId, UUID fornecedorId, String valor) {
-        return new MovimentoFinanceiroRequest(empresa.getId(), null, formaPagamento.getId(), clienteId,
-                fornecedorId, tipo, origem, UUID.randomUUID(), new BigDecimal(valor),
+        return new MovimentoFinanceiroRequest(null, formaPagamento.getId(), clienteId,
+                fornecedorId, null, null, null, tipo, origem, UUID.randomUUID(), new BigDecimal(valor),
                 LocalDate.of(2026, 7, 8), "Movimento de teste", null);
     }
 
