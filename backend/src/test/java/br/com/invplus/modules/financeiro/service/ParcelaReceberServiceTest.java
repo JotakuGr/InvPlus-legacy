@@ -1,9 +1,20 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -27,16 +38,6 @@ import br.com.invplus.modules.pessoas.entity.Cliente;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras de ParcelaReceber.
@@ -55,6 +56,7 @@ class ParcelaReceberServiceTest {
     private ContaReceber conta;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ParcelaReceberService(repository, contaReceberRepository, condicaoPagamentoRepository,
                 new GeradorParcelasService(new CalculadoraVencimentoService()), new ParcelaReceberMapper(),

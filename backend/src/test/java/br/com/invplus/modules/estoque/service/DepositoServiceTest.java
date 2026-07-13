@@ -1,10 +1,21 @@
 package br.com.invplus.modules.estoque.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.entity.Filial;
@@ -20,16 +31,6 @@ import br.com.invplus.modules.estoque.validator.DepositoValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Testes unitarios das regras de Deposito.
@@ -49,6 +50,7 @@ class DepositoServiceTest {
     private DepositoService service;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         DepositoMapper mapper = new DepositoMapper();
         DepositoValidator validator = new DepositoValidator(repository);

@@ -1,25 +1,35 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.financeiro.dto.request.PagamentoRequest;
 import br.com.invplus.modules.financeiro.dto.response.PagamentoResponse;
-import br.com.invplus.modules.financeiro.entity.ContaPagar;
-import br.com.invplus.modules.financeiro.entity.ParcelaPagar;
-import br.com.invplus.modules.financeiro.entity.Pagamento;
-import br.com.invplus.modules.financeiro.enums.StatusParcelaPagar;
-import br.com.invplus.modules.financeiro.enums.StatusPagamentoFinanceiro;
-import br.com.invplus.modules.financeiro.mapper.PagamentoMapper;
-import br.com.invplus.modules.financeiro.repository.ParcelaPagarRepository;
-import br.com.invplus.modules.financeiro.repository.PagamentoRepository;
-import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.entity.ContaBancaria;
+import br.com.invplus.modules.financeiro.entity.ContaPagar;
+import br.com.invplus.modules.financeiro.entity.Pagamento;
+import br.com.invplus.modules.financeiro.entity.ParcelaPagar;
+import br.com.invplus.modules.financeiro.enums.StatusPagamentoFinanceiro;
+import br.com.invplus.modules.financeiro.enums.StatusParcelaPagar;
+import br.com.invplus.modules.financeiro.mapper.PagamentoMapper;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
+import br.com.invplus.modules.financeiro.repository.PagamentoRepository;
+import br.com.invplus.modules.financeiro.repository.ParcelaPagarRepository;
 import br.com.invplus.modules.financeiro.validator.PagamentoValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -28,15 +38,6 @@ import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras de Pagamento.
@@ -62,6 +63,7 @@ class PagamentoServiceTest {
     private FormaPagamento formaPagamento;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new PagamentoService(repository, parcelaPagarRepository, formaPagamentoRepository,
                 parcelaPagarService, movimentoFinanceiroService, new PagamentoMapper(),

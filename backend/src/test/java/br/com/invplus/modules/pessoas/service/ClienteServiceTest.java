@@ -1,10 +1,20 @@
 package br.com.invplus.modules.pessoas.service;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.pessoas.dto.request.ClienteRequest;
@@ -18,15 +28,6 @@ import br.com.invplus.modules.pessoas.validator.ClienteValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 
 /**
  * Testes unitarios das regras de negocio de Cliente.
@@ -46,6 +47,7 @@ class ClienteServiceTest {
     private ClienteService clienteService;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         ClienteMapper mapper = new ClienteMapper();
         ClienteValidator validator = new ClienteValidator(clienteRepository);

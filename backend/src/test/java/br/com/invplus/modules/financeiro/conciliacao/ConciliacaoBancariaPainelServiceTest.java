@@ -1,20 +1,29 @@
 package br.com.invplus.modules.financeiro.conciliacao;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
-
-import br.com.invplus.modules.financeiro.conciliacao.projection.*;
-import br.com.invplus.modules.financeiro.conciliacao.service.*;
-import br.com.invplus.modules.financeiro.repository.*;
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import org.mockito.Mock;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+
+import br.com.invplus.modules.financeiro.conciliacao.projection.IndicadoresExtratoProjection;
+import br.com.invplus.modules.financeiro.conciliacao.projection.IndicadoresLancamentoProjection;
+import br.com.invplus.modules.financeiro.conciliacao.service.ConciliacaoBancariaPainelService;
+import br.com.invplus.modules.financeiro.conciliacao.service.PontuacaoConciliacaoService;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
+import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
+import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
+import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ConciliacaoBancariaPainelServiceTest {
@@ -27,7 +36,8 @@ class ConciliacaoBancariaPainelServiceTest {
     @Mock IndicadoresLancamentoProjection lancamentos;
     ConciliacaoBancariaPainelService service;
 
-    @BeforeEach void setup() {
+    @BeforeEach@SuppressWarnings("unused")
+ void setup() {
         service = new ConciliacaoBancariaPainelService(extratoRepository, lancamentoRepository,
                 movimentoRepository, contaRepository, pontuacaoService, null);
     }

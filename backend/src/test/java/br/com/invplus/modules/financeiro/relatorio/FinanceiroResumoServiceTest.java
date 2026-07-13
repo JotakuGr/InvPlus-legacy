@@ -1,8 +1,16 @@
 package br.com.invplus.modules.financeiro.relatorio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.modules.financeiro.enums.StatusContaPagar;
 import br.com.invplus.modules.financeiro.enums.StatusContaReceber;
@@ -11,13 +19,6 @@ import br.com.invplus.modules.financeiro.repository.ContaPagarRepository;
 import br.com.invplus.modules.financeiro.repository.ContaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes dos calculos consolidados dos relatorios financeiros.
@@ -37,6 +38,7 @@ class FinanceiroResumoServiceTest {
     private final LocalDate fim = LocalDate.of(2026, 7, 31);
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new FinanceiroResumoService(movimentoRepository, contaReceberRepository, contaPagarRepository);
     }

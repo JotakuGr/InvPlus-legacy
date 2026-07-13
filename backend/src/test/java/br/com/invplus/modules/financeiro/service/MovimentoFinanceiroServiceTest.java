@@ -1,9 +1,19 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -18,10 +28,10 @@ import br.com.invplus.modules.financeiro.enums.OrigemMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.StatusMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.mapper.MovimentoFinanceiroMapper;
-import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
-import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
+import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
+import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.modules.financeiro.validator.MovimentoFinanceiroValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -32,15 +42,6 @@ import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras e integracoes internas de MovimentoFinanceiro.
@@ -74,6 +75,7 @@ class MovimentoFinanceiroServiceTest {
     private Fornecedor fornecedor;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new MovimentoFinanceiroService(repository, empresaRepository, filialRepository,
                 formaPagamentoRepository, clienteRepository, fornecedorRepository,

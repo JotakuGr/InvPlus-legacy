@@ -1,10 +1,22 @@
 package br.com.invplus.modules.produtos.service;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import br.com.invplus.modules.cadastros.entity.UnidadeMedida;
 import br.com.invplus.modules.cadastros.repository.UnidadeMedidaRepository;
@@ -19,17 +31,6 @@ import br.com.invplus.modules.produtos.validator.ProdutoUnidadeValidator;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Testes unitarios das regras de ProdutoUnidade.
@@ -49,6 +50,7 @@ class ProdutoUnidadeServiceTest {
     private ProdutoUnidadeService service;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         ProdutoUnidadeMapper mapper = new ProdutoUnidadeMapper();
         ProdutoUnidadeValidator validator = new ProdutoUnidadeValidator(repository);
