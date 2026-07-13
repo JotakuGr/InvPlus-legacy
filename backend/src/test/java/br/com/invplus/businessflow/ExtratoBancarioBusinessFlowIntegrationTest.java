@@ -18,7 +18,6 @@ import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,11 +39,6 @@ class ExtratoBancarioBusinessFlowIntegrationTest extends AbstractContextoEmpresa
     @Autowired
     private EmpresaRepository empresaRepository;
 
-    @AfterEach
-    void limparContexto() {
-        testEmpresaContext.limpar();
-    }
-
     @Test
     @Transactional
     void deveImportarFiltrarCancelarEValidarHashDoExtrato() {
@@ -52,7 +46,7 @@ class ExtratoBancarioBusinessFlowIntegrationTest extends AbstractContextoEmpresa
         Empresa empresa = empresaRepository.save(new Empresa("Empresa Extrato " + sufixo,
                 "Empresa Extrato " + sufixo, documento(sufixo), null, null, null));
         ativarEmpresa(empresa.getId());
-        var conta = contaBancariaService.criar(contaRequest(empresa.getId(), sufixo));
+        var conta = contaBancariaService.criar(contaRequest(sufixo));
         String hash = hash(sufixo);
 
         var extrato = extratoService.importar(extratoRequest(conta.id(), hash,
@@ -84,7 +78,7 @@ class ExtratoBancarioBusinessFlowIntegrationTest extends AbstractContextoEmpresa
                 .isInstanceOf(InvalidOperationException.class);
     }
 
-    private ContaBancariaRequest contaRequest(UUID empresaId, String sufixo) {
+    private ContaBancariaRequest contaRequest(String sufixo) {
         return new ContaBancariaRequest(null, "001", "Banco Fluxo",
                 "12" + sufixo.substring(0, 4), "1", "98" + sufixo.substring(4),
                 "0", TipoContaBancaria.CORRENTE, "Titular Fluxo",

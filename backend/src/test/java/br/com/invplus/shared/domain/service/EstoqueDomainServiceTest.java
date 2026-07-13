@@ -1,11 +1,19 @@
 package br.com.invplus.shared.domain.service;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.modules.cadastros.entity.Categoria;
 import br.com.invplus.modules.cadastros.entity.Empresa;
@@ -22,13 +30,6 @@ import br.com.invplus.modules.produtos.entity.Produto;
 import br.com.invplus.modules.produtos.enums.NaturezaProduto;
 import br.com.invplus.modules.produtos.enums.StatusProduto;
 import br.com.invplus.modules.produtos.enums.TipoProduto;
-import java.math.BigDecimal;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios do ponto unico de alteracao de saldos e movimentacoes.
@@ -42,6 +43,7 @@ class EstoqueDomainServiceTest {
     private EstoqueDomainService service;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new EstoqueDomainService(movimentacaoService);
     }

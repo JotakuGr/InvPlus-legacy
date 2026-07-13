@@ -1,9 +1,17 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -16,13 +24,6 @@ import br.com.invplus.modules.financeiro.validator.CentroCustoValidator;
 import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras hierarquicas de CentroCusto.
@@ -41,6 +42,7 @@ class CentroCustoServiceTest {
     private Empresa empresa;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         empresa = empresa("Empresa Centro");
         when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());

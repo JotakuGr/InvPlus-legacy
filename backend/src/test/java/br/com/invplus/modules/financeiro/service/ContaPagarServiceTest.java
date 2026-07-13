@@ -66,6 +66,7 @@ class ContaPagarServiceTest {
     private Fornecedor fornecedor;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ContaPagarService(repository, empresaRepository, filialRepository, fornecedorRepository,
                 entradaMercadoriaRepository, centroCustoRepository, planoContaRepository,

@@ -22,6 +22,7 @@ import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -192,7 +193,7 @@ public class ImportacaoExtratoService {
     private String sha256(byte[] conteudo) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(conteudo));
-        } catch (Exception ex) {
+        } catch (NoSuchAlgorithmException ex) {
             throw new BusinessException("Nao foi possivel calcular o hash do arquivo", ex);
         }
     }

@@ -1,6 +1,15 @@
 package br.com.invplus.businessflow;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Categoria;
@@ -45,14 +54,6 @@ import br.com.invplus.modules.vendas.enums.StatusPedidoVenda;
 import br.com.invplus.modules.vendas.enums.StatusVendaFaturamento;
 import br.com.invplus.modules.vendas.repository.PedidoVendaRepository;
 import br.com.invplus.modules.vendas.service.VendaFaturamentoService;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import br.com.invplus.support.context.TestEmpresaContext;
 
 /**
@@ -248,6 +249,7 @@ class VendaFaturamentoBusinessFlowIntegrationTest {
     }
 
     @AfterEach
+    @SuppressWarnings("unused")
     void limparContexto() {
         testEmpresaContext.limpar();
     }

@@ -86,7 +86,7 @@ public class ContaReceberValidator {
     }
 
     private void validarValores(ContaReceberRequest request) {
-        if (request.valorTotal() == null || request.valorTotal().compareTo(BigDecimal.ZERO) <= 0) {
+        if (request.valorTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Valor total deve ser maior que zero");
         }
     }

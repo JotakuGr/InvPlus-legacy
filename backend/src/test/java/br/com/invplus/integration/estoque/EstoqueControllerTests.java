@@ -166,7 +166,7 @@ class EstoqueControllerTests {
     void deveBloquearDuplicidadeDeSaldo() throws Exception {
         String token = login().get("accessToken").asString();
         Contexto contexto = criarContexto();
-        criarEstoque(token, contexto, "A");
+        criarEstoque(token, contexto);
 
         mockMvc.perform(post("/api/v1/estoques")
                         .header("Authorization", "Bearer " + token)
@@ -180,7 +180,7 @@ class EstoqueControllerTests {
     void deveListarEstoqueBaixoEZerado() throws Exception {
         String token = login().get("accessToken").asString();
         Contexto contexto = criarContexto();
-        String id = criarEstoque(token, contexto, "B");
+        String id = criarEstoque(token, contexto);
 
         mockMvc.perform(get("/api/v1/estoques?estoqueBaixo=true&produtoId=" + contexto.produto.getId())
                         .header("Authorization", "Bearer " + token))
@@ -192,7 +192,7 @@ class EstoqueControllerTests {
     void deveBuscarEstoqueCompletoEDisponivel() throws Exception {
         String token = login().get("accessToken").asString();
         Contexto contexto = criarContexto();
-        String estoqueId = criarEstoque(token, contexto, "C");
+        String estoqueId = criarEstoque(token, contexto);
 
         mockMvc.perform(post("/api/v1/reservas-estoque")
                         .header("Authorization", "Bearer " + token)
@@ -259,7 +259,7 @@ class EstoqueControllerTests {
         return objectMapper.readTree(response);
     }
 
-    private String criarEstoque(String token, Contexto contexto, String sufixo) throws Exception {
+    private String criarEstoque(String token, Contexto contexto) throws Exception {
         String response = mockMvc.perform(post("/api/v1/estoques")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

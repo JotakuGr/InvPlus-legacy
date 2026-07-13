@@ -1,5 +1,17 @@
 package br.com.invplus.integration.vendas;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,14 +34,14 @@ import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.modules.estoque.repository.EstoqueRepository;
 import br.com.invplus.modules.estoque.repository.LocalizacaoEstoqueRepository;
 import br.com.invplus.modules.estoque.service.ReservaEstoqueService;
-import br.com.invplus.modules.pessoas.entity.Cliente;
-import br.com.invplus.modules.pessoas.entity.Pessoa;
-import br.com.invplus.modules.pessoas.repository.ClienteRepository;
-import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.modules.financeiro.enums.RegraVencimento;
 import br.com.invplus.modules.pagamentos.entity.CondicaoPagamento;
 import br.com.invplus.modules.pagamentos.entity.CondicaoPagamentoParcela;
 import br.com.invplus.modules.pagamentos.repository.CondicaoPagamentoRepository;
+import br.com.invplus.modules.pessoas.entity.Cliente;
+import br.com.invplus.modules.pessoas.entity.Pessoa;
+import br.com.invplus.modules.pessoas.repository.ClienteRepository;
+import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.modules.produtos.entity.Produto;
 import br.com.invplus.modules.produtos.enums.NaturezaProduto;
 import br.com.invplus.modules.produtos.enums.StatusProduto;
@@ -43,17 +55,6 @@ import br.com.invplus.support.context.TestEmpresaContext;
 import br.com.invplus.support.security.JwtTestFactory;
 import br.com.invplus.support.security.UsuarioEmpresaTestFactory;
 import br.com.invplus.support.security.UsuarioTestFactory;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -284,6 +285,7 @@ class VendaFaturamentoControllerTests {
     }
 
     @AfterEach
+    @SuppressWarnings("unused")
     void limparContexto() {
         testEmpresaContext.limpar();
     }

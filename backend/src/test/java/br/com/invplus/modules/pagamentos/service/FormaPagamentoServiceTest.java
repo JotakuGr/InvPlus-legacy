@@ -1,9 +1,20 @@
 package br.com.invplus.modules.pagamentos.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 
 import br.com.invplus.modules.pagamentos.dto.request.FormaPagamentoRequest;
 import br.com.invplus.modules.pagamentos.dto.response.FormaPagamentoResponse;
@@ -14,16 +25,6 @@ import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
 import br.com.invplus.modules.pagamentos.validator.FormaPagamentoValidator;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Testes unitarios das regras de forma de pagamento.
@@ -37,6 +38,7 @@ class FormaPagamentoServiceTest {
     private FormaPagamentoService service;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         FormaPagamentoMapper mapper = new FormaPagamentoMapper();
         service = new FormaPagamentoService(repository, mapper, new FormaPagamentoValidator(repository));

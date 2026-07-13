@@ -57,7 +57,7 @@ class ContaBancariaControllerTests {
         Empresa empresa = prepararEmpresa();
         String token = tokenAdmin(empresa);
         String sufixo = sufixo();
-        String id = criar(token, empresa.getId(), "001", "1234" + sufixo, "98765", true);
+        String id = criar(token, "001", "1234" + sufixo, "98765", true);
 
         mockMvc.perform(get("/api/v1/contas-bancarias")
                         .queryParam("bancoCodigo", "001")
@@ -71,7 +71,7 @@ class ContaBancariaControllerTests {
         mockMvc.perform(put("/api/v1/contas-bancarias/" + id)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), "237", "2222" + sufixo, "12345", false, BigDecimal.ZERO)))
+                        .content(payload("237", "2222" + sufixo, "12345", false, BigDecimal.ZERO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bancoCodigo").value("237"))
                 .andExpect(jsonPath("$.principal").value(false));
@@ -90,24 +90,24 @@ class ContaBancariaControllerTests {
         Empresa empresa = prepararEmpresa();
         String token = tokenAdmin(empresa);
         String sufixo = sufixo();
-        criar(token, empresa.getId(), "001", "3333" + sufixo, "98765", true);
+        criar(token, "001", "3333" + sufixo, "98765", true);
 
         mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), "001", "3333" + sufixo, "98765", false, BigDecimal.ZERO)))
+                        .content(payload("001", "3333" + sufixo, "98765", false, BigDecimal.ZERO)))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresa.getId(), "104", "4444" + sufixo, "22222", true, BigDecimal.ZERO)))
+                        .content(payload("104", "4444" + sufixo, "22222", true, BigDecimal.ZERO)))
                 .andExpect(status().isConflict());
 
         mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payloadComDocumento(empresa.getId(), "341", "5555" + sufixo, "33333", "12345")))
+                        .content(payloadComDocumento("341", "5555" + sufixo, "33333", "12345")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -132,18 +132,18 @@ class ContaBancariaControllerTests {
                 .andExpect(status().isForbidden());
     }
 
-    private String criar(String token, UUID empresaId, String bancoCodigo,
+    private String criar(String token, String bancoCodigo,
             String agencia, String numeroConta, Boolean principal) throws Exception {
         String response = mockMvc.perform(post("/api/v1/contas-bancarias")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload(empresaId, bancoCodigo, agencia, numeroConta, principal, new BigDecimal("100.00"))))
+                        .content(payload(bancoCodigo, agencia, numeroConta, principal, new BigDecimal("100.00"))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).get("id").asString();
     }
 
-    private String payload(UUID empresaId, String bancoCodigo, String agencia,
+    private String payload(String bancoCodigo, String agencia,
             String numeroConta, Boolean principal, BigDecimal saldoInicial) {
         return """
                 {
@@ -165,7 +165,7 @@ class ContaBancariaControllerTests {
                 saldoInicial.toPlainString(), principal);
     }
 
-    private String payloadComDocumento(UUID empresaId, String bancoCodigo,
+    private String payloadComDocumento(String bancoCodigo,
             String agencia, String numeroConta, String documento) {
         return """
                 {

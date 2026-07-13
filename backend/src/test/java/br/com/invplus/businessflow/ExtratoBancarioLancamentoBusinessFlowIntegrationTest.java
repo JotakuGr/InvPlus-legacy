@@ -21,7 +21,6 @@ import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,11 +44,6 @@ class ExtratoBancarioLancamentoBusinessFlowIntegrationTest extends AbstractConte
     @Autowired
     private EmpresaRepository empresaRepository;
 
-    @AfterEach
-    void limparContexto() {
-        testEmpresaContext.limpar();
-    }
-
     @Test
     @Transactional
     void deveCriarFiltrarEditarConciliarEValidarRegrasDoLancamento() {
@@ -57,8 +51,8 @@ class ExtratoBancarioLancamentoBusinessFlowIntegrationTest extends AbstractConte
         Empresa empresa = empresaRepository.save(new Empresa("Empresa Lanc " + sufixoEmpresa,
                 "Empresa Lanc " + sufixoEmpresa, documento(sufixoEmpresa), null, null, null));
         ativarEmpresa(empresa.getId());
-        UUID extratoId = prepararExtrato(empresa, sufixo());
-        UUID outroExtratoId = prepararExtrato(empresa, sufixo());
+        UUID extratoId = prepararExtrato(sufixo());
+        UUID outroExtratoId = prepararExtrato(sufixo());
         String identificador = "BANK-" + sufixo();
 
         var credito = lancamentoService.criar(request(extratoId, TipoLancamentoBancario.CREDITO,
@@ -99,7 +93,7 @@ class ExtratoBancarioLancamentoBusinessFlowIntegrationTest extends AbstractConte
                 .isInstanceOf(Exception.class);
     }
 
-    private UUID prepararExtrato(Empresa empresa, String sufixo) {
+    private UUID prepararExtrato(String sufixo) {
         var conta = contaBancariaService.criar(new ContaBancariaRequest(null,
                 "001", "Banco Lanc", "12" + sufixo.substring(0, 4), "1",
                 "98" + sufixo.substring(4), "0", TipoContaBancaria.CORRENTE,

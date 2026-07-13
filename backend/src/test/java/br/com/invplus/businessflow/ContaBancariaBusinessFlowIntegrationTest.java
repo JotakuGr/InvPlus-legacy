@@ -16,7 +16,6 @@ import br.com.invplus.support.context.AbstractContextoEmpresarialIntegrationTest
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,11 +37,6 @@ class ContaBancariaBusinessFlowIntegrationTest extends AbstractContextoEmpresari
     @Autowired
     private FilialRepository filialRepository;
 
-    @AfterEach
-    void limparContexto() {
-        testEmpresaContext.limpar();
-    }
-
     @Test
     @Transactional
     void deveCriarFiltrarEValidarRegrasDeContaBancaria() {
@@ -55,9 +49,9 @@ class ContaBancariaBusinessFlowIntegrationTest extends AbstractContextoEmpresari
         Filial filial = filialRepository.save(filial(empresa, "F" + sufixo.substring(0, 4)));
         Filial filialOutraEmpresa = filialRepository.save(filial(outraEmpresa, "O" + sufixo.substring(0, 4)));
 
-        var conta = service.criar(request(empresa.getId(), filial.getId(), "001", "1234" + sufixo,
+        var conta = service.criar(request(filial.getId(), "001", "1234" + sufixo,
                 "98765", true, new BigDecimal("250.00"), "12345678901"));
-        var caixa = service.criar(request(empresa.getId(), null, "999", "CX" + sufixo,
+        var caixa = service.criar(request(null, "999", "CX" + sufixo,
                 "1", false, null, null));
 
         assertThat(conta.saldoAtual()).isEqualByComparingTo("250.00");
@@ -67,21 +61,21 @@ class ContaBancariaBusinessFlowIntegrationTest extends AbstractContextoEmpresari
                 .extracting("id")
                 .containsExactly(conta.id());
 
-        assertThatThrownBy(() -> service.criar(request(empresa.getId(), null, "001", "1234" + sufixo,
+        assertThatThrownBy(() -> service.criar(request(null, "001", "1234" + sufixo,
                 "98765", false, BigDecimal.ZERO, null)))
                 .isInstanceOf(ConflictException.class);
-        assertThatThrownBy(() -> service.criar(request(empresa.getId(), null, "237", "2222" + sufixo,
+        assertThatThrownBy(() -> service.criar(request(null, "237", "2222" + sufixo,
                 "22222", true, BigDecimal.ZERO, null)))
                 .isInstanceOf(ConflictException.class);
-        assertThatThrownBy(() -> service.criar(request(empresa.getId(), filialOutraEmpresa.getId(), "104",
+        assertThatThrownBy(() -> service.criar(request(filialOutraEmpresa.getId(), "104",
                 "3333" + sufixo, "33333", false, BigDecimal.ZERO, null)))
                 .isInstanceOf(InvalidOperationException.class);
-        assertThatThrownBy(() -> service.criar(request(empresa.getId(), null, "341", "4444" + sufixo,
+        assertThatThrownBy(() -> service.criar(request(null, "341", "4444" + sufixo,
                 "44444", false, BigDecimal.ZERO, "12345")))
                 .isInstanceOf(InvalidOperationException.class);
     }
 
-    private ContaBancariaRequest request(UUID empresaId, UUID filialId, String bancoCodigo,
+    private ContaBancariaRequest request(UUID filialId, String bancoCodigo,
             String agencia, String numeroConta, Boolean principal, BigDecimal saldoInicial, String documento) {
         return new ContaBancariaRequest(filialId, bancoCodigo, "Banco " + bancoCodigo,
                 agencia, "1", numeroConta, "0", TipoContaBancaria.CORRENTE,
