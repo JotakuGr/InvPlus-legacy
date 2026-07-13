@@ -17,6 +17,7 @@ import br.com.invplus.modules.financeiro.importacao.validator.ImportacaoExtratoV
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioLancamentoService;
 import br.com.invplus.modules.financeiro.service.ExtratoBancarioService;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
@@ -101,8 +102,7 @@ public class ImportacaoExtratoService {
 
     @Transactional(readOnly = true)
     public ImportacaoExtratoResumoResponse buscar(UUID id) {
-        UUID empresaId = empresaContext.getEmpresaId();
-        return mapper.toResumo(repository.findByIdAndContaBancariaEmpresaId(id, empresaId)
+        return mapper.toResumo(repository.findByIdAndContaBancariaEmpresaId(id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Importacao de extrato nao encontrada")));
     }
 
@@ -110,9 +110,8 @@ public class ImportacaoExtratoService {
     public Page<ImportacaoExtratoResumoResponse> listar(UUID contaBancariaId, FormatoArquivoExtrato formato,
             StatusImportacaoExtrato status, String arquivoHash, OffsetDateTime iniciadaEmDe,
             OffsetDateTime iniciadaEmAte, Pageable pageable) {
-        UUID empresaId = empresaContext.getEmpresaId();
         Specification<ImportacaoExtratoBancario> spec =
-                ImportacaoExtratoSpecification.pertenceEmpresa(empresaId);
+                ImportacaoExtratoSpecification.pertenceEmpresa(empresaContext.getEmpresaId());
         spec = and(spec, ImportacaoExtratoSpecification.contaIgual(contaBancariaId));
         spec = and(spec, ImportacaoExtratoSpecification.formatoIgual(formato));
         spec = and(spec, ImportacaoExtratoSpecification.statusIgual(status));

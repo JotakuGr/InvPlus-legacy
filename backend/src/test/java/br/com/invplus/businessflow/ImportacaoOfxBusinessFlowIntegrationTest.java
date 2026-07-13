@@ -1,6 +1,7 @@
 package br.com.invplus.businessflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
@@ -17,6 +18,7 @@ import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRep
 import br.com.invplus.modules.financeiro.service.ConciliacaoBancariaService;
 import br.com.invplus.modules.financeiro.service.ContaBancariaService;
 import br.com.invplus.modules.financeiro.service.MovimentoFinanceiroService;
+import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
@@ -30,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** Valida OFX -> extrato -> lancamento -> movimento -> conciliacao. */
 @SpringBootTest
@@ -43,14 +46,15 @@ class ImportacaoOfxBusinessFlowIntegrationTest extends AbstractContextoEmpresari
     @Autowired private ExtratoBancarioLancamentoRepository lancamentoRepository;
     @Autowired private EmpresaRepository empresaRepository;
     @Autowired private FormaPagamentoRepository formaPagamentoRepository;
+    @MockitoBean private EmpresaContext empresaContext;
 
     @Test
     void deveImportarOfxEConciliarLancamentoComMovimento() throws Exception {
         String sufixo = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         Empresa empresa = empresaRepository.saveAndFlush(new Empresa("Empresa OFX Flow " + sufixo,
                 "Empresa OFX Flow " + sufixo, documento(sufixo), null, null, null));
-        ativarEmpresa(empresa.getId());
-        UUID contaId = contaBancariaService.criar(new ContaBancariaRequest(null, "001",
+        when(empresaContext.getEmpresaId()).thenReturn(empresa.getId());
+        UUID contaId = contaBancariaService.criar(new ContaBancariaRequest(empresa.getId(), null, "001",
                 "Banco OFX Flow", "1234", null, "99999", "9", TipoContaBancaria.CORRENTE,
                 "Empresa OFX Flow", null, null, BigDecimal.ZERO, LocalDate.of(2026, 7, 1), true)).id();
         FormaPagamento forma = new FormaPagamento();
