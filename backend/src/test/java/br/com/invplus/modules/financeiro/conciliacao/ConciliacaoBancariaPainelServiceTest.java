@@ -24,7 +24,6 @@ import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
 import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
-import br.com.invplus.security.context.EmpresaContext;
 
 @ExtendWith(MockitoExtension.class)
 class ConciliacaoBancariaPainelServiceTest {

@@ -1,14 +1,25 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
-import br.com.invplus.modules.financeiro.dto.request.ParcelaPagarBaixaRequest;
 import br.com.invplus.modules.financeiro.dto.request.GerarParcelasPagarRequest;
+import br.com.invplus.modules.financeiro.dto.request.ParcelaPagarBaixaRequest;
 import br.com.invplus.modules.financeiro.dto.request.ParcelaPagarRequest;
 import br.com.invplus.modules.financeiro.dto.response.ParcelaPagarResponse;
 import br.com.invplus.modules.financeiro.entity.ContaPagar;
@@ -27,16 +38,6 @@ import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras de ParcelaPagar.
@@ -55,6 +56,7 @@ class ParcelaPagarServiceTest {
     private ContaPagar conta;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new ParcelaPagarService(repository, contaPagarRepository, condicaoPagamentoRepository,
                 new GeradorParcelasService(new CalculadoraVencimentoService()), new ParcelaPagarMapper(),

@@ -1,25 +1,35 @@
 package br.com.invplus.modules.financeiro.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.financeiro.dto.request.RecebimentoRequest;
 import br.com.invplus.modules.financeiro.dto.response.RecebimentoResponse;
+import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.entity.ContaReceber;
 import br.com.invplus.modules.financeiro.entity.ParcelaReceber;
 import br.com.invplus.modules.financeiro.entity.Recebimento;
 import br.com.invplus.modules.financeiro.enums.StatusParcelaReceber;
 import br.com.invplus.modules.financeiro.enums.StatusRecebimento;
 import br.com.invplus.modules.financeiro.mapper.RecebimentoMapper;
+import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.modules.financeiro.repository.ParcelaReceberRepository;
 import br.com.invplus.modules.financeiro.repository.RecebimentoRepository;
-import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
-import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.validator.RecebimentoValidator;
 import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
@@ -28,16 +38,6 @@ import br.com.invplus.modules.pessoas.entity.Cliente;
 import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
-import br.com.invplus.security.context.EmpresaContext;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Testes unitarios das regras de Recebimento.
@@ -65,6 +65,7 @@ class RecebimentoServiceTest {
     private FormaPagamento formaPagamento;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         service = new RecebimentoService(repository, parcelaReceberRepository, formaPagamentoRepository,
                 parcelaReceberService, movimentoFinanceiroService, new RecebimentoMapper(),
