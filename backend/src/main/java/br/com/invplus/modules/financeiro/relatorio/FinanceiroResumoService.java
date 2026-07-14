@@ -204,8 +204,7 @@ public class FinanceiroResumoService {
 
     private BigDecimal somarLinhas(List<DreLinhaResponse> linhas) {
         return linhas.stream()
-                .map(linha -> Objects.requireNonNull(
-                        linha.valor(), "Valor da linha da DRE nao pode ser nulo"))
+                .map(linha -> Objects.requireNonNull(linha.valor(), "Valor da linha da DRE nao pode ser nulo"))
                 .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
     }
 

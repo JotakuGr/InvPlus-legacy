@@ -1,12 +1,5 @@
 package br.com.invplus.modules.compras.service;
 
-import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import br.com.invplus.modules.compras.dto.response.EntradaMercadoriaCompletaResponse;
 import br.com.invplus.modules.compras.dto.response.PedidoCompraCompletoResponse;
 import br.com.invplus.modules.compras.entity.EntradaMercadoria;
@@ -27,6 +20,10 @@ import br.com.invplus.modules.estoque.enums.MovimentacaoOrigem;
 import br.com.invplus.modules.estoque.mapper.MovimentacaoEstoqueMapper;
 import br.com.invplus.modules.estoque.repository.MovimentacaoEstoqueRepository;
 import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
+import java.math.BigDecimal;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Monta leituras completas de compras para evitar varias chamadas do frontend.
@@ -87,8 +84,7 @@ public class CompraAggregateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido de compra nao encontrado"));
         var itens = pedidoItemRepository.findByPedidoCompraIdAndAtivoTrueAndDeletedAtIsNull(pedidoId);
         BigDecimal quantidadeTotal = itens.stream()
-                .map(item -> Objects.requireNonNull(
-                        item.getQuantidade(), "Quantidade do item de compra nao pode ser nula"))
+                .map(item -> item.getQuantidade() == null ? BigDecimal.ZERO : item.getQuantidade())
                 .reduce(BigDecimal.ZERO, (total, quantidade) -> total.add(quantidade));
 
         return new PedidoCompraCompletoResponse(

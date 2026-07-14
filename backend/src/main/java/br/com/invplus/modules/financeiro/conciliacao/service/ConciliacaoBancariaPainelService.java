@@ -1,44 +1,21 @@
 package br.com.invplus.modules.financeiro.conciliacao.service;
 
+import br.com.invplus.modules.financeiro.conciliacao.dto.*;
+import br.com.invplus.modules.financeiro.conciliacao.projection.ExtratoPendenteProjection;
+import br.com.invplus.modules.financeiro.entity.ExtratoBancarioLancamento;
+import br.com.invplus.modules.financeiro.enums.*;
+import br.com.invplus.modules.financeiro.repository.*;
+import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import java.util.*;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import br.com.invplus.modules.financeiro.conciliacao.dto.ExtratoPendenteResponse;
-import br.com.invplus.modules.financeiro.conciliacao.dto.IndicadoresConciliacaoResponse;
-import br.com.invplus.modules.financeiro.conciliacao.dto.LancamentoPendenteResponse;
-import br.com.invplus.modules.financeiro.conciliacao.dto.MelhorSugestaoResponse;
-import br.com.invplus.modules.financeiro.conciliacao.dto.PainelConciliacaoBancariaResponse;
-import br.com.invplus.modules.financeiro.conciliacao.dto.SugestaoConciliacaoResponse;
-import br.com.invplus.modules.financeiro.conciliacao.projection.ExtratoPendenteProjection;
-import br.com.invplus.modules.financeiro.entity.ExtratoBancarioLancamento;
-import br.com.invplus.modules.financeiro.enums.CategoriaLancamentoBancario;
-import br.com.invplus.modules.financeiro.enums.NivelConfiancaConciliacao;
-import br.com.invplus.modules.financeiro.enums.StatusExtratoBancario;
-import br.com.invplus.modules.financeiro.enums.TipoLancamentoBancario;
-import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
-import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
-import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
-import br.com.invplus.modules.financeiro.repository.ExtratoBancarioRepository;
-import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.security.context.EmpresaContext;
 import br.com.invplus.security.exception.AcessoEmpresaNegadoException;
-import br.com.invplus.shared.domain.exception.InvalidOperationException;
-import br.com.invplus.shared.domain.exception.ResourceNotFoundException;
 
 /** Compoe a visao operacional da conciliacao sem persistir estado derivado. */
 @Service
@@ -83,8 +60,7 @@ public class ConciliacaoBancariaPainelService {
                 valor(lancamentos == null ? null : lancamentos.getValorTotalCreditosPendentes()),
                 valor(lancamentos == null ? null : lancamentos.getValorTotalDebitosPendentes()),
                 calcularPercentual(conciliados, total));
-        Sort sort = Sort.by(Sort.Direction.DESC, CAMPO_IMPORTADO_EM);
-        Pageable recentes = PageRequest.of(0, 10, sort);
+        Pageable recentes = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, CAMPO_IMPORTADO_EM));
         List<ExtratoPendenteResponse> resumos = extratoRepository
                 .buscarResumoExtratos(empresaId, contaId, null, inicio, fim, false, recentes)
                 .stream().map(this::mapearExtrato).toList();
@@ -134,11 +110,10 @@ public class ConciliacaoBancariaPainelService {
                 key.contaId(), key.empresaId(), key.tipo(), key.valor(), key.inicio(), key.fim()));
         var sugestoes = movimentos.stream().map(m -> pontuacaoService.calcular(l, m))
                 .filter(s -> s.nivelConfianca() != NivelConfiancaConciliacao.BAIXA)
-                .sorted(Comparator.comparingInt((SugestaoConciliacaoResponse s) -> Objects.requireNonNull(
-                                s.pontuacao(), "Pontuacao da sugestao nao pode ser nula")).reversed()
+                .sorted(Comparator.comparingInt((SugestaoConciliacaoResponse sugestao) -> Objects.requireNonNull(
+                                sugestao.pontuacao(), "Pontuacao da sugestao nao pode ser nula")).reversed()
                         .thenComparingLong(s -> s.criterios().diferencaDias())
-                        .thenComparing(s -> Objects.requireNonNull(
-                                s.movimentoFinanceiroId(), "Movimento financeiro nao pode ser nulo"))).toList();
+                        .thenComparing(s -> s.movimentoFinanceiroId())).toList();
         MelhorSugestaoResponse melhor = sugestoes.isEmpty() ? null : melhor(sugestoes.getFirst());
         return new LancamentoPendenteResponse(l.getId(), l.getExtratoBancario().getId(), conta.getId(),
                 l.getExtratoBancario().descricaoContaBancaria(), l.getDataLancamento(), l.getDescricao(),

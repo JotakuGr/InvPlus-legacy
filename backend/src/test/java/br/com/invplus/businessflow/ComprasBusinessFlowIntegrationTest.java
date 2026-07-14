@@ -1,11 +1,11 @@
 package br.com.invplus.businessflow;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import br.com.invplus.modules.compras.entity.EntradaMercadoria;
 import br.com.invplus.modules.compras.entity.PedidoCompra;
@@ -138,8 +138,9 @@ class ComprasBusinessFlowIntegrationTest {
         tx.executeWithoutResult(status -> pedidoCompraRepository.saveAndFlush(usuarioA));
 
         usuarioB.setObservacao("Alteracao concorrente B");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> tx.executeWithoutResult(status -> pedidoCompraRepository.saveAndFlush(usuarioB)));
+        assertThatThrownBy(() -> tx.executeWithoutResult(
+                status -> pedidoCompraRepository.saveAndFlush(usuarioB)))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 
     @Test
@@ -161,8 +162,9 @@ class ComprasBusinessFlowIntegrationTest {
         tx.executeWithoutResult(status -> entradaMercadoriaRepository.saveAndFlush(usuarioA));
 
         usuarioB.setObservacao("Alteracao concorrente B");
-        assertThrows(ObjectOptimisticLockingFailureException.class,
-                () -> tx.executeWithoutResult(status -> entradaMercadoriaRepository.saveAndFlush(usuarioB)));
+        assertThatThrownBy(() -> tx.executeWithoutResult(
+                status -> entradaMercadoriaRepository.saveAndFlush(usuarioB)))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 
     @Test

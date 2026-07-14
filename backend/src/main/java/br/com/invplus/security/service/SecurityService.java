@@ -38,7 +38,7 @@ public class SecurityService {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         Usuario usuario = usuarioRepository.findByEmailWithPerfisAndPermissoes(email).orElseThrow();
-        usuario.setUltimoLogin(OffsetDateTime.now());
+        usuarioRepository.atualizarUltimoLogin(usuario.getId(), OffsetDateTime.now());
         var empresas=contextoService.empresas(usuario.getId());
         if(empresas.size()>1) {
             return new LoginResponse(null,null,null,null,usuarioResponse(usuario),

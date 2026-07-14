@@ -172,8 +172,7 @@ public class ParcelaPagarService extends BaseCrudService<ParcelaPagar, ParcelaPa
 
     private List<ParcelaGerada> ajustarTotal(List<ParcelaGerada> parcelas, BigDecimal valorTotal) {
         BigDecimal soma = parcelas.stream()
-                .map(parcela -> Objects.requireNonNull(
-                        parcela.valor(), "Valor da parcela nao pode ser nulo"))
+                .map(parcela -> Objects.requireNonNull(parcela.valor(), "Valor da parcela nao pode ser nulo"))
                 .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
         BigDecimal diferenca = valorTotal.subtract(soma);
         if (diferenca.signum() == 0 || parcelas.isEmpty()) {
@@ -184,8 +183,7 @@ public class ParcelaPagarService extends BaseCrudService<ParcelaPagar, ParcelaPa
         ajustadas.set(ajustadas.size() - 1,
                 new ParcelaGerada(ultima.numeroParcela(), ultima.vencimento(), ultima.valor().add(diferenca)));
         BigDecimal somaAjustada = ajustadas.stream()
-                .map(parcela -> Objects.requireNonNull(
-                        parcela.valor(), "Valor da parcela nao pode ser nulo"))
+                .map(parcela -> Objects.requireNonNull(parcela.valor(), "Valor da parcela nao pode ser nulo"))
                 .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
         if (somaAjustada.compareTo(valorTotal) != 0) {
             throw new InvalidOperationException("Soma das parcelas nao fecha o valor total da conta");

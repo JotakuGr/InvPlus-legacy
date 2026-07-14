@@ -127,8 +127,7 @@ public class ProdutoAggregateService {
                 precoPorTipo(precos, TipoPrecoProduto.ATACADO),
                 precoPorTipo(precos, TipoPrecoProduto.PROMOCIONAL),
                 precos,
-                unidades.stream().filter(unidade -> Boolean.TRUE.equals(unidade.unidadePadrao()))
-                        .findFirst().orElse(null),
+                unidades.stream().filter(item -> Boolean.TRUE.equals(item.unidadePadrao())).findFirst().orElse(null),
                 unidades.stream().filter(unidade -> !Boolean.TRUE.equals(unidade.unidadePadrao())).toList()
         );
     }

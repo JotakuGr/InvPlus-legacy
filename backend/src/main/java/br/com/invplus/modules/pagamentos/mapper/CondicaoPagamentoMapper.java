@@ -50,7 +50,7 @@ public class CondicaoPagamentoMapper implements CrudMapper<CondicaoPagamento, Co
                 entity.getDescontoPercentual(),
                 entity.getParcelas().stream()
                         .filter(parcela -> Boolean.TRUE.equals(parcela.getAtivo()) && parcela.getDeletedAt() == null)
-                        .sorted(Comparator.comparing((CondicaoPagamentoParcela parcela) -> Objects.requireNonNull(
+                        .sorted(Comparator.comparing(parcela -> Objects.requireNonNull(
                                 parcela.getNumeroParcela(), "Numero da parcela nao pode ser nulo")))
                         .map(this::toParcelaResponse)
                         .toList(),
