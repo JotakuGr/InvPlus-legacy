@@ -6,6 +6,7 @@ import br.com.invplus.modules.estoque.entity.Deposito;
 import br.com.invplus.modules.estoque.repository.DepositoRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -56,9 +57,8 @@ public class DepositoValidator {
 
     private void validarCodigoUnico(DepositoRequest request, UUID idAtual) {
         repository.findByEmpresaIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.empresaId(), normalizarCodigo(request.codigo()))
-                .map(Deposito::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(deposito -> !Objects.equals(deposito.getId(), idAtual))
+                .ifPresent(deposito -> {
                     throw new ConflictException("Ja existe deposito ativo com este codigo para a empresa");
                 });
     }
@@ -68,9 +68,8 @@ public class DepositoValidator {
             return;
         }
         repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.empresaId())
-                .map(Deposito::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(deposito -> !Objects.equals(deposito.getId(), idAtual))
+                .ifPresent(deposito -> {
                     throw new ConflictException("Empresa ja possui deposito principal ativo");
                 });
     }

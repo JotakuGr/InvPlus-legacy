@@ -5,6 +5,7 @@ import br.com.invplus.modules.produtos.entity.ProdutoCodigoBarras;
 import br.com.invplus.modules.produtos.repository.ProdutoCodigoBarrasRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -37,9 +38,8 @@ public class ProdutoCodigoBarrasValidator {
     public void validarAtualizacao(ProdutoCodigoBarras atual, ProdutoCodigoBarrasRequest request) {
         validarCampos(request);
         repository.findByCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(request.codigo().trim())
-                .map(ProdutoCodigoBarras::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(atual.getId()))
-                .ifPresent(idEncontrado -> {
+                .filter(codigo -> !Objects.equals(codigo.getId(), atual.getId()))
+                .ifPresent(codigo -> {
                     throw new ConflictException("Ja existe codigo de barras ativo com este codigo");
                 });
         validarPrincipal(request.produtoId(), request.principal(), atual.getId());
@@ -62,9 +62,8 @@ public class ProdutoCodigoBarrasValidator {
             return;
         }
         repository.findByProdutoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(produtoId)
-                .map(ProdutoCodigoBarras::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(codigo -> !Objects.equals(codigo.getId(), idAtual))
+                .ifPresent(codigo -> {
                     throw new ConflictException("Produto ja possui codigo de barras principal ativo");
                 });
     }

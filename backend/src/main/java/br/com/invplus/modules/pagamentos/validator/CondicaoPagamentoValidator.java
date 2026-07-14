@@ -2,13 +2,13 @@ package br.com.invplus.modules.pagamentos.validator;
 
 import br.com.invplus.modules.pagamentos.dto.request.CondicaoPagamentoRequest;
 import br.com.invplus.modules.pagamentos.dto.request.CondicaoPagamentoParcelaRequest;
-import br.com.invplus.modules.pagamentos.entity.CondicaoPagamento;
 import br.com.invplus.modules.pagamentos.repository.CondicaoPagamentoRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -36,9 +36,8 @@ public class CondicaoPagamentoValidator {
     private void validarCodigoUnico(UUID idAtual, String codigo) {
         String normalizado = codigo == null ? null : codigo.trim();
         repository.findByCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(normalizado)
-                .map(CondicaoPagamento::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(condicao -> !Objects.equals(condicao.getId(), idAtual))
+                .ifPresent(condicao -> {
                     throw new ConflictException("Ja existe condicao de pagamento ativa com este codigo");
                 });
     }

@@ -2,14 +2,12 @@ package br.com.invplus.security.service;
 
 import br.com.invplus.security.dto.LoginRequest;
 import br.com.invplus.security.dto.LoginResponse;
-import br.com.invplus.security.entity.Perfil;
 import br.com.invplus.security.entity.Permissao;
 import br.com.invplus.security.entity.Usuario;
 import br.com.invplus.security.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,7 +107,7 @@ public class SecurityService {
         return usuario.getPerfis()
                 .stream()
                 .filter(perfil -> Boolean.TRUE.equals(perfil.getAtivo()))
-                .map(Perfil::getNome)
+                .map(perfil -> perfil.getNome())
                 .sorted()
                 .toList();
     }

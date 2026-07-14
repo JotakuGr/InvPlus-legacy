@@ -42,12 +42,12 @@ class SecuritySeedRepositoryTests {
         assertThat(administrador.getSenhaHash()).isNotBlank();
         assertThat(administrador.getSenhaHash()).isNotEqualTo("admin123");
         assertThat(administrador.getPerfis())
-                .extracting(Perfil::getNome)
+                .extracting(perfil -> perfil.getNome())
                 .contains("ADMIN");
 
         assertThat(admin.getAtivo()).isTrue();
         assertThat(admin.getPermissoes())
-                .extracting(Permissao::getRecurso)
+                .extracting(permissao -> permissao.getRecurso())
                 .contains("SEGURANCA", "USUARIO", "PERFIL", "PERMISSAO");
 
         assertThat(acessoTotalSeguranca.getAtivo()).isTrue();

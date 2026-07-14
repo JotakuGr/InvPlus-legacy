@@ -6,6 +6,7 @@ import br.com.invplus.modules.produtos.repository.ProdutoFiscalRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -54,9 +55,8 @@ public class ProdutoFiscalValidator {
 
     private void validarDuplicidade(ProdutoFiscalRequest request, UUID idAtual) {
         repository.findByProdutoIdAndAtivoTrueAndDeletedAtIsNull(request.produtoId())
-                .map(ProdutoFiscal::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(fiscal -> !Objects.equals(fiscal.getId(), idAtual))
+                .ifPresent(fiscal -> {
                     throw new ConflictException("Produto ja possui dados fiscais ativos");
                 });
     }

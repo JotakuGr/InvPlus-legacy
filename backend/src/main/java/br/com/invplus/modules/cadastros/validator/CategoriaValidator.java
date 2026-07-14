@@ -6,6 +6,7 @@ import br.com.invplus.modules.cadastros.repository.CategoriaRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -42,9 +43,8 @@ public class CategoriaValidator {
     private void validarNomeUnico(UUID idAtual, String nome) {
         String nomeNormalizado = nome == null ? null : nome.trim();
         categoriaRepository.findByNomeIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(nomeNormalizado)
-                .map(Categoria::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(categoria -> !Objects.equals(categoria.getId(), idAtual))
+                .ifPresent(categoria -> {
                     throw new ConflictException("Ja existe categoria ativa com este nome");
                 });
     }

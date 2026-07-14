@@ -72,7 +72,9 @@ class EstoqueConcurrencyTest {
             Future<Boolean> usuarioA = executor.submit(reservarEmTransacaoManual(estoque.getId(), barreira));
             Future<Boolean> usuarioB = executor.submit(reservarEmTransacaoManual(estoque.getId(), barreira));
 
-            long sucessos = List.of(usuarioA.get(), usuarioB.get()).stream().filter(Boolean::booleanValue).count();
+            long sucessos = List.of(usuarioA.get(), usuarioB.get()).stream()
+                    .filter(resultado -> Boolean.TRUE.equals(resultado))
+                    .count();
             Estoque atualizado = estoqueRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(estoque.getId()).orElseThrow();
 
             assertThat(sucessos).isEqualTo(1);

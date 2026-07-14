@@ -9,6 +9,7 @@ import br.com.invplus.modules.pagamentos.entity.CondicaoPagamentoParcela;
 import br.com.invplus.shared.domain.mapper.CrudMapper;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Component;
 
 /**
@@ -49,7 +50,8 @@ public class CondicaoPagamentoMapper implements CrudMapper<CondicaoPagamento, Co
                 entity.getDescontoPercentual(),
                 entity.getParcelas().stream()
                         .filter(parcela -> Boolean.TRUE.equals(parcela.getAtivo()) && parcela.getDeletedAt() == null)
-                        .sorted(Comparator.comparing(CondicaoPagamentoParcela::getNumeroParcela))
+                        .sorted(Comparator.comparing((CondicaoPagamentoParcela parcela) -> Objects.requireNonNull(
+                                parcela.getNumeroParcela(), "Numero da parcela nao pode ser nulo")))
                         .map(this::toParcelaResponse)
                         .toList(),
                 entity.getAtivo(),

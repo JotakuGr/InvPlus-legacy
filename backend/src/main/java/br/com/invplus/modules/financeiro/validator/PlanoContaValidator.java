@@ -7,6 +7,7 @@ import br.com.invplus.modules.financeiro.repository.PlanoContaRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -39,9 +40,8 @@ public class PlanoContaValidator {
     private void validarCodigoUnico(UUID idAtual, UUID empresaId, String codigo) {
         String normalizado = codigo == null ? null : codigo.trim();
         repository.findByEmpresaIdAndCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(empresaId, normalizado)
-                .map(PlanoConta::getId)
-                .filter(id -> !id.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(planoConta -> !Objects.equals(planoConta.getId(), idAtual))
+                .ifPresent(planoConta -> {
                     throw new ConflictException("Ja existe plano de conta ativo com este codigo na empresa");
                 });
     }

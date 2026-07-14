@@ -1,8 +1,19 @@
 package br.com.invplus.modules.financeiro.conciliacao;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.financeiro.conciliacao.dto.CriteriosSugestaoResponse;
@@ -20,16 +31,6 @@ import br.com.invplus.modules.financeiro.enums.TipoMovimentoFinanceiro;
 import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRepository;
 import br.com.invplus.modules.financeiro.repository.MovimentoFinanceiroRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ConciliacaoBancariaSugestaoServiceTest {
@@ -41,6 +42,7 @@ class ConciliacaoBancariaSugestaoServiceTest {
     private ExtratoBancarioLancamento lancamento;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setup() {
         service = new ConciliacaoBancariaSugestaoService(
                 lancamentoRepository, movimentoRepository, pontuacaoService);
@@ -78,7 +80,7 @@ class ConciliacaoBancariaSugestaoServiceTest {
         when(pontuacaoService.calcular(lancamento, b)).thenReturn(resposta(b, 95));
 
         var resultado = service.buscarSugestoes(lancamento.getId(), 1);
-        assertThat(resultado.sugestoes()).extracting(SugestaoConciliacaoResponse::pontuacao)
+        assertThat(resultado.sugestoes()).extracting(sugestao -> sugestao.pontuacao())
                 .containsExactly(95);
     }
 

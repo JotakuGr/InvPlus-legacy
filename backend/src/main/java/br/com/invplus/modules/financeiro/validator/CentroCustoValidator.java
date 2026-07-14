@@ -7,6 +7,7 @@ import br.com.invplus.modules.financeiro.repository.CentroCustoRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -39,9 +40,8 @@ public class CentroCustoValidator {
     private void validarCodigoUnico(UUID idAtual, UUID empresaId, String codigo) {
         String normalizado = codigo == null ? null : codigo.trim();
         repository.findByEmpresaIdAndCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(empresaId, normalizado)
-                .map(CentroCusto::getId)
-                .filter(id -> !id.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(centroCusto -> !Objects.equals(centroCusto.getId(), idAtual))
+                .ifPresent(centroCusto -> {
                     throw new ConflictException("Ja existe centro de custo ativo com este codigo na empresa");
                 });
     }

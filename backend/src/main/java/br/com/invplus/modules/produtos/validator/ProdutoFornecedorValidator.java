@@ -5,6 +5,7 @@ import br.com.invplus.modules.produtos.entity.ProdutoFornecedor;
 import br.com.invplus.modules.produtos.repository.ProdutoFornecedorRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -43,9 +44,8 @@ public class ProdutoFornecedorValidator {
                         request.produtoId(),
                         request.fornecedorId()
                 )
-                .map(ProdutoFornecedor::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(atual.getId()))
-                .ifPresent(idEncontrado -> {
+                .filter(vinculo -> !Objects.equals(vinculo.getId(), atual.getId()))
+                .ifPresent(vinculo -> {
                     throw new ConflictException("Produto ja possui vinculo ativo com este fornecedor");
                 });
         validarPrincipal(request.produtoId(), request.principal(), atual.getId());
@@ -71,9 +71,8 @@ public class ProdutoFornecedorValidator {
             return;
         }
         repository.findByProdutoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(produtoId)
-                .map(ProdutoFornecedor::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(vinculo -> !Objects.equals(vinculo.getId(), idAtual))
+                .ifPresent(vinculo -> {
                     throw new ConflictException("Produto ja possui fornecedor principal ativo");
                 });
     }

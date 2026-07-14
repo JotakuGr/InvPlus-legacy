@@ -6,6 +6,7 @@ import br.com.invplus.modules.produtos.repository.ProdutoFornecedorPrecoReposito
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -54,9 +55,8 @@ public class ProdutoFornecedorPrecoValidator {
                         request.produtoFornecedorId(),
                         request.vigenciaInicio()
                 )
-                .map(ProdutoFornecedorPreco::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(preco -> !Objects.equals(preco.getId(), idAtual))
+                .ifPresent(preco -> {
                     throw new ConflictException("Ja existe preco ativo para este vinculo nesta vigencia inicial");
                 });
     }

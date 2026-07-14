@@ -116,18 +116,19 @@ public class ProdutoAggregateService {
 
         return new ProdutoCompletoResponse(
                 produtoMapper.toResponse(produto),
-                fornecedores.stream().filter(ProdutoFornecedorResponse::principal).findFirst().orElse(null),
+                fornecedores.stream().filter(item -> Boolean.TRUE.equals(item.principal())).findFirst().orElse(null),
                 fornecedores,
-                imagens.stream().filter(ProdutoImagemResponse::principal).findFirst().orElse(null),
+                imagens.stream().filter(item -> Boolean.TRUE.equals(item.principal())).findFirst().orElse(null),
                 imagens,
-                codigos.stream().filter(ProdutoCodigoBarrasResponse::principal).findFirst().orElse(null),
+                codigos.stream().filter(item -> Boolean.TRUE.equals(item.principal())).findFirst().orElse(null),
                 codigos,
                 fiscalRepository.findByProdutoIdAndAtivoTrueAndDeletedAtIsNull(id).map(fiscalMapper::toResponse).orElse(null),
                 precoPorTipo(precos, TipoPrecoProduto.VENDA),
                 precoPorTipo(precos, TipoPrecoProduto.ATACADO),
                 precoPorTipo(precos, TipoPrecoProduto.PROMOCIONAL),
                 precos,
-                unidades.stream().filter(ProdutoUnidadeResponse::unidadePadrao).findFirst().orElse(null),
+                unidades.stream().filter(unidade -> Boolean.TRUE.equals(unidade.unidadePadrao()))
+                        .findFirst().orElse(null),
                 unidades.stream().filter(unidade -> !Boolean.TRUE.equals(unidade.unidadePadrao())).toList()
         );
     }

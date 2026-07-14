@@ -1,10 +1,10 @@
 package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.ArquivoRequest;
-import br.com.invplus.modules.cadastros.entity.Arquivo;
 import br.com.invplus.modules.cadastros.repository.ArquivoRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -53,11 +53,10 @@ public class ArquivoValidator {
     }
 
     private void validarHashUnico(UUID idAtual, String hashSha256) {
-        String hashNormalizado = hashSha256 == null ? null : hashSha256.trim().toLowerCase();
+        String hashNormalizado = hashSha256.trim().toLowerCase();
         arquivoRepository.findByHashSha256AndAtivoTrueAndDeletedAtIsNull(hashNormalizado)
-                .map(Arquivo::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(arquivo -> !Objects.equals(arquivo.getId(), idAtual))
+                .ifPresent(arquivo -> {
                     throw new ConflictException("Ja existe arquivo ativo com este hash SHA-256");
                 });
     }

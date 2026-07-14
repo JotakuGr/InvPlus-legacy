@@ -14,6 +14,7 @@ import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -203,8 +204,9 @@ public class FinanceiroResumoService {
 
     private BigDecimal somarLinhas(List<DreLinhaResponse> linhas) {
         return linhas.stream()
-                .map(DreLinhaResponse::valor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(linha -> Objects.requireNonNull(
+                        linha.valor(), "Valor da linha da DRE nao pode ser nulo"))
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
     }
 
     private BigDecimal bigDecimal(Object valor) {

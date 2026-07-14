@@ -1,12 +1,12 @@
 package br.com.invplus.modules.pagamentos.validator;
 
 import br.com.invplus.modules.pagamentos.dto.request.FormaPagamentoRequest;
-import br.com.invplus.modules.pagamentos.entity.FormaPagamento;
 import br.com.invplus.modules.pagamentos.enums.TipoFormaPagamento;
 import br.com.invplus.modules.pagamentos.repository.FormaPagamentoRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -39,9 +39,8 @@ public class FormaPagamentoValidator {
     private void validarCodigoUnico(UUID idAtual, String codigo) {
         String normalizado = codigo == null ? null : codigo.trim();
         repository.findByCodigoIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(normalizado)
-                .map(FormaPagamento::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(forma -> !Objects.equals(forma.getId(), idAtual))
+                .ifPresent(forma -> {
                     throw new ConflictException("Ja existe forma de pagamento ativa com este codigo");
                 });
     }

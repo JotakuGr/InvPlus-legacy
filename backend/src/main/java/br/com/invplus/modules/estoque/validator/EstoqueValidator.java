@@ -1,5 +1,11 @@
 package br.com.invplus.modules.estoque.validator;
 
+import java.math.BigDecimal;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.springframework.stereotype.Component;
+
 import br.com.invplus.modules.cadastros.entity.Filial;
 import br.com.invplus.modules.estoque.dto.request.EstoqueRequest;
 import br.com.invplus.modules.estoque.entity.Deposito;
@@ -8,9 +14,6 @@ import br.com.invplus.modules.estoque.entity.LocalizacaoEstoque;
 import br.com.invplus.modules.estoque.repository.EstoqueRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
-import java.math.BigDecimal;
-import java.util.UUID;
-import org.springframework.stereotype.Component;
 
 /**
  * Valida regras estruturais do saldo atual de estoque.
@@ -94,9 +97,8 @@ public class EstoqueValidator {
                         request.depositoId(),
                         request.localizacaoId()
                 )
-                .map(Estoque::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(estoque -> !Objects.equals(estoque.getId(), idAtual))
+                .ifPresent(estoque -> {
                     throw new ConflictException("Ja existe saldo ativo para este produto nesta empresa, deposito e localizacao");
                 });
     }

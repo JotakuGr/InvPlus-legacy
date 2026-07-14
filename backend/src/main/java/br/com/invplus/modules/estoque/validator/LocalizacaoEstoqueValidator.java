@@ -5,6 +5,7 @@ import br.com.invplus.modules.estoque.entity.LocalizacaoEstoque;
 import br.com.invplus.modules.estoque.repository.LocalizacaoEstoqueRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -43,9 +44,8 @@ public class LocalizacaoEstoqueValidator {
 
     private void validarCodigoUnico(LocalizacaoEstoqueRequest request, UUID idAtual) {
         repository.findByDepositoIdAndCodigoAndAtivoTrueAndDeletedAtIsNull(request.depositoId(), normalizarCodigo(request.codigo()))
-                .map(LocalizacaoEstoque::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(localizacao -> !Objects.equals(localizacao.getId(), idAtual))
+                .ifPresent(localizacao -> {
                     throw new ConflictException("Ja existe localizacao ativa com este codigo para o deposito");
                 });
     }
@@ -55,9 +55,8 @@ public class LocalizacaoEstoqueValidator {
             return;
         }
         repository.findByDepositoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(request.depositoId())
-                .map(LocalizacaoEstoque::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(localizacao -> !Objects.equals(localizacao.getId(), idAtual))
+                .ifPresent(localizacao -> {
                     throw new ConflictException("Deposito ja possui localizacao principal ativa");
                 });
     }

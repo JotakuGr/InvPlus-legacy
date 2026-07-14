@@ -24,6 +24,9 @@ dist/
 logs/
 .tmp/
 
+# Uploads locais e artefatos gerados em testes
+backend/uploads/
+
 # Ambiente
 .env
 .env.local

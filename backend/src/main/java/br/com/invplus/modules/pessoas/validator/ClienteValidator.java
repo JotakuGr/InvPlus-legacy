@@ -1,11 +1,11 @@
 package br.com.invplus.modules.pessoas.validator;
 
 import br.com.invplus.modules.pessoas.dto.request.ClienteRequest;
-import br.com.invplus.modules.pessoas.entity.Cliente;
 import br.com.invplus.modules.pessoas.repository.ClienteRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -46,9 +46,8 @@ public class ClienteValidator {
 
     private void validarPessoaSemClienteAtivo(UUID idAtual, UUID pessoaId) {
         clienteRepository.findByPessoaIdAndAtivoTrueAndDeletedAtIsNull(pessoaId)
-                .map(Cliente::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(cliente -> !Objects.equals(cliente.getId(), idAtual))
+                .ifPresent(cliente -> {
                     throw new ConflictException("Pessoa ja possui cliente ativo");
                 });
     }

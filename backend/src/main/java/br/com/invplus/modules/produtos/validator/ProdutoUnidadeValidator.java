@@ -6,6 +6,7 @@ import br.com.invplus.modules.produtos.repository.ProdutoUnidadeRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -54,9 +55,8 @@ public class ProdutoUnidadeValidator {
     private void validarDuplicidade(ProdutoUnidadeRequest request, UUID idAtual) {
         repository.findByProdutoIdAndUnidadeMedidaIdAndAtivoTrueAndDeletedAtIsNull(
                         request.produtoId(), request.unidadeMedidaId())
-                .map(ProdutoUnidade::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(unidade -> !Objects.equals(unidade.getId(), idAtual))
+                .ifPresent(unidade -> {
                     throw new ConflictException("Ja existe unidade ativa para este produto");
                 });
     }
@@ -66,9 +66,8 @@ public class ProdutoUnidadeValidator {
             return;
         }
         repository.findByProdutoIdAndUnidadePadraoTrueAndAtivoTrueAndDeletedAtIsNull(request.produtoId())
-                .map(ProdutoUnidade::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(unidade -> !Objects.equals(unidade.getId(), idAtual))
+                .ifPresent(unidade -> {
                     throw new ConflictException("Produto ja possui unidade padrao ativa");
                 });
     }

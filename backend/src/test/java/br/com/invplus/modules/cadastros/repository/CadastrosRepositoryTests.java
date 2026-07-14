@@ -99,7 +99,7 @@ class CadastrosRepositoryTests {
         assertThat(empresaRepository.findById(empresa.getId())).isPresent();
         assertThat(empresaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(empresa.getId())).isEmpty();
         assertThat(empresaRepository.findByAtivoTrueAndDeletedAtIsNull())
-                .extracting(Empresa::getId)
+                .extracting(item -> item.getId())
                 .doesNotContain(empresa.getId());
     }
 }

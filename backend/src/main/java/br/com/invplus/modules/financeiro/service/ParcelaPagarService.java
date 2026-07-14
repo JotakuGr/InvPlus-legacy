@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -170,7 +171,10 @@ public class ParcelaPagarService extends BaseCrudService<ParcelaPagar, ParcelaPa
     }
 
     private List<ParcelaGerada> ajustarTotal(List<ParcelaGerada> parcelas, BigDecimal valorTotal) {
-        BigDecimal soma = parcelas.stream().map(ParcelaGerada::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal soma = parcelas.stream()
+                .map(parcela -> Objects.requireNonNull(
+                        parcela.valor(), "Valor da parcela nao pode ser nulo"))
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
         BigDecimal diferenca = valorTotal.subtract(soma);
         if (diferenca.signum() == 0 || parcelas.isEmpty()) {
             return parcelas;
@@ -179,8 +183,10 @@ public class ParcelaPagarService extends BaseCrudService<ParcelaPagar, ParcelaPa
         ParcelaGerada ultima = ajustadas.get(ajustadas.size() - 1);
         ajustadas.set(ajustadas.size() - 1,
                 new ParcelaGerada(ultima.numeroParcela(), ultima.vencimento(), ultima.valor().add(diferenca)));
-        BigDecimal somaAjustada = ajustadas.stream().map(ParcelaGerada::valor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal somaAjustada = ajustadas.stream()
+                .map(parcela -> Objects.requireNonNull(
+                        parcela.valor(), "Valor da parcela nao pode ser nulo"))
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
         if (somaAjustada.compareTo(valorTotal) != 0) {
             throw new InvalidOperationException("Soma das parcelas nao fecha o valor total da conta");
         }
@@ -191,8 +197,9 @@ public class ParcelaPagarService extends BaseCrudService<ParcelaPagar, ParcelaPa
         List<ParcelaPagar> parcelas = repository.findByContaPagarIdAndAtivoTrueAndDeletedAtIsNull(conta.getId());
         BigDecimal valorPago = parcelas.stream()
                 .filter(parcela -> parcela.getStatus() != StatusParcelaPagar.CANCELADA)
-                .map(ParcelaPagar::getValorPago)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(parcela -> Objects.requireNonNull(
+                        parcela.getValorPago(), "Valor pago da parcela nao pode ser nulo"))
+                .reduce(BigDecimal.ZERO, (total, valor) -> total.add(valor));
         BigDecimal valorAberto = conta.getValorTotal().subtract(valorPago);
         conta.atualizarPagamento(valorPago, valorAberto, definirStatusConta(parcelas, valorAberto));
     }

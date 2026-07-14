@@ -121,7 +121,7 @@ class ParcelaPagarServiceTest {
                 new GerarParcelasPagarRequest(condicao.getId(), LocalDate.of(2026, 7, 10)));
 
         assertThat(response).hasSize(3);
-        assertThat(response).extracting(ParcelaPagarResponse::valor)
+        assertThat(response).extracting(parcela -> parcela.valor())
                 .containsExactly(new BigDecimal("300.00"), new BigDecimal("300.00"), new BigDecimal("300.00"));
     }
 

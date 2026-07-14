@@ -5,6 +5,7 @@ import br.com.invplus.modules.produtos.entity.ProdutoImagem;
 import br.com.invplus.modules.produtos.repository.ProdutoImagemRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -40,9 +41,8 @@ public class ProdutoImagemValidator {
     public void validarAtualizacao(ProdutoImagem atual, ProdutoImagemRequest request) {
         validarCampos(request);
         repository.findByProdutoIdAndArquivoIdAndAtivoTrueAndDeletedAtIsNull(request.produtoId(), request.arquivoId())
-                .map(ProdutoImagem::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(atual.getId()))
-                .ifPresent(idEncontrado -> {
+                .filter(imagem -> !Objects.equals(imagem.getId(), atual.getId()))
+                .ifPresent(imagem -> {
                     throw new ConflictException("Produto ja possui vinculo ativo com este arquivo");
                 });
         validarPrincipal(request.produtoId(), request.principal(), atual.getId());
@@ -65,9 +65,8 @@ public class ProdutoImagemValidator {
             return;
         }
         repository.findByProdutoIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(produtoId)
-                .map(ProdutoImagem::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+                .filter(imagem -> !Objects.equals(imagem.getId(), idAtual))
+                .ifPresent(imagem -> {
                     throw new ConflictException("Produto ja possui imagem principal ativa");
                 });
     }

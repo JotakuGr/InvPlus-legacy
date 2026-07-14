@@ -224,8 +224,8 @@ class ExtratoBancarioLancamentoControllerTests {
     }
 
     private String documento(String base) {
-        String numeros = base.replaceAll("\\D", "");
-        return ("12345000000000" + numeros).substring(numeros.length());
+        long valorHexadecimal = Long.parseLong(base, 16);
+        return "1234" + String.format("%010d", valorHexadecimal);
     }
 
     private String sufixo() {

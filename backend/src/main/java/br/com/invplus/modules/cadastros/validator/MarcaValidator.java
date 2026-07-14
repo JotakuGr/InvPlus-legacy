@@ -1,9 +1,9 @@
 package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.MarcaRequest;
-import br.com.invplus.modules.cadastros.entity.Marca;
 import br.com.invplus.modules.cadastros.repository.MarcaRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -34,9 +34,8 @@ public class MarcaValidator {
     private void validarNomeUnico(UUID idAtual, String nome) {
         String nomeNormalizado = nome == null ? null : nome.trim();
         marcaRepository.findByNomeIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(nomeNormalizado)
-                .map(Marca::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(marca -> !Objects.equals(marca.getId(), idAtual))
+                .ifPresent(marca -> {
                     throw new ConflictException("Ja existe marca ativa com este nome");
                 });
     }

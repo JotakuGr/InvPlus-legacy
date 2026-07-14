@@ -2,11 +2,11 @@ package br.com.invplus.modules.pessoas.validator;
 
 import br.com.invplus.common.enums.TipoPessoa;
 import br.com.invplus.modules.pessoas.dto.request.PessoaRequest;
-import br.com.invplus.modules.pessoas.entity.Pessoa;
 import br.com.invplus.modules.pessoas.repository.PessoaRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -58,18 +58,16 @@ public class PessoaValidator {
 
     private void validarCpfCnpjUnico(UUID idAtual, String cpfCnpj) {
         pessoaRepository.findByCpfCnpjAndAtivoTrueAndDeletedAtIsNull(normalizarDocumento(cpfCnpj))
-                .map(Pessoa::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(pessoa -> !Objects.equals(pessoa.getId(), idAtual))
+                .ifPresent(pessoa -> {
                     throw new ConflictException("Ja existe pessoa ativa com este CPF/CNPJ");
                 });
     }
 
     private void validarCpfCnpjImutavel(UUID id, String cpfCnpj) {
         pessoaRepository.findByIdAndAtivoTrueAndDeletedAtIsNull(id)
-                .map(Pessoa::getCpfCnpj)
-                .filter(documentoAtual -> !documentoAtual.equals(normalizarDocumento(cpfCnpj)))
-                .ifPresent(documentoAtual -> {
+                .filter(pessoa -> !Objects.equals(pessoa.getCpfCnpj(), normalizarDocumento(cpfCnpj)))
+                .ifPresent(pessoa -> {
                     throw new InvalidOperationException("CPF/CNPJ nao pode ser alterado apos a criacao");
                 });
     }

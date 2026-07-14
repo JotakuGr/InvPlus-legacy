@@ -12,6 +12,7 @@ import br.com.invplus.modules.financeiro.repository.ContaPagarRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -78,9 +79,8 @@ public class ContaPagarValidator {
             return;
         }
         repository.findByEmpresaIdAndNumeroIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(empresaId, numero.trim())
-                .map(ContaPagar::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(conta -> !Objects.equals(conta.getId(), idAtual))
+                .ifPresent(conta -> {
                     throw new ConflictException("Ja existe conta a pagar ativa com este numero para a empresa");
                 });
     }

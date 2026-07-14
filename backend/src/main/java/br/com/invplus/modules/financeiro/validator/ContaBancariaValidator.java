@@ -3,11 +3,11 @@ package br.com.invplus.modules.financeiro.validator;
 import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.entity.Filial;
 import br.com.invplus.modules.financeiro.dto.request.ContaBancariaRequest;
-import br.com.invplus.modules.financeiro.entity.ContaBancaria;
 import br.com.invplus.modules.financeiro.repository.ContaBancariaRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -52,9 +52,8 @@ public class ContaBancariaValidator {
         repository.findByEmpresaIdAndBancoCodigoIgnoreCaseAndAgenciaIgnoreCaseAndNumeroContaIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
                         empresaId, normalizar(request.bancoCodigo()), normalizar(request.agencia()),
                         normalizar(request.numeroConta()))
-                .map(ContaBancaria::getId)
-                .filter(id -> !id.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(conta -> !Objects.equals(conta.getId(), idAtual))
+                .ifPresent(conta -> {
                     throw new ConflictException("Ja existe conta bancaria ativa com estes dados na empresa");
                 });
     }
@@ -64,9 +63,8 @@ public class ContaBancariaValidator {
             return;
         }
         repository.findByEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(empresaId)
-                .map(ContaBancaria::getId)
-                .filter(id -> !id.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(conta -> !Objects.equals(conta.getId(), idAtual))
+                .ifPresent(conta -> {
                     throw new ConflictException("Ja existe conta bancaria principal ativa para esta empresa");
                 });
     }

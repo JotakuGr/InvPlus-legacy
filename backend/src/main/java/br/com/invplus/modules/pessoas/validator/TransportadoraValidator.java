@@ -1,11 +1,11 @@
 package br.com.invplus.modules.pessoas.validator;
 
 import br.com.invplus.modules.pessoas.dto.request.TransportadoraRequest;
-import br.com.invplus.modules.pessoas.entity.Transportadora;
 import br.com.invplus.modules.pessoas.repository.TransportadoraRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -46,9 +46,8 @@ public class TransportadoraValidator {
 
     private void validarPessoaSemTransportadoraAtiva(UUID idAtual, UUID pessoaId) {
         transportadoraRepository.findByPessoaIdAndAtivoTrueAndDeletedAtIsNull(pessoaId)
-                .map(Transportadora::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(transportadora -> !Objects.equals(transportadora.getId(), idAtual))
+                .ifPresent(transportadora -> {
                     throw new ConflictException("Pessoa ja possui transportadora ativa");
                 });
     }

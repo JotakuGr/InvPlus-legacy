@@ -1,11 +1,11 @@
 package br.com.invplus.modules.pessoas.validator;
 
 import br.com.invplus.modules.pessoas.dto.request.FuncionarioRequest;
-import br.com.invplus.modules.pessoas.entity.Funcionario;
 import br.com.invplus.modules.pessoas.repository.FuncionarioRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -58,9 +58,8 @@ public class FuncionarioValidator {
 
     private void validarPessoaSemFuncionarioAtivo(UUID idAtual, UUID pessoaId) {
         funcionarioRepository.findByPessoaIdAndAtivoTrueAndDeletedAtIsNull(pessoaId)
-                .map(Funcionario::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(funcionario -> !Objects.equals(funcionario.getId(), idAtual))
+                .ifPresent(funcionario -> {
                     throw new ConflictException("Pessoa ja possui funcionario ativo");
                 });
     }
@@ -70,9 +69,8 @@ public class FuncionarioValidator {
             return;
         }
         funcionarioRepository.findByUsuarioIdAndAtivoTrueAndDeletedAtIsNull(usuarioId)
-                .map(Funcionario::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(funcionario -> !Objects.equals(funcionario.getId(), idAtual))
+                .ifPresent(funcionario -> {
                     throw new ConflictException("Usuario ja vinculado a funcionario ativo");
                 });
     }

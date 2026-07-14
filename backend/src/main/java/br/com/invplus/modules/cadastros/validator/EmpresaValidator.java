@@ -1,10 +1,10 @@
 package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.EmpresaRequest;
-import br.com.invplus.modules.cadastros.entity.Empresa;
 import br.com.invplus.modules.cadastros.repository.EmpresaRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -55,9 +55,8 @@ public class EmpresaValidator {
 
     private void validarCnpjUnico(UUID idAtual, String cnpj) {
         empresaRepository.findByCnpjAndAtivoTrueAndDeletedAtIsNull(normalizarCnpj(cnpj))
-                .map(Empresa::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(empresa -> !Objects.equals(empresa.getId(), idAtual))
+                .ifPresent(empresa -> {
                     throw new ConflictException("Ja existe empresa ativa com este CNPJ");
                 });
     }

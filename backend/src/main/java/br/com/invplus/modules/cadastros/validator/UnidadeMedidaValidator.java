@@ -1,9 +1,9 @@
 package br.com.invplus.modules.cadastros.validator;
 
 import br.com.invplus.modules.cadastros.dto.request.UnidadeMedidaRequest;
-import br.com.invplus.modules.cadastros.entity.UnidadeMedida;
 import br.com.invplus.modules.cadastros.repository.UnidadeMedidaRepository;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -34,9 +34,8 @@ public class UnidadeMedidaValidator {
     private void validarSiglaUnica(UUID idAtual, String sigla) {
         String siglaNormalizada = sigla == null ? null : sigla.trim().toUpperCase();
         unidadeMedidaRepository.findBySiglaAndAtivoTrueAndDeletedAtIsNull(siglaNormalizada)
-                .map(UnidadeMedida::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(unidade -> !Objects.equals(unidade.getId(), idAtual))
+                .ifPresent(unidade -> {
                     throw new ConflictException("Ja existe unidade de medida ativa com esta sigla");
                 });
     }

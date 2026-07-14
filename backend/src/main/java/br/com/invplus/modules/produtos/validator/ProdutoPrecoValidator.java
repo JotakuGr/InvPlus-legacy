@@ -6,6 +6,7 @@ import br.com.invplus.modules.produtos.repository.ProdutoPrecoRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -62,9 +63,8 @@ public class ProdutoPrecoValidator {
                 : repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndVigenciaInicioAndAtivoTrueAndDeletedAtIsNull(
                         request.produtoId(), request.tipoPreco(), request.empresaId(), request.vigenciaInicio());
 
-        existente.map(ProdutoPreco::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+        existente.filter(preco -> !Objects.equals(preco.getId(), idAtual))
+                .ifPresent(preco -> {
                     throw new ConflictException("Ja existe preco ativo para este produto, tipo, empresa e vigencia inicial");
                 });
     }
@@ -80,9 +80,8 @@ public class ProdutoPrecoValidator {
                 : repository.findByProdutoIdAndTipoPrecoAndEmpresaIdAndPrincipalTrueAndAtivoTrueAndDeletedAtIsNull(
                         request.produtoId(), request.tipoPreco(), request.empresaId());
 
-        existente.map(ProdutoPreco::getId)
-                .filter(idEncontrado -> idAtual == null || !idEncontrado.equals(idAtual))
-                .ifPresent(idEncontrado -> {
+        existente.filter(preco -> !Objects.equals(preco.getId(), idAtual))
+                .ifPresent(preco -> {
                     throw new ConflictException("Produto ja possui preco principal ativo para este tipo e empresa");
                 });
     }

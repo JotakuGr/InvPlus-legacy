@@ -38,7 +38,7 @@ public class PessoaRoleService {
     @Transactional
     public void remover(UUID pessoaId, PapelPessoa role) {
         pessoaRoleRepository.findByPessoaIdAndRoleAndAtivoTrueAndDeletedAtIsNull(pessoaId, role)
-                .ifPresent(PessoaRole::excluirLogicamente);
+                .ifPresent(pessoaRole -> pessoaRole.excluirLogicamente());
     }
 
     /**
@@ -48,7 +48,7 @@ public class PessoaRoleService {
     public Set<PapelPessoa> listarPapeis(UUID pessoaId) {
         return pessoaRoleRepository.findByPessoaIdAndAtivoTrueAndDeletedAtIsNull(pessoaId)
                 .stream()
-                .map(PessoaRole::getRole)
+                .map(pessoaRole -> pessoaRole.getRole())
                 .collect(Collectors.toSet());
     }
 }

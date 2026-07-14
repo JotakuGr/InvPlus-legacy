@@ -8,6 +8,7 @@ import br.com.invplus.modules.financeiro.repository.ExtratoBancarioLancamentoRep
 import br.com.invplus.shared.domain.exception.ConflictException;
 import br.com.invplus.shared.domain.exception.InvalidOperationException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -52,9 +53,8 @@ public class ExtratoBancarioLancamentoValidator {
         }
         repository.findByExtratoBancarioIdAndIdentificadorBancarioIgnoreCaseAndAtivoTrueAndDeletedAtIsNull(
                         extratoId, identificador.trim())
-                .map(ExtratoBancarioLancamento::getId)
-                .filter(id -> !id.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(lancamento -> !Objects.equals(lancamento.getId(), idAtual))
+                .ifPresent(lancamento -> {
                     throw new ConflictException("Ja existe lancamento ativo com este identificador no extrato");
                 });
     }

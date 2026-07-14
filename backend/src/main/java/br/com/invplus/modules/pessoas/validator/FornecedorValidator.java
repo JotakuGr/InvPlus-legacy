@@ -1,10 +1,10 @@
 package br.com.invplus.modules.pessoas.validator;
 
 import br.com.invplus.modules.pessoas.dto.request.FornecedorRequest;
-import br.com.invplus.modules.pessoas.entity.Fornecedor;
 import br.com.invplus.modules.pessoas.repository.FornecedorRepository;
 import br.com.invplus.shared.domain.exception.BusinessException;
 import br.com.invplus.shared.domain.exception.ConflictException;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -45,9 +45,8 @@ public class FornecedorValidator {
 
     private void validarPessoaSemFornecedorAtivo(UUID idAtual, UUID pessoaId) {
         fornecedorRepository.findByPessoaIdAndAtivoTrueAndDeletedAtIsNull(pessoaId)
-                .map(Fornecedor::getId)
-                .filter(idEncontrado -> !idEncontrado.equals(idAtual))
-                .ifPresent(id -> {
+                .filter(fornecedor -> !Objects.equals(fornecedor.getId(), idAtual))
+                .ifPresent(fornecedor -> {
                     throw new ConflictException("Pessoa ja possui fornecedor ativo");
                 });
     }

@@ -14,7 +14,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -128,7 +127,7 @@ public class JwtService {
     private List<String> authorities(UserDetails userDetails) {
         return userDetails.getAuthorities()
                 .stream()
-                .map(GrantedAuthority::getAuthority)
+                .map(authority -> authority.getAuthority())
                 .sorted()
                 .toList();
     }
